@@ -62,6 +62,7 @@ public class LeaderboardPlaceholderExpansion extends PlaceholderExpansion {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
             @Override
             public void run() {
+                try {
 
                 Map<String, List<LBEntry>> newCache = new HashMap<>();
                 List<PlayerStats> allPlayers = new ArrayList<>(statsManager.getAllPlayers());
@@ -104,6 +105,9 @@ public class LeaderboardPlaceholderExpansion extends PlaceholderExpansion {
 
                 leaderboardCache.clear();
                 leaderboardCache.putAll(newCache);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Error updating leaderboard: " + e.getMessage());
+            }
             }
         });
     }

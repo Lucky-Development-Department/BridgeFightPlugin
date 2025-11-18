@@ -386,20 +386,36 @@ public class DeathMessageManager {
     }
 
     private void giveKillEffect(Player killer) {
-        if (killer != null) {
-            if (killer.hasPotionEffect(PotionEffectType.INCREASE_DAMAGE)) {
+        if (killer == null) return;
 
-                killer.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
+        PotionEffect found = null;
+        for (PotionEffect pe : killer.getActivePotionEffects()) {
+            if (pe.getType().equals(PotionEffectType.INCREASE_DAMAGE)) {
+                found = pe;
+                break;
             }
-            killer.addPotionEffect(new PotionEffect(
-                    PotionEffectType.INCREASE_DAMAGE,
-                    100,
-                    0,
-                    true,
-                    false
-            ), true);
         }
+
+        if (found != null) {
+            int remainingTicks = found.getDuration(); // duration in ticks
+            int remainingSeconds = remainingTicks / 20;
+            if (remainingSeconds > 5) {
+                // If more than 5 seconds remain, do nothing
+                return;
+            }
+            killer.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
+        }
+
+        // Apply new 5s Strength I
+        killer.addPotionEffect(new PotionEffect(
+                PotionEffectType.INCREASE_DAMAGE,
+                100, // 5 seconds * 20 ticks
+                0,
+                true,
+                false
+        ), true);
     }
+
 
     private void ensureItem(Player player, Material material, int minAmount, int giveAmount) {
         giveRewardIntoLayout(player, material, new ItemStack(material, giveAmount), minAmount, 2);
