@@ -208,9 +208,7 @@ public class HotbarManager {
         }
 
         // Clear inventory (9..35)
-        for (int i = 9; i < 36; i++) {
-            p.getInventory().setItem(i, null);
-        }
+        clearInventory(p);
 
         // Fill leftover kit items
         int index = 9;
@@ -225,6 +223,13 @@ public class HotbarManager {
         for (ItemStack item : nonKitItems) {
             if (index >= 36) break;
             p.getInventory().setItem(index++, item);
+        }
+    }
+
+    private static void clearInventory(Player player) {
+        // only clear slots 9–35
+        for (int i = 9; i <= 35; i++) {
+            player.getInventory().setItem(i, null);
         }
     }
 

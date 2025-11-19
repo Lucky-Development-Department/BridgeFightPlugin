@@ -1,6 +1,8 @@
 package me.molfordan.arenaAndFFAManager.kits;
 
+import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarManager;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -97,17 +99,26 @@ public class BuildFFAKit {
         // ======================================================
         // GIVE BLOCKS
         // ======================================================
-        boolean blocksInLayout = containsValue(hotbarLayout, "blocks");
+        int blocksInLayout = countBlocksInLayout(hotbarLayout);
 
-        if (blocksInLayout) {
-            // Blocks are handled by HotbarManager
-            // No need to add them again
-        } else {
-            // If blocks are not in the layout, add them to the inventory
-            for (int i = 0; i < MAX_WOOL_STACKS; i++) {
-                player.getInventory().addItem(woolStack.clone());
-            }
+// total stacks we want:
+        int totalStacks = MAX_WOOL_STACKS;
+
+// give stacks to layout-handled slots first
+        for (int i = 0; i < blocksInLayout && i < totalStacks; i++) {
+            // HotbarManager already placed them
+            totalStacks--;
         }
+
+// give the remaining stacks to inventory
+        for (int i = 0; i < totalStacks; i++) {
+            player.getInventory().addItem(woolStack.clone());
+        }
+
+        Bukkit.getScheduler().runTask(
+                ArenaAndFFAManager.getPlugin(),
+                () -> HotbarManager.resortInventory(player, ArenaAndFFAManager.getPlugin().getHotbarDataManager())
+        );
     }
 
     // ======================================================

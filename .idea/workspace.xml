@@ -5,10 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e1e134a8-8b89-454a-95c4-6acdf11fcdee" name="Changes" comment="edited few things">
-      <change beforePath="$PROJECT_DIR$/target/ArenaFFAManager-0.0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/ArenaFFAManager-0.0.1.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/original-ArenaFFAManager-0.0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/original-ArenaFFAManager-0.0.1.jar" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/BuildFFAKit.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/BuildFFAKit.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
