@@ -18,6 +18,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.weather.WeatherChangeEvent;
+import org.bukkit.potion.PotionEffect;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -101,6 +102,9 @@ public class GlobalListener implements Listener {
         e.setQuitMessage(null);
         if (player.isFlying()) {
             flyingPlayers.add(uuid);
+        }
+        for (PotionEffect effect : player.getActivePotionEffects()) {
+            player.removePotionEffect(effect.getType());
         }
     }
     @EventHandler

@@ -132,12 +132,14 @@ public class FrozenManager implements Listener {
                 String title = ChatColor.RED.toString() + ChatColor.BOLD + "DO NOT LOG OUT";
                 String subTitle = ChatColor.GRAY + "Logout will result in 7d ban";
 
+
                 for (UUID uuid : frozenPlayers) {
                     Player player = Bukkit.getPlayer(uuid);
                     if (player != null && player.isOnline()) {
                         // sendTitle(title, subtitle, fadeIn, stay, fadeOut)
                         // fadeIn=0, stay=20 (1 second), fadeOut=0 ensures maximum spam rate
                         player.sendTitle(title, subTitle);
+                        player.sendMessage(ChatColor.DARK_RED.toString() + ChatColor.BOLD + "YOU ARE FROZEN!" + ChatColor.RED + " Do not disconnect.");
                     }
                 }
             }, 0L, 20L); // Start immediately (0L) and repeat every 20 ticks (1 second)

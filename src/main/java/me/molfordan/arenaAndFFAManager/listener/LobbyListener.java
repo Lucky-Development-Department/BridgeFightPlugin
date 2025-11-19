@@ -81,6 +81,9 @@ public class LobbyListener implements Listener {
         }, 1L);
 
          */
+        for (PotionEffect effect : player.getActivePotionEffects()) {
+            player.removePotionEffect(effect.getType());
+        }
         player.teleport(lobbyLoc);
 
         plugin.getSpawnItem().giveItems(player);
