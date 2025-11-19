@@ -55,6 +55,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private LeaderboardPlaceholderExpansion placeholderLeaderboardExpansion;
     private DailyArenaRestorer dailyArenaRestorer;
     private FrozenManager frozenManager;
+    private ReportManager reportManager;
     private SpawnItem spawnItem;
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
@@ -89,6 +90,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.guiLeaderboardMain = new GUILeaderboardMain(this);
         this.spawnItem = new SpawnItem(this);
         this.frozenManager = new FrozenManager(this);
+        this.reportManager = new ReportManager(this, getDataFolder());
         persistentRestoreManager.loadAll();
         persistentRestoreManager.startAutoSave();
         String lobbyWorld = configManager.getLobbyWorldName();
@@ -279,6 +281,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     }
     public SpawnItem getSpawnItem() {
         return spawnItem;
+    }
+
+    public ReportManager getReportManager(){
+        return reportManager;
     }
 
     public FrozenManager getFrozenManager(){

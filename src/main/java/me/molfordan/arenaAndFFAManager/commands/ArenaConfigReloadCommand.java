@@ -20,6 +20,8 @@ public class ArenaConfigReloadCommand implements CommandExecutor {
 
         if (sender == null) return true;
 
+        if (!sender.isOp()) return true;
+
 
         if (!sender.isOp()) {
             sender.sendMessage("You must be an operator to use this command.");

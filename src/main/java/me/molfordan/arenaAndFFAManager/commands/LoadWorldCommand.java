@@ -17,6 +17,8 @@ public class LoadWorldCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
 
+        if (!sender.isOp()) return true;
+
         if (args.length == 0){
             sender.sendMessage(ChatColor.RED + "Not Enough Args!");
             return true;

@@ -22,6 +22,9 @@ public class ArenaCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+
+        if (!sender.isOp()) return true;
+
         boolean isConsole = !(sender instanceof Player);
 
         // --- Allow console ONLY for /arenamap <arena> restore ---

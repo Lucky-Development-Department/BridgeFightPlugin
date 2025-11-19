@@ -21,6 +21,8 @@ public class BypassCommandsCommand implements CommandExecutor {
 
         if (sender == null) return true;
 
+        if (!sender.isOp()) return true;
+
         if (!(sender instanceof Player)) {
             sender.sendMessage("Only players can use this command.");
             return true;

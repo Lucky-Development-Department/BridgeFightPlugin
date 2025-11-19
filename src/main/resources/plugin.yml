@@ -83,6 +83,12 @@ commands:
     usage: '/unfreeze <player>'
     description: 'unfrozen command'
     aliases: [unfrozen, unss]
+  report:
+    usage: '/report <player> <reason>'
+    description: 'report command'
+  reports:
+    usage: '/reports <page>'
+    description: 'reports command'
 
 permissions:
   arenamap.admin:

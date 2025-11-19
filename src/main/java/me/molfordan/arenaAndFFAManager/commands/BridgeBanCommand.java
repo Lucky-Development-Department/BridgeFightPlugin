@@ -20,6 +20,8 @@ public class BridgeBanCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
+        if (!sender.isOp()) return true;
+
         if (args.length < 1) {
             sender.sendMessage("§cUsage: /bridgeban <player> [duration] [reason]");
             return true;

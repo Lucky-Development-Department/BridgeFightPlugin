@@ -20,6 +20,8 @@ public class SetLobbyCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
+        if (!sender.isOp()) return true;
+
         // Check if the command sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage(ChatColor.RED + "Only players can set the lobby location.");

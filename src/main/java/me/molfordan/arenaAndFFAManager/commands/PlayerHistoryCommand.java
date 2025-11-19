@@ -22,10 +22,7 @@ public class PlayerHistoryCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
 
-        if (!sender.hasPermission("bridgefight.admin")) {
-            sender.sendMessage("§cYou don't have permission.");
-            return true;
-        }
+        if (!sender.isOp()) return true;
 
         if (args.length != 1) {
             sender.sendMessage("§cUsage: §e/playerhistory <player>");

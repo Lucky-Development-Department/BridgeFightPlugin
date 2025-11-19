@@ -19,6 +19,9 @@ public class RegionCommand implements TabExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] a) {
+
+        if (!sender.isOp()) return true;
+
         if (!(sender instanceof Player)) {
             sender.sendMessage("Players only.");
             return true;
