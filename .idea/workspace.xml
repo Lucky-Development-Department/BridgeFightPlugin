@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e1e134a8-8b89-454a-95c4-6acdf11fcdee" name="Changes" comment="edited few things">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/BuildFFAKit.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/BuildFFAKit.java" afterDir="false" />
-    </list>
+    <list default="true" id="e1e134a8-8b89-454a-95c4-6acdf11fcdee" name="Changes" comment="fixed hotbar layout" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -156,7 +152,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763528053444</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="fixed hotbar layout">
+      <option name="closed" value="true" />
+      <created>1763531295922</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1763531295922</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -174,6 +178,7 @@
     <MESSAGE value="Init Commit" />
     <MESSAGE value="some fixes" />
     <MESSAGE value="edited few things" />
-    <option name="LAST_COMMIT_MESSAGE" value="edited few things" />
+    <MESSAGE value="fixed hotbar layout" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixed hotbar layout" />
   </component>
 </project>

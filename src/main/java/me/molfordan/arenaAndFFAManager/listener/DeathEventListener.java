@@ -8,12 +8,16 @@ import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class DeathEventListener implements Listener {
@@ -22,6 +26,7 @@ public class DeathEventListener implements Listener {
     private final ArenaAndFFAManager plugin;
     private final CombatManager combatManager;
     private final DeathMessageManager deathMessageManager;
+    private final Map<UUID, EnderPearl> thrownPearls = new HashMap<>();
 
     public DeathEventListener(ArenaManager arenaManager, ArenaAndFFAManager plugin,
                               CombatManager combatManager, DeathMessageManager deathMessageManager) {
@@ -92,20 +97,34 @@ public class DeathEventListener implements Listener {
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
+
+        EnderPearl pearl = thrownPearls.remove(player.getUniqueId());
+        if (pearl != null && !pearl.isDead()) {
+            pearl.remove(); // cancels pearl teleport
+        }
+
+        // your existing death code:
         Arena arena = arenaManager.getArenaByLocation(player.getLocation());
         if (arena == null) return;
 
-        // remove default MC death message
         event.setDeathMessage(null);
 
-        // Only FFABUILD uses normal death (non-void)
         if (arena.getType() != ArenaType.FFABUILD) return;
-
-        // If player died in void, ignore (void is handled in move-event)
         if (player.getLocation().getY() <= arena.getVoidLimit()) return;
 
         combatManager.clear(player);
         deathMessageManager.clear(player.getUniqueId());
+    }
+
+    @EventHandler
+    public void onPearlLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof EnderPearl)) return;
+
+        EnderPearl pearl = (EnderPearl) event.getEntity();
+        if (!(pearl.getShooter() instanceof Player)) return;
+
+        Player player = (Player) pearl.getShooter();
+        thrownPearls.put(player.getUniqueId(), pearl);
     }
 
     @EventHandler
