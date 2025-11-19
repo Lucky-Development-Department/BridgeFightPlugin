@@ -134,13 +134,15 @@ public class PlayerStats {
         if (bridgeDeaths == 0) {
             return bridgeKills;
         }
-        return (double) bridgeKills / bridgeDeaths;
+        double kdr = (double) bridgeKills / bridgeDeaths;
+        return Math.round(kdr * 100.0) / 100.0;
     }
 
     public double getBuildKDR() {
         if (buildDeaths == 0) {
             return buildKills;
         }
-        return (double) buildKills / buildDeaths;
+        double kdr = (double) buildKills / buildDeaths;
+        return Math.round(kdr * 100.0) / 100.0;
     }
 }
