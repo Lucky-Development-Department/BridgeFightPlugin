@@ -12,6 +12,7 @@ import me.molfordan.arenaAndFFAManager.kits.KitManager;
 import me.molfordan.arenaAndFFAManager.listener.*;
 import me.molfordan.arenaAndFFAManager.manager.*;
 import me.molfordan.arenaAndFFAManager.object.Arena;
+import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
 import me.molfordan.arenaAndFFAManager.placeholder.LeaderboardPlaceholderExpansion;
 import me.molfordan.arenaAndFFAManager.region.CommandRegionManager;
 import me.molfordan.arenaAndFFAManager.restore.DailyArenaRestorer;
@@ -19,6 +20,7 @@ import me.molfordan.arenaAndFFAManager.restore.PersistentRestoreManager;
 import me.molfordan.arenaAndFFAManager.spawnitem.SpawnItem;
 import me.molfordan.arenaAndFFAManager.task.CombatTagDisplayTask;
 import me.molfordan.arenaAndFFAManager.utils.CommandRegister;
+//import me.molfordan.arenaAndFFAManager.utils.FlightManager;
 import org.bukkit.Bukkit;
 import org.bukkit.WorldType;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -37,6 +39,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private ConfigManager configManager;
     private HotbarSorter hotbarSorter;
     private BridgeFightBanManager bridgeFightBanManager;
+    private TeleportPendingManager teleportPendingManager;
     private CombatManager combatManager;
     private DeathMessageManager deathMessageManager;
     private PersistentRestoreManager persistentRestoreManager;
@@ -54,19 +57,22 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private GUILeaderboard guiLeaderboard;
     private LeaderboardPlaceholderExpansion placeholderLeaderboardExpansion;
     private DailyArenaRestorer dailyArenaRestorer;
+    //private FlightManager flightManager;
     private FrozenManager frozenManager;
     private ReportManager reportManager;
     private SpawnItem spawnItem;
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
     private static final String BRIDGEFIGHT_PATH = "bridgefight";
+    private static final String PRIVATEWORLD_PATH = "privateworld";
 
     @Override
     public void onEnable() {
         plugin = this;
-        this.databaseManager = new DatabaseManager(this);
+
 
         this.configManager = new ConfigManager(this);
+        this.databaseManager = new DatabaseManager(this);
         this.statsManager = new StatsManager(this);
         this.bridgeFightConfig = new BridgeFightConfig(this);
         bridgeFightConfig.load();
@@ -91,15 +97,19 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.spawnItem = new SpawnItem(this);
         this.frozenManager = new FrozenManager(this);
         this.reportManager = new ReportManager(this, getDataFolder());
+        this.teleportPendingManager = new TeleportPendingManager();
+        //this.flightManager = new FlightManager(configManager.getLobbyWorldName());
         persistentRestoreManager.loadAll();
         persistentRestoreManager.startAutoSave();
         String lobbyWorld = configManager.getLobbyWorldName();
         String buildFFAWorld = configManager.getBuildFFAWorldName();
         String bridgeFightWorld = configManager.getBridgeFightWorldName();
+        String privateWorldWorld = configManager.getPrivateWorldWorldName();
         double bridgeFightVoidLimit = configManager.getBridgeFightVoidLimit();
         configManager.loadWorld(lobbyWorld, WorldType.NORMAL);
         configManager.loadWorld(buildFFAWorld, WorldType.NORMAL);
         configManager.loadWorld(bridgeFightWorld, WorldType.NORMAL);
+        configManager.loadWorld(privateWorldWorld, WorldType.FLAT);
         platformManager.loadFromConfig(bridgeFightConfig.getConfig());
         regionManager.loadAllFromConfig();
         arenaManager.loadArenas();
@@ -113,9 +123,9 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("setlobby").setExecutor(new SetLobbyCommand(configManager));
         getCommand("build").setExecutor(new BuildModeCommand(configManager));
         getCommand("buildffa").setExecutor(new BuildFFACommand(configManager));
-        getCommand("bridgefight").setExecutor(new BridgeFightCommand(configManager));
+        getCommand("bridgefight").setExecutor(new BridgeFightCommand(configManager, this));
         getCommand("loadworld").setExecutor(new LoadWorldCommand(configManager));
-        getCommand("spawn").setExecutor(new LobbyCommand(configManager));
+        getCommand("spawn").setExecutor(new LobbyCommand(configManager, teleportPendingManager));
         getCommand("setpos1").setExecutor(new SetPlatformPosCommand(this, platformManager));
         getCommand("setpos2").setExecutor(new SetPlatformPosCommand(this, platformManager));
         getCommand("stats").setExecutor(new StatsCommand(this));
@@ -143,6 +153,11 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("playerhistory").setExecutor(new PlayerHistoryCommand(this));
         getCommand("freeze").setExecutor(new FrozenCommand(this));
         getCommand("unfreeze").setExecutor(new UnfrozenCommand(this));
+        getCommand("report").setExecutor(new ReportCommand(this));
+        getCommand("reports").setExecutor(new ReportsCommand(this));
+        getCommand("statsreset").setExecutor(new StatsResetCommand(this));
+        getCommand("privateworld").setExecutor(new PrivateWorldCommand(this));
+        getCommand("setstats").setExecutor(new SetCommand(this));
 
         // schedule expiry cleanup every minute
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
@@ -158,7 +173,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TeleportSnowballListener(combatManager), this);
         getServer().getPluginManager().registerEvents(new ItemDropBlockerListener(arenaManager), this);
         getServer().getPluginManager().registerEvents(new LobbyListener(configManager, this, kitManager), this);
-        getServer().getPluginManager().registerEvents(new GlobalListener(statsManager), this);
+        getServer().getPluginManager().registerEvents(new GlobalListener(statsManager, this), this);
         getServer().getPluginManager().registerEvents(new BuildFFAListener(configManager, kitManager), this);
         getServer().getPluginManager().registerEvents(new BridgeFightListener(platformManager, configManager), this);
         getServer().getPluginManager().registerEvents(new HotbarListener(this, hotbarSessionManager, kitManager), this);
@@ -168,7 +183,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ItemReceiveListener(buildFFAWorld, hotbarSorter), this);
         getServer().getPluginManager().registerEvents(new LeaderboardGUIListener(this), this);
         getServer().getPluginManager().registerEvents(new EnderPearlListener(), this);
+        getServer().getPluginManager().registerEvents(new PrivateWorldListener(this), this);
         getServer().getPluginManager().registerEvents(this.frozenManager, this);
+        getServer().getPluginManager().registerEvents(new TeleportCancelListener(this.teleportPendingManager), this);
+        getServer().getPluginManager().registerEvents(new StatsGUIListener(this), this);
 
         //new RegionTriggerTask(regionManager).runTaskTimer(this, 0L, 10L);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "nebula:main");
@@ -299,6 +317,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     }
     public DeathMessageManager getDeathMessageManager() {
         return deathMessageManager;
+    }
+
+    public PlatformManager getPlatformManager() {
+        return platformManager;
     }
 
 }

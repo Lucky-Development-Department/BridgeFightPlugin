@@ -38,18 +38,22 @@ commands:
   loadworld:
     usage: '/loadworld <name> <type>'
     description: 'load worlds'
+    permission: arenamap.admin
   spawn:
     usage: '/lobby'
     description: 'lobby'
   setpos1:
     usage: '/setpos1 <platform>'
     description: 'setpos1'
+    permission: arenamap.admin
   setpos2:
     usage: '/setpos2 <platform>'
     description: 'setpos2'
+    permission: arenamap.admin
   rc:
     usage: '/rc'
     description: 'region command'
+    permission: arenamap.admin
   hotbarmanager:
     description: 'open hotbarmanager'
     usage: '/hotbarmanager'
@@ -66,30 +70,52 @@ commands:
   bridgeban:
     usage: '/bridgeban <player> [duration] [reason]'
     description: 'bridgeban command'
+    permission: arenamap.admin
   bridgeunban:
     usage: '/bridgeunban <player> [reason]'
     description: 'bridgeunban command'
+    permission: arenamap.admin
   guileaderboard:
     usage: '/guileaderboard'
     description: 'guileaderboard command'
   playerhistory:
     usage: '/playerhistory <player>'
     description: 'playerhistory command'
+    permission: arenamap.admin
   freeze:
     usage: '/freeze <player>'
     description: 'frozen command'
     aliases: [frozen, ss]
+    permission: arenamap.freeze
   unfreeze:
     usage: '/unfreeze <player>'
     description: 'unfrozen command'
     aliases: [unfrozen, unss]
+    permission: arenamap.freeze
   report:
     usage: '/report <player> <reason>'
     description: 'report command'
   reports:
     usage: '/reports <page>'
     description: 'reports command'
+    permission: arenamap.admin
+  statsreset:
+    usage: '/statsreset <player>'
+    description: 'statsreset command'
+    permission: arenamap.admin
+  privateworld:
+    usage: '/privateworld'
+    description: 'privateworld command'
+    permission: privateworld.access
+  setstats:
+    usage: '/setstats <player> <bridgefight|buildffa> <kills|deaths|streak|highest_streak> <value>'
+    description: 'setstats command'
+    permission: arenamap.admin
 
 permissions:
   arenamap.admin:
     description: 'ArenaFFAManager'
+  privateworld.access:
+    description: 'PrivateWorld Access'
+  arenamap.freeze:
+    description: 'ArenaFFAManager Freeze'

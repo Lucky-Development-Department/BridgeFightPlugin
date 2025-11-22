@@ -187,16 +187,15 @@ public class CombatLogListener implements Listener {
     @EventHandler
     public void onCommand(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
-        String message = event.getMessage();
+        String msg = event.getMessage().toLowerCase();
+
         if (player.getGameMode() == GameMode.CREATIVE) return;
 
-        boolean isWhitelisted = false;
-        for (String cmd : WHITELISTED_COMMANDS) {
-            if (message.startsWith(cmd.toLowerCase() + " ") || message.equalsIgnoreCase(cmd.toLowerCase())) {
-                isWhitelisted = true;
-                break;
-            }
-        }
+        // Extract command without arguments
+        String base = msg.split(" ")[0]; // e.g. "/stats"
+
+        // Check whitelist
+        boolean isWhitelisted = WHITELISTED_COMMANDS.contains(base);
 
         if (isWhitelisted) return;
 

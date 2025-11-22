@@ -115,7 +115,8 @@ public class DatabaseManager {
                             cfg.getInt("mysql.port"),
                             cfg.getString("mysql.database"),
                             cfg.getString("mysql.user"),
-                            cfg.getString("mysql.password")
+                            cfg.getString("mysql.password"),
+                            plugin
                     );
                 }
                 break;

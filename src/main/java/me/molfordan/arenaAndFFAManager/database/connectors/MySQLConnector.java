@@ -1,5 +1,6 @@
 package me.molfordan.arenaAndFFAManager.database.connectors;
 
+import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.database.SQLDatabaseConnector;
 
 import java.sql.Connection;
@@ -14,56 +15,61 @@ public class MySQLConnector implements SQLDatabaseConnector {
     private final String user;
     private final String password;
 
-    private Connection connection;
+    // Do NOT store a persistent connection
+    private final ArenaAndFFAManager plugin;
 
-    public MySQLConnector(String host, int port, String database, String user, String password) {
+    public MySQLConnector(String host, int port, String database, String user, String password, ArenaAndFFAManager plugin) {
         this.host = host;
         this.port = port;
         this.database = database;
         this.user = user;
         this.password = password;
+        this.plugin = plugin;
     }
 
     @Override
     public void connect() {
-        if (isConnected()) return;
-
-        try {
-            Class.forName("com.mysql.jdbc.Driver"); // MySQL driver for 1.8.8
-            String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false";
-
-            connection = DriverManager.getConnection(url, user, password);
-            System.out.println("[MySQL] Connected successfully.");
-
+        // Test connection once on startup
+        try (Connection test = createNewConnection()) {
+            plugin.debug("[MySQL] Connected successfully.");
         } catch (Exception e) {
-            System.out.println("[MySQL] Failed to connect!");
+            plugin.debug("[MySQL] Failed to connect!");
             e.printStackTrace();
         }
     }
 
     @Override
     public void disconnect() {
-        if (!isConnected()) return;
-
-        try {
-            connection.close();
-            System.out.println("[MySQL] Connection closed.");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        // Nothing to close because we never hold long-lived connections
     }
 
     @Override
     public boolean isConnected() {
-        try {
-            return connection != null && !connection.isClosed();
-        } catch (SQLException ignored) {}
-        return false;
+        try (Connection test = createNewConnection()) {
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
+    /**
+     * Always returns a FRESH connection.
+     * This completely avoids stale / broken connection problems.
+     */
     @Override
     public Connection getConnection() throws SQLException {
-        if (!isConnected()) connect();
-        return connection;
+        return createNewConnection();
+    }
+
+    private Connection createNewConnection() throws SQLException {
+        try {
+            Class.forName("org.mariadb.jdbc.Driver");
+        } catch (ClassNotFoundException ignored) {}
+
+        String url =
+                "jdbc:mysql://" + host + ":" + port + "/" + database +
+                        "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
+
+        return DriverManager.getConnection(url, user, password);
     }
 }

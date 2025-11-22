@@ -93,6 +93,23 @@ public class SetLobbyCommand implements CommandExecutor {
 
                 configManager.saveConfig();
                 break;
+            case "privateworld":
+                configManager.setPrivateWorldLocation(loc);
+
+                // 3. Send success feedback
+                player.sendMessage(ChatColor.GREEN + "Private World location set successfully at:");
+                player.sendMessage(ChatColor.YELLOW + "  World: " + loc.getWorld().getName());
+                player.sendMessage(String.format(
+                        ChatColor.YELLOW + "  Coords: X:%.2f, Y:%.2f, Z:%.2f",
+                        loc.getX(), loc.getY(), loc.getZ()
+                ));
+                player.sendMessage(String.format(
+                        ChatColor.YELLOW + "  Direction: Yaw:%.1f, Pitch:%.1f",
+                        loc.getYaw(), loc.getPitch()
+                ));
+
+                configManager.saveConfig();
+                break;
         }
 
         // 2. Use the ConfigManager to save the complete location

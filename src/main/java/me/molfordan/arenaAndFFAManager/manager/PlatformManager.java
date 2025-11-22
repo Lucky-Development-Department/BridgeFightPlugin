@@ -21,6 +21,10 @@ public class PlatformManager {
         return platforms.computeIfAbsent(name, n -> new PlatformRegion(null, null, null));
     }
 
+    public Map<String, PlatformRegion> getAllPlatforms() {
+        return platforms;
+    }
+
     /**
      * Get platform ONLY if already exists
      */

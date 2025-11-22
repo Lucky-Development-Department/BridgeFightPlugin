@@ -2,7 +2,7 @@ package me.molfordan.arenaAndFFAManager.commands;
 
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
-import me.molfordan.arenaAndFFAManager.SerializableBlockState;
+import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
 import me.molfordan.arenaAndFFAManager.manager.ArenaManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
 import org.bukkit.*;

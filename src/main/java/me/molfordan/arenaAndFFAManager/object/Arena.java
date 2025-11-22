@@ -1,7 +1,6 @@
 package me.molfordan.arenaAndFFAManager.object;
 
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
-import me.molfordan.arenaAndFFAManager.SerializableBlockState;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;

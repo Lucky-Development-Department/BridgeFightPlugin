@@ -93,7 +93,7 @@ public class StatsCommand implements CommandExecutor {
         sender.sendMessage("§6§lStats for §e" + s.getUsername());
         sender.sendMessage("§8§m-------------------------------");
 
-        sender.sendMessage("§c§lBRIDGE FIGHT:");
+        sender.sendMessage("§e§lBRIDGE FIGHT:");
         sender.sendMessage(" §fKills: §a" + s.getBridgeKills());
         sender.sendMessage(" §fDeaths: §a" + s.getBridgeDeaths());
         sender.sendMessage(" §fCurrent Streak: §a" + s.getBridgeStreak());

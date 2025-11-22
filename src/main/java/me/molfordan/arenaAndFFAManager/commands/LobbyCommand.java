@@ -2,6 +2,7 @@ package me.molfordan.arenaAndFFAManager.commands;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
+import me.molfordan.arenaAndFFAManager.manager.TeleportPendingManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
@@ -13,10 +14,12 @@ import org.bukkit.entity.Player;
 
 public class LobbyCommand implements CommandExecutor {
 
-    private ConfigManager configManager;
+    private final ConfigManager configManager;
+    private final TeleportPendingManager pending;
 
-    public LobbyCommand(ConfigManager configManager){
+    public LobbyCommand(ConfigManager configManager, TeleportPendingManager pending){
         this.configManager = configManager;
+        this.pending = pending;
     }
 
     @Override
@@ -47,13 +50,27 @@ public class LobbyCommand implements CommandExecutor {
         player.setGameMode(GameMode.ADVENTURE);
         player.sendMessage(ChatColor.translateAlternateColorCodes('&', prefix + " sending you to Spawn.... (Wait for 5 seconds)"));
         try {
-            if (!player.isOp()) {
-                Bukkit.getScheduler().runTaskLater(ArenaAndFFAManager.getPlugin(), () -> {
-                    player.teleport(lobbyWorld);
-                }, 100);
+
+            if (player.isOp()){
+                player.teleport(lobbyWorld);
                 return true;
             }
-            player.teleport(lobbyWorld);
+
+            pending.add(player);
+
+            Bukkit.getScheduler().runTaskLater(ArenaAndFFAManager.getPlugin(), () -> {
+
+                // If cancelled due to movement
+                if (!pending.isWaiting(player)) return;
+
+                // Remove from pending
+                pending.remove(player);
+
+                // Teleport
+                player.teleport(lobbyWorld);
+                player.sendMessage(ChatColor.GREEN + "Teleported to Spawn!");
+
+            }, 100);
 
 
         } catch (Exception e) {

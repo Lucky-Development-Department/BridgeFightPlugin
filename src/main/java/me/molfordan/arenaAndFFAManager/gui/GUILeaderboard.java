@@ -63,6 +63,10 @@ public class GUILeaderboard {
 
         // Outline
         for (int i = 0; i < 54; i++) {
+
+            // Don't overwrite prev/next page buttons
+            if (i == 45 || i == 53) continue;
+
             if (i < 9 || i > 44 || i % 9 == 0 || i % 9 == 8) {
                 inv.setItem(i, outline());
             }

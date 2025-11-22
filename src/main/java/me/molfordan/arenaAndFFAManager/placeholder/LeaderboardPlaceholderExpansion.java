@@ -5,6 +5,7 @@ import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import me.molfordan.arenaAndFFAManager.manager.StatsManager;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -173,9 +174,9 @@ public class LeaderboardPlaceholderExpansion extends PlaceholderExpansion {
             String key = sb.toString();
 
             List<LBEntry> list = leaderboardCache.get(key);
-            if (list == null || list.isEmpty()) return "";
+            if (list == null || list.isEmpty()) return ChatColor.GRAY + "(null)" + ChatColor.RESET;
 
-            if (rank < 1 || rank > list.size()) return "";
+            if (rank < 1 || rank > list.size()) return ChatColor.GRAY + "(null)" + ChatColor.RESET;
 
             LBEntry entry = list.get(rank - 1);
 

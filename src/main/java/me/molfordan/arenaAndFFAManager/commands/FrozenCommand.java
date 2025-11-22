@@ -20,7 +20,7 @@ public class FrozenCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
 
-        if (!sender.isOp()) return true;
+        if (!(sender.isOp() || sender.hasPermission("arenamap.freeze"))) return true;
 
         if (args.length == 0) {
             sender.sendMessage("Usage: /freeze <player>");

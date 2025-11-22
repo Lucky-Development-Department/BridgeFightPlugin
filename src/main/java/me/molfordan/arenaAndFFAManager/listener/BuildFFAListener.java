@@ -3,15 +3,14 @@ package me.molfordan.arenaAndFFAManager.listener;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
 import me.molfordan.arenaAndFFAManager.kits.KitManager;
-import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.inventory.ItemStack;
 
 public class BuildFFAListener implements Listener {
 
@@ -45,6 +44,24 @@ public class BuildFFAListener implements Listener {
                 () -> player.spigot().respawn(),
                 1L
         );
+    }
+
+    @EventHandler
+    public void onDrinkPotion(PlayerItemConsumeEvent event){
+        Player player = event.getPlayer();
+        if (event.getItem().getType() != Material.POTION) return;
+
+        Bukkit.getScheduler().runTaskLater(ArenaAndFFAManager.getPlugin(), () ->
+                minusAmount(event.getPlayer(), new ItemStack(Material.GLASS_BOTTLE), 1), 5L);
+    }
+
+    public void minusAmount(Player p, ItemStack i, int amount) {
+        if (i.getAmount() - amount <= 0) {
+            p.getInventory().removeItem(i);
+            return;
+        }
+        i.setAmount(i.getAmount() - amount);
+        p.updateInventory();
     }
 
     // ======================================

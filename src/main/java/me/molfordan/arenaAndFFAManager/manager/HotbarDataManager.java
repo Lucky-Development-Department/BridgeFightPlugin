@@ -1,10 +1,7 @@
 package me.molfordan.arenaAndFFAManager.manager;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
-import me.molfordan.arenaAndFFAManager.database.DatabaseConnector;
-import me.molfordan.arenaAndFFAManager.database.SQLDatabaseConnector;
-import me.molfordan.arenaAndFFAManager.database.MongoDatabaseConnector;
-import me.molfordan.arenaAndFFAManager.database.RedisDatabaseConnector;
+import me.molfordan.arenaAndFFAManager.database.*;
 
 import org.bukkit.configuration.file.YamlConfiguration;
 import redis.clients.jedis.Jedis;
@@ -111,57 +108,109 @@ public class HotbarDataManager {
         Map<Integer, String> out = new HashMap<>();
 
         try {
-            SQLDatabaseConnector sql = (SQLDatabaseConnector) plugin.getDatabaseManager().getConnector();
-            Connection conn = sql.getConnection();
-
-            PreparedStatement ps = conn.prepareStatement(
-                    "SELECT slot, value FROM hotbars WHERE uuid = ?"
-            );
-            ps.setString(1, uuid.toString());
-
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                out.put(rs.getInt("slot"), rs.getString("value"));
+            DatabaseManager dbManager = plugin.getDatabaseManager();
+            if (dbManager == null) {
+                return loadYAML(uuid);
             }
 
-            rs.close();
-            ps.close();
+            DatabaseConnector connector = dbManager.getConnector();
+            if (!(connector instanceof SQLDatabaseConnector)) {
+                return loadYAML(uuid);
+            }
+
+            SQLDatabaseConnector sql = (SQLDatabaseConnector) connector;
+
+            Connection conn = sql.getConnection();
+            if (conn == null || conn.isClosed()) {
+                plugin.getLogger().warning("[HotbarData] SQL connection dead, falling back to YAML.");
+                return loadYAML(uuid);
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT slot, value FROM hotbars WHERE uuid = ?"
+            )) {
+                ps.setString(1, uuid.toString());
+
+                try (ResultSet rs = ps.executeQuery()) {
+
+                    // SAFETY CHECK: broken resultset
+                    if (rs == null) {
+                        plugin.getLogger().warning("[HotbarData] ResultSet was null. Falling back to YAML.");
+                        return loadYAML(uuid);
+                    }
+
+                    while (true) {
+                        try {
+                            if (!rs.next()) break;
+                            out.put(rs.getInt("slot"), rs.getString("value"));
+                        } catch (SQLException brokenRs) {
+                            // Resultset corrupted due to link failure mid-query.
+                            plugin.getLogger().warning("[HotbarData] SQL row fetch failed: " + brokenRs.getMessage());
+                            return loadYAML(uuid);
+                        }
+                    }
+                }
+            }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            plugin.getLogger().warning("[HotbarData] SQL load error: " + e.getMessage());
+            return loadYAML(uuid);
         }
 
         return out;
     }
 
+
     private void saveSQL(UUID uuid, Map<Integer, String> map) {
         try {
-            SQLDatabaseConnector sql = (SQLDatabaseConnector) plugin.getDatabaseManager().getConnector();
-            Connection conn = sql.getConnection();
-
-            PreparedStatement wipe = conn.prepareStatement("DELETE FROM hotbars WHERE uuid = ?");
-            wipe.setString(1, uuid.toString());
-            wipe.executeUpdate();
-            wipe.close();
-
-            PreparedStatement insert = conn.prepareStatement(
-                    "INSERT INTO hotbars (uuid, slot, value) VALUES (?,?,?)"
-            );
-
-            for (Map.Entry<Integer, String> e : map.entrySet()) {
-                insert.setString(1, uuid.toString());
-                insert.setInt(2, e.getKey());
-                insert.setString(3, e.getValue());
-                insert.addBatch();
+            DatabaseManager dbManager = plugin.getDatabaseManager();
+            if (dbManager == null) {
+                saveYAML(uuid, map);
+                return;
             }
 
-            insert.executeBatch();
-            insert.close();
+            DatabaseConnector connector = dbManager.getConnector();
+            if (!(connector instanceof SQLDatabaseConnector)) {
+                saveYAML(uuid, map);
+                return;
+            }
+
+            SQLDatabaseConnector sql = (SQLDatabaseConnector) connector;
+
+            Connection conn = sql.getConnection();
+            if (conn == null || conn.isClosed()) {
+                plugin.getLogger().warning("[HotbarData] Save aborted, SQL connection closed.");
+                saveYAML(uuid, map);
+                return;
+            }
+
+            try (PreparedStatement del = conn.prepareStatement(
+                    "DELETE FROM hotbars WHERE uuid=?"
+            )) {
+                del.setString(1, uuid.toString());
+                del.executeUpdate();
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO hotbars (uuid, slot, value) VALUES (?, ?, ?)"
+            )) {
+
+                for (Map.Entry<Integer, String> e : map.entrySet()) {
+                    ps.setString(1, uuid.toString());
+                    ps.setInt(2, e.getKey());
+                    ps.setString(3, e.getValue());
+                    ps.addBatch();
+                }
+
+                ps.executeBatch();
+            }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            plugin.getLogger().warning("[HotbarData] SQL save failed: " + e.getMessage());
+            saveYAML(uuid, map);
         }
     }
+
 
     // --------------------------------------------------------------------
     //  YAML FALLBACK

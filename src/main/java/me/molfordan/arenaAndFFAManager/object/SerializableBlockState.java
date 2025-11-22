@@ -1,8 +1,7 @@
-package me.molfordan.arenaAndFFAManager;
+package me.molfordan.arenaAndFFAManager.object;
 
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.configuration.serialization.SerializableAs;
 

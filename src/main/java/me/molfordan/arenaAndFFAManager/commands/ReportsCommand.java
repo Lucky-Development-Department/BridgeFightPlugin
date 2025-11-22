@@ -31,6 +31,20 @@ public class ReportsCommand implements CommandExecutor {
 
         if (!sender.isOp()) return true;
 
+        ReportManager rm = plugin.getReportManager();
+
+        // -------------------------
+        // /reports clear
+        // -------------------------
+        if (args.length >= 1 && args[0].equalsIgnoreCase("clear")) {
+            rm.clearAllReports(); // <-- You need to implement this if not yet created
+            sender.sendMessage("§aAll reports have been cleared.");
+            return true;
+        }
+
+        // -------------------------
+        // Page argument
+        // -------------------------
         int page = 1;
         if (args.length >= 1) {
             try {
@@ -38,7 +52,6 @@ public class ReportsCommand implements CommandExecutor {
             } catch (Exception ignored) {}
         }
 
-        ReportManager rm = plugin.getReportManager();
         Map<Integer, ReportData> all = rm.getAllReports();
 
         if (all.isEmpty()) {
@@ -71,7 +84,6 @@ public class ReportsCommand implements CommandExecutor {
         // Pagination buttons
         TextComponent line = new TextComponent("");
 
-        // Previous button
         if (page > 1) {
             TextComponent prev = new TextComponent("§a[Previous]");
             prev.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/reports " + (page - 1)));
@@ -82,7 +94,6 @@ public class ReportsCommand implements CommandExecutor {
 
         line.addExtra(" ");
 
-        // Next button
         if (page < maxPage) {
             TextComponent next = new TextComponent("§a[Next]");
             next.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/reports " + (page + 1)));

@@ -3,7 +3,7 @@ package me.molfordan.arenaAndFFAManager.manager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
-import me.molfordan.arenaAndFFAManager.SerializableBlockState;
+import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
 import me.molfordan.arenaAndFFAManager.listener.LadderRestorer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;

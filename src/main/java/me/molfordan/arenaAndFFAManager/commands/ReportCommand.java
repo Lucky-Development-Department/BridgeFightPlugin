@@ -11,6 +11,9 @@ import org.bukkit.entity.Player;
 public class ReportCommand implements CommandExecutor {
 
     private final ArenaAndFFAManager plugin;
+    // Map<ReporterUUID, Map<ReportedUUID, LastReportTime>>
+    private final java.util.Map<java.util.UUID, java.util.Map<java.util.UUID, Long>> cooldowns = new java.util.HashMap<>();
+
 
     public ReportCommand(ArenaAndFFAManager plugin) {
         this.plugin = plugin;
@@ -38,6 +41,42 @@ public class ReportCommand implements CommandExecutor {
             return true;
         }
 
+        if (target.getUniqueId().equals(player.getUniqueId())) {
+            player.sendMessage("§cYou cannot report yourself.");
+            return true;
+        }
+
+        // -----------------------------
+        // Cooldown check (1 hour)
+        // -----------------------------
+        long now = System.currentTimeMillis();
+        long cooldown = 3600_000L; // 1 hour
+
+        java.util.UUID reporter = player.getUniqueId();
+        java.util.UUID reported = target.getUniqueId();
+
+        cooldowns.putIfAbsent(reporter, new java.util.HashMap<>());
+        java.util.Map<java.util.UUID, Long> reportedMap = cooldowns.get(reporter);
+
+        if (reportedMap.containsKey(reported)) {
+            long lastTime = reportedMap.get(reported);
+
+            if (now - lastTime < cooldown) {
+                long remaining = cooldown - (now - lastTime);
+                long minutes = remaining / 60000;
+
+                player.sendMessage("§cYou have already reported this player recently.");
+                player.sendMessage("§7Try again in §e" + minutes + " minutes§7.");
+                return true;
+            }
+        }
+
+        // Set new timestamp
+        reportedMap.put(reported, now);
+
+        // -----------------------------
+        // Create report
+        // -----------------------------
         String reason = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
         ReportManager rm = plugin.getReportManager();
 
@@ -46,4 +85,5 @@ public class ReportCommand implements CommandExecutor {
         player.sendMessage("§aReport submitted! (ID: " + id + ")");
         return true;
     }
+
 }

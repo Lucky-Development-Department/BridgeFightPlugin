@@ -6,10 +6,13 @@ import me.molfordan.arenaAndFFAManager.manager.PlatformManager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.PlatformRegion;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.Location;
 
@@ -75,5 +78,24 @@ public class BridgeFightListener implements Listener {
         if (!victim.getWorld().getName().equals(world)) return;
 
         event.setDamage(0.0);
+    }
+
+    @EventHandler
+    public void onAnvilInteract(PlayerInteractEvent event){
+        if (!(event.getPlayer() instanceof Player)) return;
+
+        String world = configManager.getBridgeFightWorldName();
+        if (world == null) return;
+
+        Player player = (Player) event.getPlayer();
+        if (!player.getWorld().getName().equals(world)) return;
+
+        if (event.getAction() == Action.LEFT_CLICK_BLOCK){
+            if (event.getClickedBlock().getType() == Material.ANVIL){
+                event.setCancelled(true);
+            }
+        }
+
+
     }
 }

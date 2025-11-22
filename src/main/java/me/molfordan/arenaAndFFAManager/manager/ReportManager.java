@@ -88,4 +88,15 @@ public class ReportManager {
             this.time = time;
         }
     }
+
+    public void clearAllReports() {
+        // Remove the entire "reports" section
+        config.set("reports", null);
+
+        // Save the now-empty file
+        save();
+
+        // Reload it so getAllReports() sees it's empty
+        this.config = YamlConfiguration.loadConfiguration(file);
+    }
 }

@@ -21,6 +21,7 @@ public class ConfigManager {
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
     private static final String BRIDGEFIGHT_PATH = "bridgefight";
+    private static final String PRIVATEWORLD_PATH = "privateworld";
     private final Set<UUID> buildMode = new HashSet<>();
 
     public ConfigManager(ArenaAndFFAManager plugin) {
@@ -64,6 +65,16 @@ public class ConfigManager {
 
     public FileConfiguration getConfig() {
         return config;
+    }
+
+    public void setPrivateWorldLocation(Location loc){
+        config.set(PRIVATEWORLD_PATH + ".world", loc.getWorld().getName());
+        config.set(PRIVATEWORLD_PATH + ".x", loc.getX());
+        config.set(PRIVATEWORLD_PATH + ".y", loc.getY());
+        config.set(PRIVATEWORLD_PATH + ".z", loc.getZ());
+        config.set(PRIVATEWORLD_PATH + ".yaw", loc.getYaw());
+        config.set(PRIVATEWORLD_PATH + ".pitch", loc.getPitch());
+        saveConfig();
     }
 
     public void setLobbyLocation(Location loc) {
@@ -111,6 +122,19 @@ public class ConfigManager {
         saveConfig();
     }
 
+    private void loadPrivateWorldLocations(){
+        if (!config.contains(PRIVATEWORLD_PATH)) {
+            config.set(PRIVATEWORLD_PATH + ".world", "PrivateWorld");
+            config.set(PRIVATEWORLD_PATH + ".x", null);
+            config.set(PRIVATEWORLD_PATH + ".y", null);
+            config.set(PRIVATEWORLD_PATH + ".z", null);
+            config.set(PRIVATEWORLD_PATH + ".yaw", null);
+            config.set(PRIVATEWORLD_PATH + ".pitch", null);
+        }
+
+        saveConfig();
+    }
+
     public void loadBuildFFALocations(){
         if (!config.contains(BUILDFFA_PATH)) {
             config.set(BUILDFFA_PATH + ".world", "BuildFFA");
@@ -141,6 +165,7 @@ public class ConfigManager {
         loadLobbyLocations();
         loadBridgeFightLocations();
         loadBuildFFALocations();
+        loadPrivateWorldLocations();
     }
 
     public Location getLobbyLocation() {
@@ -166,8 +191,35 @@ public class ConfigManager {
         return new Location(world, x, y, z, yaw, pitch);
     }
 
+    public Location getPrivateWorldLocation(){
+        if (!config.contains(PRIVATEWORLD_PATH + ".world")) {
+            return null; // Location is not set
+        }
+
+        String worldName = config.getString(PRIVATEWORLD_PATH + ".world");
+        // Get the World object (crucial for location creation)
+        org.bukkit.World world = plugin.getServer().getWorld(worldName);
+
+        if (world == null) {
+            // World might be unloaded or deleted
+            return null;
+        }
+
+        double x = config.getDouble(PRIVATEWORLD_PATH + ".x");
+        double y = config.getDouble(PRIVATEWORLD_PATH + ".y");
+        double z = config.getDouble(PRIVATEWORLD_PATH + ".z");
+        float yaw = (float) config.getDouble(PRIVATEWORLD_PATH + ".yaw");
+        float pitch = (float) config.getDouble(PRIVATEWORLD_PATH + ".pitch");
+
+        return new Location(world, x, y, z, yaw, pitch);
+    }
+
     public String getLobbyWorldName(){
         return config.getString(LOBBY_PATH + ".world");
+    }
+
+    public String getPrivateWorldWorldName(){
+        return config.getString(PRIVATEWORLD_PATH + ".world");
     }
 
     public String getBuildFFAWorldName(){
@@ -269,6 +321,7 @@ public class ConfigManager {
     public void loadWorld(String name, WorldType worldType) {
         WorldCreator creator = new WorldCreator(name);
         creator.environment(World.Environment.NORMAL);
+        creator.generateStructures(false);
         creator.type(worldType);
         World world = Bukkit.createWorld(creator);
 

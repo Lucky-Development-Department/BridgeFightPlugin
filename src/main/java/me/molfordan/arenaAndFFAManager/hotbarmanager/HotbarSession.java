@@ -317,11 +317,15 @@ public class HotbarSession {
                 if (blocksCount > 2) return false;
             }
 
-            // ender_pearl max 2
+
             if (id.equals("ender_pearl")) {
                 pearlCount++;
-                if (pearlCount > 2) return false;
+                if (pearlCount > 1) return false;
             }
+
+
+
+
         }
         return true;
     }

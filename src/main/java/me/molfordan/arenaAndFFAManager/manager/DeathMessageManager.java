@@ -16,10 +16,7 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DeathMessageManager {
@@ -149,74 +146,163 @@ public class DeathMessageManager {
         combatManager.clear(victim);
     }
 
-    private void giveRewardIntoLayout(Player player, Material material, ItemStack itemToGive, int minAmount, int maxAmount) {
-        // Count how many of this item the player currently has
+    /**
+     * Main entry for giving rewards.
+     *
+     * @param player      target player
+     * @param material    material type of reward (used for counting & layout matching)
+     * @param itemToGive  the ItemStack to give (amount in this stack = intended give amount)
+     * @param minAmount   minimum total the player should have after giving (soft)
+     * @param maxAmount   hard cap for this material per player
+     */
+    private void giveReward(Player player, Material material, ItemStack itemToGive, int minAmount, int maxAmount) {
+        if (player == null || !player.isOnline() || itemToGive == null || maxAmount <= 0) return;
+
+        // Count total current amount in inventory
+        int currentTotal = countMaterial(player, material);
+
+        // Nothing to do if already at or above max
+        if (currentTotal >= maxAmount) return;
+
+        // Determine amount to attempt to give:
+        // - If current < minAmount, try to bring them up to minAmount (but don't exceed max)
+        // - Otherwise, try to give itemToGive.getAmount(), but not exceeding max
+        int spaceLeft = maxAmount - currentTotal;
+        int desiredGive;
+        if (currentTotal < minAmount) {
+            desiredGive = Math.min(minAmount - currentTotal, spaceLeft);
+        } else {
+            desiredGive = Math.min(itemToGive.getAmount(), spaceLeft);
+        }
+        if (desiredGive <= 0) return;
+
+        ItemStack toGive = itemToGive.clone();
+        toGive.setAmount(desiredGive);
+
+        // Try to place into hotbar layout
+        if (placeIntoLayoutOrInventory(player, material, toGive, maxAmount)) {
+            return;
+        }
+
+        // Fallback: place into inventory (stacking is handled by addItem)
+        HashMap<Integer, ItemStack> leftovers = player.getInventory().addItem(toGive);
+        if (!leftovers.isEmpty()) {
+            // If anything couldn't be added (shouldn't happen due to spaceLeft check), drop it
+            for (ItemStack rem : leftovers.values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), rem);
+            }
+        }
+    }
+
+    /**
+     * Attempt to place item into the player's layout slot if one exists.
+     * Enforces the layout slot (displaces wrong item to inventory / ground), stacks correctly, respects maxAmount.
+     *
+     * @return true if placed into layout; false if no layout slot matched and caller should fallback to inventory
+     */
+    private boolean placeIntoLayoutOrInventory(Player player, Material material, ItemStack toGive, int maxAmount) {
+        Map<Integer, String> layout = hotbarDataManager.load(player.getUniqueId());
+        if (layout == null || layout.isEmpty()) return false;
+
+        for (Map.Entry<Integer, String> entry : layout.entrySet()) {
+            int slot = entry.getKey();
+            String configured = entry.getValue();
+            if (!layoutEntryMatches(material, configured)) continue;
+
+            // We found the layout slot that should hold this material
+            ItemStack existing = player.getInventory().getItem(slot);
+
+            // If existing is different and not null -> displace it into inventory (or drop if inventory full)
+            if (existing != null && existing.getType() != material) {
+                // Try to move existing into inventory first
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(existing);
+                if (!leftover.isEmpty()) {
+                    // Could not fit everything: drop leftovers near player
+                    for (ItemStack rem : leftover.values()) {
+                        player.getWorld().dropItemNaturally(player.getLocation(), rem);
+                    }
+                }
+                // Clear the slot (we will replace it below)
+                player.getInventory().setItem(slot, null);
+                existing = null;
+            }
+
+            // If same material exists in slot -> stack up to max
+            if (existing != null && existing.getType() == material) {
+                int current = existing.getAmount();
+                int addable = Math.min(toGive.getAmount(), maxAmount - countMaterial(player, material)); // ensure global cap
+                if (addable <= 0) return true; // already at cap
+
+                existing.setAmount(Math.min(current + addable, maxAmount));
+                player.getInventory().setItem(slot, existing);
+                return true;
+            } else {
+                // Slot is empty (or was displaced). We must ensure not to exceed global max when placing.
+                int currentTotal = countMaterial(player, material);
+                int placeAmount = Math.min(toGive.getAmount(), maxAmount - currentTotal);
+                if (placeAmount <= 0) return true;
+
+                ItemStack clone = toGive.clone();
+                clone.setAmount(placeAmount);
+                player.getInventory().setItem(slot, clone);
+                return true;
+            }
+        }
+
+        // No matching layout slot found
+        return false;
+    }
+
+    /**
+     * Helper: check whether a layout string maps to this material.
+     * Accepts:
+     *  - literal values like "snowball", "ender_pearl"
+     *  - material name matches like "SNOW_BALL" or "ENDER_PEARL" (case-insensitive)
+     *  - allow common synonyms ("snowball" -> SNOW_BALL)
+     */
+    private boolean layoutEntryMatches(Material material, String configured) {
+        if (configured == null) return false;
+        String cfg = configured.trim().toLowerCase();
+
+        // match common names
+        if (cfg.equals("snowball") && material == Material.SNOW_BALL) return true;
+        if (cfg.equals("ender_pearl") && material == Material.ENDER_PEARL) return true;
+        if (cfg.equals(material.name().toLowerCase())) return true;
+
+        // allow underscores vs spaces
+        String normalized = cfg.replace(" ", "_");
+        return normalized.equalsIgnoreCase(material.name());
+    }
+
+    /**
+     * Count how many of a given material the player currently has in their inventory.
+     */
+    private int countMaterial(Player player, Material material) {
         int count = 0;
-        for (ItemStack item : player.getInventory()) {
+        for (ItemStack item : player.getInventory().getContents()) {
             if (item != null && item.getType() == material) {
                 count += item.getAmount();
             }
         }
+        return count;
+    }
 
-        // If already at or above max → never give more
-        if (count >= maxAmount) return;
-
-        // If count is below minAmount → we must bring them UP TO minAmount
-        int needed = minAmount - count;
-        if (needed <= 0) {
-            // They already have >= minAmount but < maxAmount
-            // Give exactly 1 but don't exceed maxAmount
-            if (count + 1 > maxAmount) return;
-            needed = 1;
-        }
-
-        // Load layout mapping
-        Map<Integer, String> layout = hotbarDataManager.load(player.getUniqueId());
-
-        boolean placedIntoLayout = false;
-
-        if (layout != null) {
-            for (Map.Entry<Integer, String> entry : layout.entrySet()) {
-
-                boolean isTarget =
-                        (material == Material.SNOW_BALL && entry.getValue().equalsIgnoreCase("snowball"))
-                                || (material == Material.ENDER_PEARL && entry.getValue().equalsIgnoreCase("ender_pearl"));
-
-                if (isTarget) {
-                    int slot = entry.getKey();
-
-                    // Give item respecting needed amount
-                    ItemStack clone = itemToGive.clone();
-                    clone.setAmount(needed);
-
-                    player.getInventory().setItem(slot, clone);
-                    placedIntoLayout = true;
-                    break;
-                }
-            }
-        }
-
-        // If layout had no assigned slot → fallback
-        if (!placedIntoLayout) {
-            ItemStack clone = itemToGive.clone();
-            clone.setAmount(needed);
-
-            // For blocks, try to place in hotbar first
-            if (material == Material.WOOL || material == Material.STAINED_CLAY || material == Material.HARD_CLAY || material == Material.SANDSTONE) {
-                // Try to find an empty hotbar slot
-                for (int i = 0; i < 9; i++) {
-                    ItemStack item = player.getInventory().getItem(i);
-                    if (item == null || item.getType() == Material.AIR) {
-                        player.getInventory().setItem(i, clone);
-                        return;
-                    }
-                }
-            }
-
-            // If no empty hotbar slot or not a block, add to inventory
-            player.getInventory().addItem(clone);
+    /**
+     * Compatibility overloads kept for existing calls in your class.
+     */
+    private void ensureItem(Player player, Material material, int minAmount, ItemStack fallback, int maxAmount) {
+        if (fallback == null) {
+            // fallback to simple material item with amount = 1
+            giveReward(player, material, new ItemStack(material, 1), minAmount, maxAmount);
+        } else {
+            giveReward(player, material, fallback, minAmount, maxAmount);
         }
     }
+
+    private void ensureItem(Player player, Material material, int minAmount, int giveAmount, int maxAmount) {
+        giveReward(player, material, new ItemStack(material, giveAmount), minAmount, maxAmount);
+    }
+
 
     public void sendQuitMessage(Player quitter, Player opponent, Arena arena, int opponentStreak) {
         // Avoid duplicate handling
@@ -312,8 +398,8 @@ public class DeathMessageManager {
     private void giveKillRewards(Player killer, int streak) {
         if (killer == null || !killer.isOnline()) return;
         killer.setHealth(killer.getMaxHealth());
-        ensureItem(killer, Material.ENDER_PEARL, 1, 1);
-        ensureItem(killer, Material.SNOW_BALL, 1, CustomItem.getTeleportSnowball());
+        ensureItem(killer, Material.ENDER_PEARL, 1, 2, 2);
+        ensureItem(killer, Material.SNOW_BALL, 1, CustomItem.getTeleportSnowball(), 2);
 
         // Rest of the reward logic...
 
@@ -342,20 +428,20 @@ public class DeathMessageManager {
                 givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
                 killer.getInventory().setLeggings(null);
                 killer.getInventory().setBoots(null);
-                killer.getInventory().setLeggings(createArmorPiece(Material.DIAMOND_LEGGINGS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
-                killer.getInventory().setBoots(createArmorPiece(Material.DIAMOND_BOOTS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
+                killer.getInventory().setLeggings(createArmorPiece(Material.IRON_LEGGINGS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
+                killer.getInventory().setBoots(createArmorPiece(Material.IRON_BOOTS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
                 break;
             case 30:
                 killer.getInventory().remove(Material.STONE_SWORD);
-                killer.getInventory().setItem(0, createSword(Material.IRON_SWORD, Enchantment.DAMAGE_ALL, 1));
+                killer.getInventory().setItem(0, createSword(Material.STONE_SWORD, Enchantment.DAMAGE_ALL, 1));
                 givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
                 break;
             case 35:
                 givePotion(killer, PotionEffectType.DAMAGE_RESISTANCE, 45, 2, ChatColor.AQUA + "Resistance Potion (45s)");
                 break;
             case 40:
-                killer.getInventory().remove(Material.IRON_SWORD);
-                killer.getInventory().setItem(0, createSword(Material.IRON_SWORD, Enchantment.DAMAGE_ALL, 2));
+                killer.getInventory().remove(Material.STONE_SWORD);
+                killer.getInventory().setItem(0, createSword(Material.STONE_SWORD, Enchantment.DAMAGE_ALL, 2));
                 break;
             case 45:
                 giveMultiEffectPotion(killer, ChatColor.DARK_PURPLE + "Health Boost & Regeneration (45s)",
@@ -375,15 +461,26 @@ public class DeathMessageManager {
                 break;
             case 60:
                 givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
+                killer.getInventory().remove(Material.STONE_SWORD);
+                killer.getInventory().setItem(0, createSword(Material.IRON_SWORD, Enchantment.DAMAGE_ALL, 1));
+                break;
+            case 100:
+                givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 120, 1, ChatColor.RED + "Strength Potion (120s)");
                 killer.getInventory().remove(Material.IRON_SWORD);
-                killer.getInventory().setItem(0, createSword(Material.DIAMOND_SWORD, Enchantment.DAMAGE_ALL, 1));
+                killer.getInventory().setItem(0, createSword(Material.DIAMOND_SWORD, Enchantment.DAMAGE_ALL, 2));
+                killer.getInventory().setLeggings(null);
+                killer.getInventory().setBoots(null);
+                killer.getInventory().setLeggings(createArmorPiece(Material.DIAMOND_LEGGINGS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
+                killer.getInventory().setBoots(createArmorPiece(Material.IRON_BOOTS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
                 break;
         }
     }
-
-    private void ensureItem(Player player, Material material, int minAmount, ItemStack fallback) {
-        giveRewardIntoLayout(player, material, fallback, minAmount, 2);
+    /*
+    private void ensureItem(Player player, Material material, int minAmount, ItemStack fallback, int maxAmount) {
+        giveRewardIntoLayout(player, material, fallback, minAmount, maxAmount);
     }
+
+     */
 
     private void giveKillEffect(Player killer) {
         if (killer == null) return;
@@ -409,17 +506,19 @@ public class DeathMessageManager {
         // Apply new 5s Strength I
         killer.addPotionEffect(new PotionEffect(
                 PotionEffectType.INCREASE_DAMAGE,
-                100, // 5 seconds * 20 ticks
+                60, // 5 seconds * 20 ticks
                 0,
                 true,
                 false
         ), true);
     }
 
-
-    private void ensureItem(Player player, Material material, int minAmount, int giveAmount) {
-        giveRewardIntoLayout(player, material, new ItemStack(material, giveAmount), minAmount, 2);
+    /*
+    private void ensureItem(Player player, Material material, int minAmount, int giveAmount, int maxAmount) {
+        giveRewardIntoLayout(player, material, new ItemStack(material, giveAmount), minAmount, maxAmount);
     }
+
+     */
 
     private void givePotion(Player player, PotionEffectType type, int durationSeconds, int amplifier, String name) {
         ItemStack potion = new ItemStack(Material.POTION);

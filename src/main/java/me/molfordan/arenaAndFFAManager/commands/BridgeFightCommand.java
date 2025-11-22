@@ -1,6 +1,8 @@
 package me.molfordan.arenaAndFFAManager.commands;
 
+import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
@@ -11,9 +13,11 @@ import org.bukkit.entity.Player;
 public class BridgeFightCommand implements CommandExecutor {
 
     private final ConfigManager configManager;
+    private final ArenaAndFFAManager plugin;
 
-    public BridgeFightCommand(ConfigManager configManager){
+    public BridgeFightCommand(ConfigManager configManager, ArenaAndFFAManager plugin){
         this.configManager = configManager;
+        this.plugin = plugin;
     }
     @Override
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
@@ -52,6 +56,10 @@ public class BridgeFightCommand implements CommandExecutor {
             player.getInventory().setBoots(null);
         }
         player.sendMessage(ChatColor.translateAlternateColorCodes('&', prefix + " sending you to BridgeFight...."));
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            plugin.getSpawnItem().giveBridgeFightSpawnItem(player);
+        }, 1);
 
         return true;
     }

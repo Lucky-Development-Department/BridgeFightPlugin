@@ -20,10 +20,7 @@ import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.weather.WeatherChangeEvent;
-import org.bukkit.event.weather.WeatherEvent;
 import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 public class LobbyListener implements Listener {
 
@@ -86,7 +83,7 @@ public class LobbyListener implements Listener {
         }
         player.teleport(lobbyLoc);
 
-        plugin.getSpawnItem().giveItems(player);
+        plugin.getSpawnItem().giveSpawnItem(player);
         ArenaAndFFAManager.getPlugin().getStatsManager().resetStreak(player.getUniqueId(), ArenaType.FFA);
         ArenaAndFFAManager.getPlugin().getStatsManager().resetStreak(player.getUniqueId(), ArenaType.FFABUILD);
         // Requirement: Set gamemode to Adventure
@@ -190,7 +187,7 @@ public class LobbyListener implements Listener {
         if (player.getLocation().getY() < VOID_Y_LEVEL) {
             // Teleport the player back to the set lobby location
             player.teleport(lobbyLoc);
-            plugin.getSpawnItem().giveItems(player);
+            plugin.getSpawnItem().giveSpawnItem(player);
 
         }
     }
@@ -200,10 +197,13 @@ public class LobbyListener implements Listener {
         Player player = event.getPlayer();
         World buildFFAWorld = configManager.getBuildFFALocation().getWorld();
         World lobbyWorld = configManager.getLobbyLocation().getWorld();
+        World bridgeFightWorld = configManager.getBridgeFightLocation().getWorld();
 
         if (buildFFAWorld == null) return;
 
         if (lobbyWorld == null) return;
+
+        if (bridgeFightWorld == null) return;
 
         if (player.getWorld().equals(buildFFAWorld)){
             player.setGameMode(GameMode.SURVIVAL);
@@ -216,10 +216,19 @@ public class LobbyListener implements Listener {
 
         if (player.getWorld().equals(lobbyWorld)){
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                plugin.getSpawnItem().giveItems(player);
+                plugin.getSpawnItem().giveSpawnItem(player);
             }, 1);
             player.setGameMode(GameMode.ADVENTURE);
+            // Flight state will be handled by FlightManager through PlayerJoinEvent in GlobalListener
+            return;
+        }
 
+        if (player.getWorld().equals(bridgeFightWorld)){
+            player.setGameMode(GameMode.SURVIVAL);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                plugin.getSpawnItem().giveBridgeFightSpawnItem(player);
+            }, 1);
+            return;
         }
     }
 }

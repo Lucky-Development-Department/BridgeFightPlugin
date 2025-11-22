@@ -3,6 +3,7 @@ package me.molfordan.arenaAndFFAManager.kits;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarManager;
 import me.molfordan.arenaAndFFAManager.manager.HotbarDataManager;
+import me.molfordan.arenaAndFFAManager.object.Arena;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -26,7 +27,10 @@ public class KitManager {
     public void applyBridgeFightKit(Player player) {
         clearInventory(player);
         bridgeFightKit.giveKit(player);
-        forceArmorUpdate(player);
+        Bukkit.getScheduler().runTaskLater(ArenaAndFFAManager.getPlugin(), () -> {
+            forceArmorUpdate(player);
+        },2);
+
     }
 
     public void applyBuildFFAKit(Player player) {

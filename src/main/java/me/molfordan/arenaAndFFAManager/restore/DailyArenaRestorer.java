@@ -1,7 +1,7 @@
 package me.molfordan.arenaAndFFAManager.restore;
 
 import me.molfordan.arenaAndFFAManager.object.Arena;
-import me.molfordan.arenaAndFFAManager.SerializableBlockState;
+import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
 import me.molfordan.arenaAndFFAManager.manager.ArenaManager;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import org.bukkit.*;
