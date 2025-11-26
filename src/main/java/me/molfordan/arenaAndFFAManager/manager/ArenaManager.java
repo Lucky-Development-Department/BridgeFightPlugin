@@ -289,4 +289,28 @@ public class ArenaManager {
             bypassingPlayers.add(uuid);
         }
     }
+
+    public void unloadArenas() {
+        // Clear any player bypass states
+        bypassingPlayers.clear();
+
+        // Clear all loaded arenas
+        arenaMap.clear();
+
+        // Clear LadderRestorer tracked data (if applicable)
+        /*
+        if (ladderRestorer != null) {
+            ladderRestorer.clear();
+        }
+
+         */
+
+        plugin.getLogger().info("All arenas unloaded from memory.");
+    }
+
+    public void reloadArenas() {
+        unloadArenas();
+        loadArenas();
+        plugin.getLogger().info("Arenas reloaded.");
+    }
 }

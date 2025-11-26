@@ -329,8 +329,74 @@ public class ConfigManager {
             getLogger().info("Successfully loaded world: " + world.getName());
         else
             getLogger().warning("Failed to load world: " + name);
+
     }
 
+
+
+    /**
+     * Gets the number of players in the specified world type
+     * @param worldType The type of world ("buildffa" or "bridgefight")
+     * @return The number of players in the specified world, or -1 if the world is not loaded
+     */
+    public int getPlayersInWorld(String worldType) {
+        String worldName;
+        if (worldType.equalsIgnoreCase("buildffa")) {
+            worldName = getBuildFFAWorldName();
+        } else if (worldType.equalsIgnoreCase("bridgefight")) {
+            worldName = getBridgeFightWorldName();
+        } else {
+            throw new IllegalArgumentException("Invalid world type. Must be 'buildffa' or 'bridgefight'");
+        }
+        
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            getLogger().warning("World " + worldName + " is not loaded!");
+            return -1;
+        }
+        
+        return world.getPlayers().size();
+    }
+
+    public World loadVoidWorld(String name) {
+        WorldCreator creator = new WorldCreator(name);
+
+        // Superflat with no layers (";0;")
+        creator.type(WorldType.FLAT);
+        creator.generateStructures(false);
+
+        // Old 1.8 flatworld custom generator setting for void
+        creator.generatorSettings(";0;");
+
+        // Normal overworld environment
+        creator.environment(World.Environment.NORMAL);
+
+        World world = Bukkit.createWorld(creator);
+
+        if (world != null) {
+            plugin.debug("Successfully created/loaded VOID world: " + world.getName());
+        } else {
+            Bukkit.getLogger().warning("Failed to create/load VOID world: " + name);
+        }
+
+        return world;
+    }
+
+    public World createVoidWorld(String name) {
+        File worldFolder = new File(Bukkit.getWorldContainer(), name);
+        if (!worldFolder.exists()) {
+            worldFolder.mkdir();
+        }
+
+        return loadVoidWorld(name);
+    }
+
+    public void ensureSpawnPlatform(World world) {
+        Location loc = new Location(world, 0.5, 75, 0.5);
+
+        world.getBlockAt(0, 74, 0).setType(Material.BARRIER);
+        world.setSpawnLocation(0, 75, 0);
+    }
 
 }
 

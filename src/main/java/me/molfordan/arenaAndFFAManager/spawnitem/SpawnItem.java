@@ -36,18 +36,15 @@ public class SpawnItem implements Listener {
     //  PUBLIC METHOD TO GIVE SPAWN ITEMS
     // ============================================================
     public void giveSpawnItem(Player player) {
-
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
-
-
 
         player.getInventory().setItem(0, getCompass());
         player.getInventory().setItem(4, getStatsHead(player));
         player.getInventory().setItem(8, getKitEditorBook());
     }
 
-    public void giveSword(Player player){
+    public void giveSword(Player player) {
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
         player.getInventory().setItem(0, getSword());
@@ -64,15 +61,21 @@ public class SpawnItem implements Listener {
         return item;
     }
 
-    private ItemStack getSword(){
+    private ItemStack getBook(){
+        ItemStack item = new ItemStack(Material.BOOK);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§eSelect Kit");
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack getSword() {
         ItemStack item = new ItemStack(Material.STONE_SWORD);
         ItemMeta meta = item.getItemMeta();
         meta.addEnchant(Enchantment.DAMAGE_ALL, 1, true);
         meta.spigot().setUnbreakable(true);
         item.setItemMeta(meta);
-
         return item;
-
     }
 
     private ItemStack getPlatformSelectorCompass() {
@@ -92,17 +95,13 @@ public class SpawnItem implements Listener {
     }
 
     public void giveBridgeFightSpawnItem(Player player) {
-
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
 
-        // Slot 0 = Platform Selector
         player.getInventory().setItem(0, getPlatformSelectorCompass());
-
-        // Slot 8 = /spawn command item
         player.getInventory().setItem(8, getSpawnRedstone());
+        player.getInventory().setItem(4, getBook());
     }
-
     private ItemStack getStatsHead(Player player) {
         ItemStack item = new ItemStack(Material.SKULL_ITEM, 1, (short) SkullType.PLAYER.ordinal());
         SkullMeta meta = (SkullMeta) item.getItemMeta();
@@ -126,21 +125,25 @@ public class SpawnItem implements Listener {
     private Inventory getCompassGUI() {
         Inventory inv = Bukkit.createInventory(null, 9, GUI_TITLE);
 
-        // Stone Sword (BridgeFight)
         ItemStack bf = new ItemStack(Material.STONE_SWORD);
         ItemMeta bfMeta = bf.getItemMeta();
         bfMeta.setDisplayName("§cBridgeFight");
-        bfMeta.setLore(java.util.Arrays.asList("§aClick to join"));
+        bfMeta.setLore(java.util.Arrays.asList(
+                "§aClick to join",
+                "§7Players: " + plugin.getConfigManager().getPlayersInWorld("bridgefight")
+        ));
         bfMeta.addEnchant(Enchantment.DAMAGE_ALL, 1, true);
         bfMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         bf.setItemMeta(bfMeta);
         inv.setItem(3, bf);
 
-        // Red Wool (BuildFFA)
         ItemStack bffa = new ItemStack(Material.WOOL, 1, (short) 14);
         ItemMeta bffaMeta = bffa.getItemMeta();
         bffaMeta.setDisplayName("§cBuildFFA");
-        bffaMeta.setLore(java.util.Arrays.asList("§aClick to join"));
+        bffaMeta.setLore(java.util.Arrays.asList(
+                "§aClick to join",
+                "§7Players: " + plugin.getConfigManager().getPlayersInWorld("buildffa")
+        ));
         bffaMeta.addEnchant(Enchantment.DAMAGE_ALL, 1, true);
         bffaMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         bffa.setItemMeta(bffaMeta);
@@ -152,138 +155,156 @@ public class SpawnItem implements Listener {
     private Inventory getPlatGUI() {
         Inventory inv = Bukkit.createInventory(null, 27, PLATGUI_TITLE);
 
-        // =============================
-        // Create Black Glass Border
-        // =============================
+        // BORDER
         ItemStack border = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 15);
         ItemMeta meta = border.getItemMeta();
         meta.setDisplayName(" ");
         border.setItemMeta(meta);
 
-        // Top row (0–8)
-        for (int i = 0; i < 9; i++) {
-            inv.setItem(i, border);
-        }
-
-        // Bottom row (18–26)
-        for (int i = 18; i < 27; i++) {
-            inv.setItem(i, border);
-        }
-
-        // Middle left & right
+        for (int i = 0; i < 9; i++) inv.setItem(i, border);
+        for (int i = 18; i < 27; i++) inv.setItem(i, border);
         inv.setItem(9, border);
         inv.setItem(17, border);
 
-        // =============================
-        // Get platforms + sort
-        // =============================
+        // PLATFORMS
         Map<String, PlatformRegion> platforms = plugin.getPlatformManager().getAllPlatforms();
 
-        java.util.List<String> sortedNames = new java.util.ArrayList<>(platforms.keySet());
-        sortedNames.sort(String::compareToIgnoreCase); // <-- SORT HERE
+        java.util.List<String> sorted = new java.util.ArrayList<>(platforms.keySet());
+        sorted.sort(String::compareToIgnoreCase);
 
-        // =============================
-        // Fill inner GUI slots 10–16 & 19–25
-        // =============================
-        int[] fillSlots = {10,11,12,13,14,15,16, 19,20,21,22,23,24,25};
+        int[] slots = {10,11,12,13,14,15,16, 19,20,21,22,23,24,25};
         int index = 0;
 
-        for (String platName : sortedNames) {
-            if (index >= fillSlots.length) break;
+        for (String key : sorted) {
+            if (index >= slots.length) break;
 
-            PlatformRegion region = platforms.get(platName);
+            PlatformRegion region = platforms.get(key);
             boolean hasSpawn = region.getSpawn() != null;
+
+            String formatted = formatPlatformName(key);
 
             ItemStack item = new ItemStack(Material.WOOL, 1, hasSpawn ? (short) 5 : (short) 14);
             ItemMeta im = item.getItemMeta();
-
-            im.setDisplayName("§e" + platName.toUpperCase());
+            im.setDisplayName("§e" + formatted);
             im.setLore(java.util.Arrays.asList(
                     hasSpawn ? "§aSpawn set" : "§cSpawn not set",
                     "§7Click to teleport"
             ));
             item.setItemMeta(im);
 
-            inv.setItem(fillSlots[index], item);
+            inv.setItem(slots[index], item);
             index++;
         }
 
         return inv;
     }
 
+    // ============================================================
+    //  PLATFORM NAME FORMATTER (GUI)
+    // ============================================================
+    private String formatPlatformName(String raw) {
+        raw = raw.toUpperCase();
 
+        String number = "";
+        int i = raw.length() - 1;
+
+        while (i >= 0 && Character.isDigit(raw.charAt(i))) {
+            number = raw.charAt(i) + number;
+            i--;
+        }
+
+        String base = raw.substring(0, raw.length() - number.length());
+
+        switch (base) {
+            case "PLAT": return "Platform " + number;
+            case "BIGPLAT": return "Big Platform " + number;
+            case "SMALLPLAT": return "Small Platform " + number;
+        }
+
+        return raw;
+    }
+
+    // ============================================================
+    //  UNFORMAT NAME (GUI → command)
+    // ============================================================
+    private String unformatPlatformName(String formatted) {
+        formatted = formatted.replace("§e", "").trim(); // remove color
+
+        String[] parts = formatted.split(" ");
+        if (parts.length < 2) return null;
+
+        String base = parts[0].toLowerCase();
+        String number = parts[1];
+
+        if (base.equals("platform")) return "plat" + number;
+        if (base.equals("big")) return "bigplat" + number;
+        if (base.equals("small")) return "smallplat" + number;
+
+        return null;
+    }
 
     // ============================================================
     //  LISTENERS
     // ============================================================
-
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         if (!event.hasItem()) return;
 
         Player player = event.getPlayer();
         ItemStack item = event.getItem();
+        if (!item.hasItemMeta()) return;
 
-        if (!item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return;
-        String displayName = item.getItemMeta().getDisplayName();
+        String name = item.getItemMeta().getDisplayName();
 
-        // COMPASS → OPEN GUI
-        if (item.getType() == Material.COMPASS && displayName.equals("§eMode Selector")) {
+        if (item.getType() == Material.COMPASS && name.equals("§eMode Selector")) {
             event.setCancelled(true);
             player.openInventory(getCompassGUI());
         }
-        // STATS HEAD → /guistats
-        else if (item.getType() == Material.SKULL_ITEM && displayName.equals("§a" + player.getName() + "'s Stats")) {
+        else if (item.getType() == Material.SKULL_ITEM && name.equals("§a" + player.getName() + "'s Stats")) {
             event.setCancelled(true);
             player.performCommand("guistats");
         }
-        // BOOK → /hotbarmanager
-        else if (item.getType() == Material.BOOK && displayName.equals("§bHotbar Manager")) {
+        else if (item.getType() == Material.BOOK && name.equals("§bHotbar Manager")) {
             event.setCancelled(true);
             player.performCommand("hotbarmanager");
         }
-
-        else if (item.getType() == Material.COMPASS &&
-                displayName.equals("§ePlatform Selector")) {
-
+        else if (item.getType() == Material.COMPASS && name.equals("§ePlatform Selector")) {
             event.setCancelled(true);
             player.openInventory(getPlatGUI());
         }
-
-        else if (item.getType() == Material.REDSTONE &&
-                displayName.equals("§cBack to Spawn")) {
-
+        else if (item.getType() == Material.REDSTONE && name.equals("§cBack to Spawn")) {
             event.setCancelled(true);
             player.performCommand("spawn");
+        } else if (item.getType() == Material.BOOK &&
+                "§eSelect Kit".equals(item.getItemMeta().getDisplayName())) {
+
+            event.setCancelled(true);
+            plugin.getBridgeFightGUI().open(player);
         }
     }
 
     @EventHandler
     public void onInvClick(InventoryClickEvent event) {
-        // ensure it's a player
         if (!(event.getWhoClicked() instanceof Player)) return;
-        Player player = (Player) event.getWhoClicked();
 
-        // Title null-safety
+        Player player = (Player) event.getWhoClicked();
         String title = event.getView().getTitle();
         if (title == null) return;
 
-        // ----------------------------
-        // Mode selector GUI (9 slots)
-        // ----------------------------
+        // MODE SELECTOR GUI
         if (title.equals(GUI_TITLE)) {
-            event.setCancelled(true); // always cancel interactions inside the GUI
+            event.setCancelled(true);
 
             ItemStack clicked = event.getCurrentItem();
             if (clicked == null || !clicked.hasItemMeta()) return;
 
             String name = clicked.getItemMeta().getDisplayName();
-            if (name == null) return;
 
             if (name.contains("BridgeFight")) {
                 player.closeInventory();
                 player.performCommand("bridgefight");
-            } else if (name.contains("BuildFFA")) {
+            }
+            else if (name.contains("BuildFFA")) {
                 player.closeInventory();
                 player.performCommand("buildffa");
             }
@@ -291,28 +312,27 @@ public class SpawnItem implements Listener {
             return;
         }
 
-        // ----------------------------
-        // Platform selector GUI (27 slots)
-        // ----------------------------
+        // PLATFORM GUI
         if (title.equals(PLATGUI_TITLE)) {
-            event.setCancelled(true); // prevent item moving inside GUI
+            event.setCancelled(true);
 
             ItemStack clicked = event.getCurrentItem();
             if (clicked == null || !clicked.hasItemMeta()) return;
 
             String name = clicked.getItemMeta().getDisplayName();
-            if (name == null || name.trim().isEmpty()) return; // ignore border panes with blank name
+            if (name.trim().isEmpty()) return;
 
-            // name example: "§ePLAT1" -> convert to "plat1"
-            // This uses the exact §e prefix you use when creating the item.
-            String plat = name.replace("§e", "").toLowerCase();
+            String plat = unformatPlatformName(name);
+            if (plat == null) return;
 
             player.closeInventory();
             player.performCommand(plat);
         }
     }
 
-
+    // ============================================================
+    //  PROTECT SPAWN ITEMS
+    // ============================================================
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
@@ -342,19 +362,18 @@ public class SpawnItem implements Listener {
         }
     }
 
-
     @EventHandler
     public void onInventoryClickProtect(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
+
         Player player = (Player) event.getWhoClicked();
         ItemStack item = event.getCurrentItem();
 
         LockedItemType type = getLockedItemType(item, player);
-        if (type == null) return; // Not a locked item
+        if (type == null) return;
 
-        event.setCancelled(true); // STOP movement
+        event.setCancelled(true);
 
-        // Restore correct slot
         Bukkit.getScheduler().runTask(plugin, () -> {
             switch (type) {
                 case MODE_SELECTOR:
@@ -371,6 +390,9 @@ public class SpawnItem implements Listener {
                     break;
                 case BACK_TO_SPAWN:
                     player.getInventory().setItem(8, getSpawnRedstone());
+                    break;
+                case SELECT_KIT:
+                    player.getInventory().setItem(4, getBook());
                     break;
             }
             player.updateInventory();
@@ -396,6 +418,9 @@ public class SpawnItem implements Listener {
         if (item.getType() == Material.REDSTONE && name.equals("§cBack to Spawn"))
             return LockedItemType.BACK_TO_SPAWN;
 
+        if (item.getType() == Material.BOOK && name.equals("§eSelect Kit"))
+            return LockedItemType.SELECT_KIT;
+
         return null;
     }
 
@@ -404,6 +429,7 @@ public class SpawnItem implements Listener {
         PLATFORM_SELECTOR,
         STATS_HEAD,
         HOTBAR_MANAGER,
-        BACK_TO_SPAWN
+        BACK_TO_SPAWN,
+        SELECT_KIT
     }
 }

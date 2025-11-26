@@ -104,7 +104,7 @@ public class FrozenManager implements Listener {
 
             String playerName = player.getName();
             // The ban command text is color-coded using the format requested by the user
-            String command = "tempipban " + playerName + " 7d " +
+            String command = "ipban " + playerName + " 7d " +
                     ChatColor.translateAlternateColorCodes('&', "&c&lSENTRY &a&l/ &b" + playerName + " logged out while being frozen");
 
             // Execute the console command on the next tick
@@ -142,7 +142,7 @@ public class FrozenManager implements Listener {
                         player.sendMessage(ChatColor.DARK_RED.toString() + ChatColor.BOLD + "YOU ARE FROZEN!" + ChatColor.RED + " Do not disconnect.");
                     }
                 }
-            }, 0L, 20L); // Start immediately (0L) and repeat every 20 ticks (1 second)
+            }, 0L, 10L); // Start immediately (0L) and repeat every 20 ticks (1 second)
         }
 
 

@@ -1,9 +1,12 @@
 package me.molfordan.arenaAndFFAManager.commands;
 
+import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.manager.BridgeFightBanManager;
 import me.molfordan.arenaAndFFAManager.utils.DurationParser;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
@@ -12,15 +15,17 @@ import java.util.UUID;
 public class BridgeBanCommand implements CommandExecutor {
 
     private final BridgeFightBanManager banManager;
+    private final ArenaAndFFAManager plugin;
 
-    public BridgeBanCommand(BridgeFightBanManager banManager) {
+    public BridgeBanCommand(BridgeFightBanManager banManager, ArenaAndFFAManager plugin) {
         this.banManager = banManager;
+        this.plugin = plugin;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
-        if (!sender.isOp()) return true;
+        if (!(sender.isOp() || sender.hasPermission("bridgefight.banned"))) return true;
 
         if (args.length < 1) {
             sender.sendMessage("§cUsage: /bridgeban <player> [duration] [reason]");
@@ -61,7 +66,16 @@ public class BridgeBanCommand implements CommandExecutor {
         Player online = target.getPlayer();
         if (online != null) {
             online.sendMessage("§cYou have been banned from BridgeFight.\n§7Reason: §f" + reason);
+
+            String bridgefight = plugin.getConfigManager().getBridgeFightWorldName();
+
+            if (!online.getWorld().getName().equals(bridgefight)) return true;
+            Location lobby = plugin.getConfigManager().getLobbyLocation();
+
+            online.teleport(lobby);
         }
+
+
 
         return true;
     }

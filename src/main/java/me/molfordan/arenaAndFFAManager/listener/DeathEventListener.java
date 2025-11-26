@@ -89,6 +89,7 @@ public class DeathEventListener implements Listener {
                 false  // isQuit
         );
         player.setHealth(0);
+        EnderPearlListener.getCooldowns().remove(id);
     }
 
     /**

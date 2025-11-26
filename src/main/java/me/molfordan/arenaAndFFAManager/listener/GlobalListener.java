@@ -7,28 +7,25 @@ import me.molfordan.arenaAndFFAManager.manager.StatsManager;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
+import org.bukkit.event.*;
 import org.bukkit.event.block.BlockFadeEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.event.weather.WeatherChangeEvent;
+import org.bukkit.plugin.RegisteredListener;
 import org.bukkit.potion.PotionEffect;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class GlobalListener implements Listener {
 
     private final StatsManager statsManager;
+
+    private long lastWeatherCommand = 0;
 
     private final ArenaAndFFAManager plugin;
 
@@ -66,20 +63,52 @@ public class GlobalListener implements Listener {
     }
 
     @EventHandler
-    public void onWeatherChange(WeatherChangeEvent event){
-        if (event.toWeatherState()){
-            event.setCancelled(true);
-            World world = event.getWorld();
-            world.setThundering(false);
-            world.setStorm(false);
-            world.setThunderDuration(0);
-            world.setWeatherDuration(0);
+    public void onWeatherChange(WeatherChangeEvent event) {
+        // If a weather command was executed in the last 300 ms, allow it
+        if (System.currentTimeMillis() - lastWeatherCommand < 300) {
             return;
         }
 
+        // Otherwise block natural weather
         event.setCancelled(true);
-
     }
+
+    @EventHandler
+    public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
+        String cmd = event.getMessage().toLowerCase();
+        if (cmd.startsWith("/weather")) {
+            lastWeatherCommand = System.currentTimeMillis();
+        }
+    }
+    /*
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void debugBlockPlace(BlockPlaceEvent e) {
+        if (e.isCancelled()) {
+            Player p = e.getPlayer();
+            Location l = e.getBlock().getLocation();
+
+            p.sendMessage("§c[DEBUG] BlockPlace cancelled by: "
+                    + getCancellingPlugins(BlockPlaceEvent.class)
+                    + " at " + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ());
+        }
+    }
+
+    private String getCancellingPlugins(Class<? extends Event> eventClass) {
+        HandlerList handlers = null;
+        try {
+            handlers = (HandlerList) eventClass.getMethod("getHandlerList").invoke(null);
+        } catch (Exception ex) {
+            return "Unknown";
+        }
+
+        List<String> list = new ArrayList<>();
+        for (RegisteredListener rl : handlers.getRegisteredListeners()) {
+            list.add(rl.getPlugin().getName());
+        }
+        return String.join(", ", list);
+    }
+
+     */
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onLoadData(PlayerJoinEvent event) {

@@ -4,6 +4,8 @@ import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.config.RegionsConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
@@ -15,10 +17,8 @@ public class CommandRegionManager {
     private final ArenaAndFFAManager plugin;
     private final RegionsConfig regionsConfig;
 
-    // region name -> CommandRegion
     private final Map<String, CommandRegion> regions = new ConcurrentHashMap<>();
 
-    // per-player selection storage (UUID key)
     private final Map<UUID, Location> pos1 = new ConcurrentHashMap<>();
     private final Map<UUID, Location> pos2 = new ConcurrentHashMap<>();
 
@@ -27,7 +27,6 @@ public class CommandRegionManager {
         this.regionsConfig = regionsConfig;
     }
 
-    // ----- selection API -----
     public void setPos1(Player p, Location loc) {
         pos1.put(p.getUniqueId(), loc.clone());
         p.sendMessage("§a[Region] pos1 set.");
@@ -38,39 +37,28 @@ public class CommandRegionManager {
         p.sendMessage("§a[Region] pos2 set.");
     }
 
-    public Optional<Location> getPlayerPos1(UUID playerId) {
-        return Optional.ofNullable(pos1.get(playerId));
-    }
-    public Optional<Location> getPlayerPos2(UUID playerId) {
-        return Optional.ofNullable(pos2.get(playerId));
-    }
-
-    // ----- create/save/delete -----
-    public boolean createRegionAndSave(String name, Player owner, String command, CommandRegion.Executor executor) {
-        UUID id = owner.getUniqueId();
-        Location a = pos1.get(id);
-        Location b = pos2.get(id);
+    public boolean createEmptyRegion(String name, Player p) {
+        Location a = pos1.get(p.getUniqueId());
+        Location b = pos2.get(p.getUniqueId());
         if (a == null || b == null) return false;
 
-        CommandRegion r = new CommandRegion(a.clone(), b.clone(), command, convert(executor));
+        CommandRegion r = new CommandRegion(a.clone(), b.clone(), "", CommandRegion.Executor.CONSOLE);
         regions.put(name, r);
         saveRegionToConfig(name, r);
-        plugin.debug("[Regions] created region: " + name);
         return true;
     }
 
     public boolean deleteRegion(String name) {
         if (!regions.containsKey(name)) return false;
+
         regions.remove(name);
 
         FileConfiguration cfg = regionsConfig.getConfig();
         cfg.set("Regions." + name, null);
         regionsConfig.save();
-        plugin.debug("[Regions] deleted region: " + name);
         return true;
     }
 
-    // ----- lookup / iteration -----
     public Collection<CommandRegion> getRegions() {
         return Collections.unmodifiableCollection(regions.values());
     }
@@ -83,57 +71,85 @@ public class CommandRegionManager {
         return regions.get(name);
     }
 
-    // ----- config load/save -----
+    public boolean hasSelection(Player p) {
+        return pos1.containsKey(p.getUniqueId()) && pos2.containsKey(p.getUniqueId());
+    }
+
     public void loadAllFromConfig() {
         FileConfiguration cfg = regionsConfig.getConfig();
-        if (cfg == null || !cfg.isConfigurationSection("Regions")) {
-            plugin.debug("[Regions] No Regions section found.");
-            return;
-        }
+        if (!cfg.isConfigurationSection("Regions")) return;
 
         for (String key : cfg.getConfigurationSection("Regions").getKeys(false)) {
             String base = "Regions." + key;
+
             try {
-                String world = cfg.getString(base + ".world", "");
-                if (world.isEmpty()) {
-                    plugin.debug("[Regions] region " + key + " missing world, skipping");
-                    continue;
-                }
-                org.bukkit.World w = Bukkit.getWorld(world);
+                String worldName = cfg.getString(base + ".world", "");
+                if (worldName.isEmpty()) continue;
+
+                World w = Bukkit.getWorld(worldName);
                 if (w == null) {
-                    plugin.debug("[Regions] world not loaded for region " + key + " -> skipping: " + world);
+                    plugin.getLogger().warning("Region '" + key + "' skipped: world not found (" + worldName + ")");
                     continue;
                 }
 
-                double x1 = cfg.getDouble(base + ".x1");
-                double y1 = cfg.getDouble(base + ".y1");
-                double z1 = cfg.getDouble(base + ".z1");
+                Location p1 = new Location(
+                        w,
+                        cfg.getDouble(base + ".x1"),
+                        cfg.getDouble(base + ".y1"),
+                        cfg.getDouble(base + ".z1")
+                );
 
-                double x2 = cfg.getDouble(base + ".x2");
-                double y2 = cfg.getDouble(base + ".y2");
-                double z2 = cfg.getDouble(base + ".z2");
+                Location p2 = new Location(
+                        w,
+                        cfg.getDouble(base + ".x2"),
+                        cfg.getDouble(base + ".y2"),
+                        cfg.getDouble(base + ".z2")
+                );
 
                 String command = cfg.getString(base + ".command", "");
-                String exec = cfg.getString(base + ".executor", "CONSOLE").toUpperCase();
 
-                CommandRegion.Executor executor = CommandRegion.Executor.valueOf(exec);
+                CommandRegion.Executor executor;
+                try {
+                    executor = CommandRegion.Executor.valueOf(
+                            cfg.getString(base + ".executor", "NULL").toUpperCase()
+                    );
+                } catch (IllegalArgumentException e) {
+                    executor = CommandRegion.Executor.NULL;
+                }
 
-                CommandRegion r = new CommandRegion(new Location(w, x1, y1, z1),
-                        new Location(w, x2, y2, z2),
-                        command, executor);
-                regions.put(key, r);
-                plugin.debug("[Regions] loaded region: " + key);
+                CommandRegion region = new CommandRegion(p1, p2, command, executor);
+
+                // Load flags
+                if (cfg.isConfigurationSection(base + ".flags")) {
+                    ConfigurationSection flagsSec = cfg.getConfigurationSection(base + ".flags");
+
+                    for (String flagId : flagsSec.getKeys(false)) {
+                        FlagType type = FlagType.fromId(flagId);
+                        if (type == null) continue;
+
+                        String val = flagsSec.getString(flagId, "");
+                        if (val == null) continue;
+
+                        region.setFlag(type, val);
+                    }
+                }
+
+                regions.put(key, region);
+
             } catch (Exception ex) {
-                plugin.debug("[Regions] failed to load region " + key + ": " + ex.getMessage());
+                plugin.getLogger().warning(
+                        "Failed to load region '" + key + "' : " + ex.getMessage()
+                );
             }
         }
     }
 
-    private void saveRegionToConfig(String name, CommandRegion r) {
+
+    public void saveRegionToConfig(String name, CommandRegion r) {
         FileConfiguration cfg = regionsConfig.getConfig();
-        if (r.getPos1() == null || r.getPos2() == null) return;
 
         String base = "Regions." + name;
+
         cfg.set(base + ".world", r.getPos1().getWorld().getName());
         cfg.set(base + ".x1", r.getPos1().getX());
         cfg.set(base + ".y1", r.getPos1().getY());
@@ -145,10 +161,17 @@ public class CommandRegionManager {
 
         cfg.set(base + ".command", r.getCommand());
         cfg.set(base + ".executor", r.getExecutor().name());
+
+        // SAVE FLAGS USING ENUM ID
+        for (Map.Entry<FlagType, String> e : r.getFlags().entrySet()) {
+            cfg.set(base + ".flags." + e.getKey().id(), e.getValue());
+        }
+
         regionsConfig.save();
     }
 
-    private CommandRegion.Executor convert(CommandRegion.Executor e) {
-        return e == null ? CommandRegion.Executor.CONSOLE : e;
+    public void clearRegions() {
+        regions.clear();
     }
+
 }

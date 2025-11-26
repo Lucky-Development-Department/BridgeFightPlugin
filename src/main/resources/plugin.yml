@@ -70,11 +70,11 @@ commands:
   bridgeban:
     usage: '/bridgeban <player> [duration] [reason]'
     description: 'bridgeban command'
-    permission: arenamap.admin
+    permission: bridgefight.banned
   bridgeunban:
     usage: '/bridgeunban <player> [reason]'
     description: 'bridgeunban command'
-    permission: arenamap.admin
+    permission: bridgefight.unbanned
   guileaderboard:
     usage: '/guileaderboard'
     description: 'guileaderboard command'
@@ -119,3 +119,7 @@ permissions:
     description: 'PrivateWorld Access'
   arenamap.freeze:
     description: 'ArenaFFAManager Freeze'
+  bridgefight.banned:
+    description: 'BridgeFight Banned'
+  bridgefight.unbanned:
+    description: 'BridgeFight Unbanned'

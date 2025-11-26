@@ -16,77 +16,96 @@ public class StatsCommand implements CommandExecutor {
 
     private final ArenaAndFFAManager plugin;
     private final StatsManager statsManager;
+    private final GUIStatsCommand guiStats;
 
     public StatsCommand(ArenaAndFFAManager plugin) {
         this.plugin = plugin;
         this.statsManager = plugin.getStatsManager();
+        this.guiStats = new GUIStatsCommand(plugin);
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
-        // /stats → self
+        // /stats → self TEXT
         if (args.length == 0) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage("§cConsole must use: /stats <player>");
+                sender.sendMessage("§cConsole must use: /stats player <player>");
                 return true;
             }
-
             Player p = (Player) sender;
             loadAndShowStats(sender, p.getUniqueId(), p.getName());
             return true;
         }
 
-        // /stats <player>
-        String name = args[0];
+        String mode = args[0].toLowerCase();
 
-        // 1. Try online
-        Player online = Bukkit.getPlayerExact(name);
-        if (online != null) {
-            loadAndShowStats(sender, online.getUniqueId(), online.getName());
+        if (!mode.equals("gui") && !mode.equals("player")) {
+            sender.sendMessage("§cUsage: /stats [gui|player] [player]");
             return true;
         }
 
-        // 2. Try offline
-        OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
+        // Determine target player
+        OfflinePlayer target;
 
-        if (offline == null || (!offline.hasPlayedBefore() && !offline.isOnline())) {
-            sender.sendMessage("§cPlayer not found.");
+        if (args.length == 1) {
+            // Self
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("§cConsole must specify a player.");
+                return true;
+            }
+            target = (Player) sender;
+
+        } else {
+            // args[1] = target
+            target = Bukkit.getOfflinePlayer(args[1]);
+
+            if (target == null || (!target.hasPlayedBefore() && !target.isOnline())) {
+                sender.sendMessage("§cPlayer not found.");
+                return true;
+            }
+        }
+
+        UUID uuid = target.getUniqueId();
+        String name = target.getName();
+
+        // TEXT MODE
+        if (mode.equals("player")) {
+            loadAndShowStats(sender, uuid, name);
             return true;
         }
 
-        loadAndShowStats(sender, offline.getUniqueId(), offline.getName());
+        // GUI MODE
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("§cConsole cannot open GUIs.");
+            return true;
+        }
+
+        Player viewer = (Player) sender;
+        guiStats.openGUIAsync(viewer, uuid, name);
         return true;
     }
 
 
-    // --------------------------------------------------------------------------------------
-    // ASYNC STATS LOAD → SYNC MESSAGE SEND
-    // --------------------------------------------------------------------------------------
-    private void loadAndShowStats(final CommandSender sender, final UUID uuid, final String username) {
+    // -------------------------------------------------------------
+    // TEXT OUTPUT (ASYNC LOAD)
+    // -------------------------------------------------------------
+    private void loadAndShowStats(CommandSender sender, UUID uuid, String username) {
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
-            @Override
-            public void run() {
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
 
-                // Load from cache or database
-                final PlayerStats stats = statsManager.getOrLoad(uuid, username);
+            PlayerStats stats = statsManager.getOrLoad(uuid, username);
 
-                // Now output stats safely on main thread
-                Bukkit.getScheduler().runTask(plugin, new Runnable() {
-                    @Override
-                    public void run() {
-                        sendStatsMessage(sender, stats);
-                    }
-                });
-            }
+            Bukkit.getScheduler().runTask(plugin, () ->
+                    sendStatsMessage(sender, stats)
+            );
         });
     }
 
 
-    // --------------------------------------------------------------------------------------
-    // SEND FORMATTED STATS
-    // --------------------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // TEXT MESSAGE
+    // -------------------------------------------------------------
     private void sendStatsMessage(CommandSender sender, PlayerStats s) {
 
         sender.sendMessage("§8§m-------------------------------");
@@ -98,7 +117,6 @@ public class StatsCommand implements CommandExecutor {
         sender.sendMessage(" §fDeaths: §a" + s.getBridgeDeaths());
         sender.sendMessage(" §fCurrent Streak: §a" + s.getBridgeStreak());
         sender.sendMessage(" §fHighest Streak: §6" + s.getBridgeHighestStreak());
-
         sender.sendMessage("");
 
         sender.sendMessage("§e§lBUILD FFA:");

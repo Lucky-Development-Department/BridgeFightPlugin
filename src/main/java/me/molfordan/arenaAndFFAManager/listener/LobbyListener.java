@@ -219,11 +219,24 @@ public class LobbyListener implements Listener {
                 plugin.getSpawnItem().giveSpawnItem(player);
             }, 1);
             player.setGameMode(GameMode.ADVENTURE);
+            if (player.hasPermission("luckyessentials.fly")){
+
+                player.setAllowFlight(true);
+                player.setFlying(true);
+                Location loc = player.getLocation();
+                double locY = loc.getY();
+                player.teleport(new Location(loc.getWorld(), loc.getX(), locY + 2, loc.getZ()));
+            }
             // Flight state will be handled by FlightManager through PlayerJoinEvent in GlobalListener
             return;
         }
 
         if (player.getWorld().equals(bridgeFightWorld)){
+            boolean isBanned = plugin.getBridgeFightBanManager().isPlayerBanned(player.getUniqueId());
+            if (isBanned){
+                player.teleport(lobbyWorld.getSpawnLocation());
+                return;
+            }
             player.setGameMode(GameMode.SURVIVAL);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 plugin.getSpawnItem().giveBridgeFightSpawnItem(player);

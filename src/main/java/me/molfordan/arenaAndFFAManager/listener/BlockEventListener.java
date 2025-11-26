@@ -1,6 +1,7 @@
 package me.molfordan.arenaAndFFAManager.listener;
 
 import me.molfordan.arenaAndFFAManager.*;
+import me.molfordan.arenaAndFFAManager.hotbarmanager.BlockHotbarSorter;
 import me.molfordan.arenaAndFFAManager.manager.ArenaManager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
@@ -134,14 +135,57 @@ public class BlockEventListener implements Listener {
                                 && placer.getGameMode() == GameMode.SURVIVAL
                                 && arena.isInside(placer.getLocation(), true)) {
                             ItemStack refund = new ItemStack(placedState.getType(), 1, placedState.getRawData());
-                            placer.getInventory().addItem(refund).values()
-                                    .forEach(overflow -> placer.getWorld().dropItemNaturally(placer.getLocation(), overflow));
+                            BlockHotbarSorter blockSorter = new BlockHotbarSorter(plugin.getHotbarDataManager());
+
+// Sort first, returns TRUE if handled
+                            boolean handled = blockSorter.sort(placer, refund);
+
+                            if (!handled) {
+                                ItemStack leftover = addToMainInventory(placer, refund);
+
+                                if (leftover != null) {
+                                    placer.getWorld().dropItemNaturally(placer.getLocation(), leftover);
+                                }
+                            }
                         }
                     }
                 }
                 persistentManager.removeRestore(arena.getName() + "|" + coordsKey);
             });
         }
+    }
+
+    private ItemStack addToMainInventory(Player player, ItemStack stack) {
+
+        // Try stacking into main inventory (slots 9–35)
+        for (int i = 9; i <= 36; i++) {
+            ItemStack item = player.getInventory().getItem(i);
+            if (item == null) continue;
+
+            if (item.isSimilar(stack)) {
+                int max = item.getMaxStackSize();
+                int free = max - item.getAmount();
+
+                if (free > 0) {
+                    int move = Math.min(free, stack.getAmount());
+                    item.setAmount(item.getAmount() + move);
+                    stack.setAmount(stack.getAmount() - move);
+
+                    if (stack.getAmount() <= 0) return null;
+                }
+            }
+        }
+
+        // Try empty slots (9–35)
+        for (int i = 9; i <= 36; i++) {
+            ItemStack item = player.getInventory().getItem(i);
+            if (item == null) {
+                player.getInventory().setItem(i, stack);
+                return null; // Stored fully
+            }
+        }
+
+        return stack; // Nothing stored → leftover
     }
 
     /* ==========================================================

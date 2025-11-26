@@ -56,6 +56,7 @@ public class PlayerKillEventListener implements Listener {
         if (arena.getType() == ArenaType.DUEL) return;
 
         deathMessageManager.handleDeath(victim, arena, false, false);
+        EnderPearlListener.getCooldowns().remove(victim.getUniqueId());
     }
 
     /*

@@ -4,17 +4,22 @@ import me.molfordan.arenaAndFFAManager.commands.*;
 import me.molfordan.arenaAndFFAManager.config.BridgeFightConfig;
 import me.molfordan.arenaAndFFAManager.config.RegionsConfig;
 import me.molfordan.arenaAndFFAManager.database.DatabaseManager;
-import me.molfordan.arenaAndFFAManager.gui.GUILeaderboard;
+import me.molfordan.arenaAndFFAManager.gui.GUILeaderboardBridgeFight;
+import me.molfordan.arenaAndFFAManager.gui.GUILeaderboardBuildFFA;
 import me.molfordan.arenaAndFFAManager.gui.GUILeaderboardMain;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarListener;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarSorter;
 import me.molfordan.arenaAndFFAManager.kits.KitManager;
+import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.BridgeFightKitManager;
+import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.gui.BridgeFightKitGUI;
+import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.gui.SelectKitListener;
 import me.molfordan.arenaAndFFAManager.listener.*;
 import me.molfordan.arenaAndFFAManager.manager.*;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
 import me.molfordan.arenaAndFFAManager.placeholder.LeaderboardPlaceholderExpansion;
 import me.molfordan.arenaAndFFAManager.region.CommandRegionManager;
+import me.molfordan.arenaAndFFAManager.region.RegionFlagListener;
 import me.molfordan.arenaAndFFAManager.restore.DailyArenaRestorer;
 import me.molfordan.arenaAndFFAManager.restore.PersistentRestoreManager;
 import me.molfordan.arenaAndFFAManager.spawnitem.SpawnItem;
@@ -39,6 +44,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private ConfigManager configManager;
     private HotbarSorter hotbarSorter;
     private BridgeFightBanManager bridgeFightBanManager;
+    private BridgeFightKitGUI bridgeFightKitGUI;
     private TeleportPendingManager teleportPendingManager;
     private CombatManager combatManager;
     private DeathMessageManager deathMessageManager;
@@ -54,8 +60,11 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private RegionsConfig regionsConfig;
     private StatsManager statsManager;
     private DatabaseManager databaseManager;
-    private GUILeaderboard guiLeaderboard;
+    private GUILeaderboardBridgeFight guiLeaderboardBridgeFight;
+    private GUILeaderboardBuildFFA guiLeaderboardBuildFFA;
+    private BridgeFightKitManager bridgeFightKitManager;
     private LeaderboardPlaceholderExpansion placeholderLeaderboardExpansion;
+    private InvisPlayerListener invisPlayerListener;
     private DailyArenaRestorer dailyArenaRestorer;
     //private FlightManager flightManager;
     private FrozenManager frozenManager;
@@ -92,13 +101,16 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.hotbarSorter = new HotbarSorter(hotbarDataManager);
         this.bridgeFightBanManager = new BridgeFightBanManager(getDataFolder());
         this.placeholderLeaderboardExpansion = new LeaderboardPlaceholderExpansion(this);
-        this.guiLeaderboard = new GUILeaderboard(this);
+        this.guiLeaderboardBridgeFight = new GUILeaderboardBridgeFight(this);
+        this.guiLeaderboardBuildFFA = new GUILeaderboardBuildFFA(this);
         this.guiLeaderboardMain = new GUILeaderboardMain(this);
         this.spawnItem = new SpawnItem(this);
         this.frozenManager = new FrozenManager(this);
         this.reportManager = new ReportManager(this, getDataFolder());
         this.teleportPendingManager = new TeleportPendingManager();
         //this.flightManager = new FlightManager(configManager.getLobbyWorldName());
+        this.bridgeFightKitManager = new BridgeFightKitManager();
+        this.bridgeFightKitGUI = new BridgeFightKitGUI(this);
         persistentRestoreManager.loadAll();
         persistentRestoreManager.startAutoSave();
         String lobbyWorld = configManager.getLobbyWorldName();
@@ -124,8 +136,8 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("build").setExecutor(new BuildModeCommand(configManager));
         getCommand("buildffa").setExecutor(new BuildFFACommand(configManager));
         getCommand("bridgefight").setExecutor(new BridgeFightCommand(configManager, this));
-        getCommand("loadworld").setExecutor(new LoadWorldCommand(configManager));
-        getCommand("spawn").setExecutor(new LobbyCommand(configManager, teleportPendingManager));
+        getCommand("loadworld").setExecutor(new LoadWorldCommand(configManager, this));
+        getCommand("spawn").setExecutor(new LobbyCommand(configManager, teleportPendingManager, this));
         getCommand("setpos1").setExecutor(new SetPlatformPosCommand(this, platformManager));
         getCommand("setpos2").setExecutor(new SetPlatformPosCommand(this, platformManager));
         getCommand("stats").setExecutor(new StatsCommand(this));
@@ -148,7 +160,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
             CommandRegister.registerCommand(new me.molfordan.arenaAndFFAManager.commands.PlatformCommand("setplat" + i, this, kitManager, platformManager));
             CommandRegister.registerCommand(new me.molfordan.arenaAndFFAManager.commands.PlatformCommand("setbigplat" + i, this, kitManager, platformManager));
         }
-        getCommand("bridgeban").setExecutor(new BridgeBanCommand(bridgeFightBanManager));
+        getCommand("bridgeban").setExecutor(new BridgeBanCommand(bridgeFightBanManager, this));
         getCommand("bridgeunban").setExecutor(new BridgeUnbanCommand(bridgeFightBanManager));
         getCommand("playerhistory").setExecutor(new PlayerHistoryCommand(this));
         getCommand("freeze").setExecutor(new FrozenCommand(this));
@@ -182,11 +194,18 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         saveConfig();
         getServer().getPluginManager().registerEvents(new ItemReceiveListener(buildFFAWorld, hotbarSorter), this);
         getServer().getPluginManager().registerEvents(new LeaderboardGUIListener(this), this);
-        getServer().getPluginManager().registerEvents(new EnderPearlListener(), this);
+        getServer().getPluginManager().registerEvents(new EnderPearlListener(this), this);
         getServer().getPluginManager().registerEvents(new PrivateWorldListener(this), this);
         getServer().getPluginManager().registerEvents(this.frozenManager, this);
         getServer().getPluginManager().registerEvents(new TeleportCancelListener(this.teleportPendingManager), this);
         getServer().getPluginManager().registerEvents(new StatsGUIListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new BridgeFightBanListener(bridgeFightBanManager), this
+        );
+        getServer().getPluginManager().registerEvents(new RegionListener(regionManager), this);
+        getServer().getPluginManager().registerEvents(new RegionFlagListener(regionManager), this);
+        getServer().getPluginManager().registerEvents(new InvisPlayerListener(this), this);
+        getServer().getPluginManager().registerEvents(new SelectKitListener(this), this);
 
         //new RegionTriggerTask(regionManager).runTaskTimer(this, 0L, 10L);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "nebula:main");
@@ -291,8 +310,11 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     }
     public StatsManager getStatsManager() { return  statsManager; }
     public BridgeFightBanManager getBridgeFightBanManager() { return bridgeFightBanManager; }
-    public GUILeaderboard getGuiLeaderboard() {
-        return guiLeaderboard;
+    public GUILeaderboardBridgeFight getGuiLeaderboardBridgeFight() {
+        return guiLeaderboardBridgeFight;
+    }
+    public GUILeaderboardBuildFFA getGuiLeaderboardBuildFFA() {
+        return guiLeaderboardBuildFFA;
     }
     public GUILeaderboardMain getGuiLeaderboardMain() {
         return guiLeaderboardMain;
@@ -303,6 +325,12 @@ public final class ArenaAndFFAManager extends JavaPlugin {
 
     public ReportManager getReportManager(){
         return reportManager;
+    }
+    public BridgeFightKitManager getBridgeFightKitManager(){
+        return bridgeFightKitManager;
+    }
+    public BridgeFightKitGUI getBridgeFightGUI(){
+        return bridgeFightKitGUI;
     }
 
     public FrozenManager getFrozenManager(){
@@ -323,4 +351,11 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         return platformManager;
     }
 
+    public CommandRegionManager getRegionManager() {
+        return regionManager;
+    }
+
+    public InvisPlayerListener getInvisPlayerListener() {
+        return invisPlayerListener;
+    }
 }

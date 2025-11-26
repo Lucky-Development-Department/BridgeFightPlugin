@@ -45,6 +45,11 @@ public class BridgeFightCommand implements CommandExecutor {
         }
 
          */
+        if (plugin.getBridgeFightBanManager().isPlayerBanned(player.getUniqueId())){
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', prefix + " &cYou are banned from BridgeFight"));
+            return true;
+        }
+
 
 
         player.teleport(bridgeFightLoc);

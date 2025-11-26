@@ -2,18 +2,21 @@ package me.molfordan.arenaAndFFAManager.region;
 
 import org.bukkit.Location;
 
-import java.util.Objects;
+import java.util.EnumMap;
+import java.util.Map;
 
 public final class CommandRegion {
 
-    public enum Executor { CONSOLE, PLAYER }
+    public enum Executor { CONSOLE, PLAYER, NULL}
 
     private Location pos1;
     private Location pos2;
-    private final String command;
-    private final Executor executor;
 
-    // cached block-aligned bounds
+    private String command;
+    private Executor executor;
+
+    private final Map<FlagType, String> flags = new EnumMap<>(FlagType.class);
+
     private int minX, maxX, minY, maxY, minZ, maxZ;
 
     public CommandRegion(Location pos1, Location pos2, String command, Executor executor) {
@@ -21,11 +24,9 @@ public final class CommandRegion {
         this.pos2 = pos2;
         this.command = command == null ? "" : command;
         this.executor = executor == null ? Executor.CONSOLE : executor;
-
         recalcBounds();
     }
 
-    /** Convert raw pos1/pos2 into FULL BLOCK cuboid bounds */
     private void recalcBounds() {
         if (pos1 == null || pos2 == null) return;
 
@@ -37,17 +38,10 @@ public final class CommandRegion {
 
         minZ = Math.min(pos1.getBlockZ(), pos2.getBlockZ());
         maxZ = Math.max(pos1.getBlockZ(), pos2.getBlockZ());
-
-        // expand cuboid by 1 block so it's inclusive and enterable
-        maxX++;
-        maxY++;
-        maxZ++;
     }
 
-    /** Player enters if their location block coords fall inside cuboid */
     public boolean isInside(Location loc) {
         if (loc == null || pos1 == null || pos2 == null) return false;
-
         if (!loc.getWorld().equals(pos1.getWorld())) return false;
 
         int x = loc.getBlockX();
@@ -59,43 +53,50 @@ public final class CommandRegion {
                 z >= minZ && z <= maxZ;
     }
 
+    public void setPos1(Location pos1) { this.pos1 = pos1; recalcBounds(); }
+    public void setPos2(Location pos2) { this.pos2 = pos2; recalcBounds(); }
+
     public Location getPos1() { return pos1; }
     public Location getPos2() { return pos2; }
+
     public String getCommand() { return command; }
     public Executor getExecutor() { return executor; }
 
-    public void setPos1(Location pos1) {
-        this.pos1 = pos1;
-        recalcBounds();
+    // NEW
+    public void setCommand(String command) {
+        this.command = command == null ? "" : command;
     }
 
-    public void setPos2(Location pos2) {
-        this.pos2 = pos2;
-        recalcBounds();
+    // NEW
+    public void setExecutor(Executor executor) {
+        if (executor != null) this.executor = executor;
     }
 
-    @Override
-    public String toString() {
-        return "CommandRegion{" +
-                "pos1=" + pos1 +
-                ", pos2=" + pos2 +
-                ", command='" + command + '\'' +
-                ", executor=" + executor +
-                '}';
+    public void setFlag(FlagType type, String value) {
+        flags.put(type, value.toLowerCase());
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof CommandRegion)) return false;
-        CommandRegion other = (CommandRegion) o;
-        return Objects.equals(pos1, other.pos1) &&
-                Objects.equals(pos2, other.pos2) &&
-                Objects.equals(command, other.command) &&
-                executor == other.executor;
+    public String getFlag(FlagType type) {
+        return flags.get(type);
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(pos1, pos2, command, executor);
+    public Map<FlagType, String> getFlags() {
+        return flags;
     }
+
+    public boolean isBuildDenied() {
+        String val = flags.get(FlagType.BUILD);
+        if (val == null) return false;
+        return val.equalsIgnoreCase("deny") || val.equalsIgnoreCase("false");
+    }
+    public boolean isFlagAllowed(FlagType type) {
+        String val = flags.get(type);
+        return val != null && val.equalsIgnoreCase("allow");
+    }
+
+    public boolean isFlagDenied(FlagType type) {
+        String val = flags.get(type);
+        return val != null && val.equalsIgnoreCase("deny");
+    }
+
 }

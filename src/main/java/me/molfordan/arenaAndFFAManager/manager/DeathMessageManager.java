@@ -421,7 +421,7 @@ public class DeathMessageManager {
                 givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
                 break;
             case 20:
-                givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 0, ChatColor.RED + "Strength Potion (30s)");
+                givePotion(killer, PotionEffectType.INVISIBILITY, 45, 1, ChatColor.AQUA + "Invisibility II Potion (45s)");
                 break;
             case 25:
                 givePotion(killer, PotionEffectType.SPEED, 30, 1, ChatColor.RED + "Speed Potion (30s)");

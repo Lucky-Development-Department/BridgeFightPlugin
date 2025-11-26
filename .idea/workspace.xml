@@ -4,43 +4,54 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e1e134a8-8b89-454a-95c4-6acdf11fcdee" name="Changes" comment="fixed KDR formatting">
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/PrivateWorldCommand.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/StatsResetCommand.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/PrivateWorldListener.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/TeleportCancelListener.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/TeleportPendingManager.java" afterDir="false" />
+    <list default="true" id="e1e134a8-8b89-454a-95c4-6acdf11fcdee" name="Changes" comment="fixed Database connection, pearl and snowball, added potion removal after drinking, and nerfing strength">
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/gui/GUILeaderboardBuildFFA.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/BlockHotbarSorter.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/BaseKit.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/BridgeFightKitManager.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/Kit.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/KitItem.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/customkits/DefaultKit.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/customkits/DiamondArmorKit.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/customkits/GoldArmorKit.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/customkits/GoldSwordKit.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/gui/BridgeFightKitGUI.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/bridgefightkit/gui/SelectKitListener.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BridgeFightBanListener.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/InvisPlayerListener.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/RegionListener.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/region/FlagType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/region/RegionFlagListener.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/utils/SkinFetcher.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dependency-reduced-pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/dependency-reduced-pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/ArenaAndFFAManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/ArenaAndFFAManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/SerializableBlockState.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/object/SerializableBlockState.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/ArenaCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/ArenaCommand.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/BridgeBanCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/BridgeBanCommand.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/BridgeFightCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/BridgeFightCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/FrozenCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/FrozenCommand.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/GUIStatsCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/GUIStatsCommand.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/LeaderboardCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/LeaderboardCommand.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/LoadWorldCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/LoadWorldCommand.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/LobbyCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/LobbyCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/SetLobbyCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/SetLobbyCommand.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/RegionCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/RegionCommand.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/StatsCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/StatsCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/UnfrozenCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/UnfrozenCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/database/DatabaseManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/database/DatabaseManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/database/connectors/MySQLConnector.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/database/connectors/MySQLConnector.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarSession.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarSession.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/gui/GUILeaderboard.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/gui/GUILeaderboardBridgeFight.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/gui/GUILeaderboardMain.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/gui/GUILeaderboardMain.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/KitManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/KitManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BlockEventListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BlockEventListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BridgeFightListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BridgeFightListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BuildFFAListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BuildFFAListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/CombatLogListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/CombatLogListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/DeathEventListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/DeathEventListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/EnderPearlListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/EnderPearlListener.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/GlobalListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/GlobalListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/LeaderboardGUIListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/LeaderboardGUIListener.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/LobbyListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/LobbyListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/PlayerKillEventListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/PlayerKillEventListener.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/ArenaManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/ArenaManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/ConfigManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/ConfigManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/DeathMessageManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/DeathMessageManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/HotbarDataManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/HotbarDataManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/PlatformManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/PlatformManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/object/Arena.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/object/Arena.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/placeholder/LeaderboardPlaceholderExpansion.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/placeholder/LeaderboardPlaceholderExpansion.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/restore/DailyArenaRestorer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/restore/DailyArenaRestorer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/FrozenManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/FrozenManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/region/CommandRegion.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/region/CommandRegion.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/region/CommandRegionManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/region/CommandRegionManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/spawnitem/SpawnItem.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/spawnitem/SpawnItem.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/task/RegionTriggerTask.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/task/RegionTriggerTask.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/utils/HeadUtils.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/utils/HeadUtils.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/plugin.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/plugin.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -91,6 +102,7 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;Maven.ArenaFFAManager [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.ArenaFFAManager [package].executor&quot;: &quot;Run&quot;,
     &quot;Maven.ArenaFFAManager.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
@@ -214,7 +226,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763533060900</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="fixed Database connection, pearl and snowball, added potion removal after drinking, and nerfing strength">
+      <option name="closed" value="true" />
+      <created>1763795023667</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1763795023667</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -235,6 +255,7 @@
     <MESSAGE value="fixed hotbar layout" />
     <MESSAGE value="added pearl cancelation after player's death" />
     <MESSAGE value="fixed KDR formatting" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixed KDR formatting" />
+    <MESSAGE value="fixed Database connection, pearl and snowball, added potion removal after drinking, and nerfing strength" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixed Database connection, pearl and snowball, added potion removal after drinking, and nerfing strength" />
   </component>
 </project>

@@ -31,29 +31,46 @@ public class RegionTriggerTask extends BukkitRunnable {
                 if (r.isInside(p.getLocation())) {
                     inAny = true;
 
+                    // Only trigger once per enter
                     if (!inside.getOrDefault(p, false)) {
 
-                        String raw = r.getCommand().replace("%player%", p.getName());
-                        String cmd = raw;
+                        String cmd = r.getCommand();
+                        CommandRegion.Executor exec = r.getExecutor();
 
-                        // ================================
-                        //  CONNECT: FLAG SUPPORT
-                        // ================================
-                        if (cmd.toLowerCase().startsWith("connect:")) {
-                            String server = cmd.substring("connect:".length());
-                            sendToServer(p, server.trim());
+                        // ======================================================
+                        // IGNORE NULL EXECUTOR OR EMPTY COMMAND
+                        // ======================================================
+                        if (exec == CommandRegion.Executor.NULL ||
+                                cmd == null ||
+                                cmd.trim().isEmpty()) {
+
                             inside.put(p, true);
                             break;
                         }
 
-                        // ================================
-                        //  NORMAL COMMAND EXECUTION
-                        // ================================
-                        if (r.getExecutor() == CommandRegion.Executor.CONSOLE) {
-                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                        // Handle %player%
+                        String prepared = cmd.replace("%player%", p.getName());
+
+                        // ======================================================
+                        // CONNECT:server SUPPORT
+                        // ======================================================
+                        if (prepared.toLowerCase().startsWith("connect:")) {
+                            String server = prepared.substring("connect:".length()).trim();
+                            sendToServer(p, server);
+                            inside.put(p, true);
+                            break;
+                        }
+
+                        // ======================================================
+                        // NORMAL COMMAND EXECUTION
+                        // ======================================================
+                        if (exec == CommandRegion.Executor.CONSOLE) {
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), prepared);
                         } else {
-                            if (cmd.startsWith("/")) cmd = cmd.substring(1);
-                            p.performCommand(cmd);
+                            if (prepared.startsWith("/")) {
+                                prepared = prepared.substring(1);
+                            }
+                            p.performCommand(prepared);
                         }
 
                         inside.put(p, true);
@@ -62,22 +79,24 @@ public class RegionTriggerTask extends BukkitRunnable {
                 }
             }
 
+            // Reset enter state when outside all regions
             if (!inAny) inside.put(p, false);
         }
     }
 
-    // ================================================
-    //  SEND PLAYER TO VELOCITY/BUNGEE SERVER
-    // ================================================
+    // ============================================================
+    // SEND PLAYER TO VELOCITY/BUNGEE SERVER
+    // ============================================================
     public void sendToServer(Player player, String server) {
         ByteArrayOutputStream b = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(b);
         try {
-            out.writeUTF("Connect"); // Lowercase = Velocity + Bungee compatible
+            out.writeUTF("Connect");
             out.writeUTF(server);
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         player.sendPluginMessage(ArenaAndFFAManager.getPlugin(), "nebula:main", b.toByteArray());
         player.sendPluginMessage(ArenaAndFFAManager.getPlugin(), "BungeeCord", b.toByteArray());
     }

@@ -1,7 +1,6 @@
 package me.molfordan.arenaAndFFAManager.gui;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
-import me.molfordan.arenaAndFFAManager.placeholder.LeaderboardPlaceholderExpansion;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -26,12 +25,24 @@ public class GUILeaderboardMain {
         ItemStack bridge = new ItemStack(Material.STONE_SWORD);
         ItemMeta bm = bridge.getItemMeta();
         bm.setDisplayName(ChatColor.BLUE + "BridgeFight Leaderboards");
+        bm.setLore(java.util.Arrays.asList(
+                ChatColor.GRAY + "View Top Players for:",
+                ChatColor.YELLOW + "• Kills",
+                ChatColor.YELLOW + "• Streak",
+                ChatColor.YELLOW + "• Highest Streak"
+        ));
         bridge.setItemMeta(bm);
 
         // BuildFFA icon
         ItemStack build = new ItemStack(Material.WOOL, 1, (short) 14);
         ItemMeta wm = build.getItemMeta();
         wm.setDisplayName(ChatColor.RED + "BuildFFA Leaderboards");
+        wm.setLore(java.util.Arrays.asList(
+                ChatColor.GRAY + "View Top Players for:",
+                ChatColor.YELLOW + "• Kills",
+                ChatColor.YELLOW + "• Streak",
+                ChatColor.YELLOW + "• Highest Streak"
+        ));
         build.setItemMeta(wm);
 
         inv.setItem(11, bridge);

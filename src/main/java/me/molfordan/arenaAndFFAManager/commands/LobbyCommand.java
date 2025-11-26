@@ -3,6 +3,7 @@ package me.molfordan.arenaAndFFAManager.commands;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
 import me.molfordan.arenaAndFFAManager.manager.TeleportPendingManager;
+import me.molfordan.arenaAndFFAManager.object.Arena;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
@@ -16,10 +17,12 @@ public class LobbyCommand implements CommandExecutor {
 
     private final ConfigManager configManager;
     private final TeleportPendingManager pending;
+    private final ArenaAndFFAManager plugin;
 
-    public LobbyCommand(ConfigManager configManager, TeleportPendingManager pending){
+    public LobbyCommand(ConfigManager configManager, TeleportPendingManager pending, ArenaAndFFAManager plugin){
         this.configManager = configManager;
         this.pending = pending;
+        this.plugin = plugin;
     }
 
     @Override
@@ -77,6 +80,7 @@ public class LobbyCommand implements CommandExecutor {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', prefix + " &cFailed to send you to the Spawn, Please Contact Admins."));
             return true;
         }
+        
         return true;
     }
 }

@@ -14,6 +14,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.sql.Connection;
@@ -66,8 +67,24 @@ public class LeaderboardCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
-        if (args.length < 2) {
-            sender.sendMessage("§cUsage: /leaderboard <bridge|build> <kills|deaths|streak|highest> [top]");
+        if (args.length == 0) {
+            sender.sendMessage("§cUsage: /leaderboard <bridge|build|gui> <kills|deaths|streak|highest> [top]");
+            return true;
+        }
+
+        if (args.length == 1 && args[0].equalsIgnoreCase("gui")) {
+
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("§cOnly players can open GUI leaderboards.");
+                return true;
+            }
+
+            Player p = (Player) sender;
+
+            // refresh cache + open GUI
+            plugin.getLeaderboardPlaceholderExpansion().updateLeaderboardCache();
+            plugin.getGuiLeaderboardMain().open(p);
+
             return true;
         }
 

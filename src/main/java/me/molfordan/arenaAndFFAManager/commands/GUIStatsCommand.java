@@ -66,7 +66,7 @@ public class GUIStatsCommand implements CommandExecutor {
     // ---------------------------------------------------------------------
     // ASYNC LOAD → SYNC GUI OPEN
     // ---------------------------------------------------------------------
-    private void openGUIAsync(Player viewer, UUID uuid, String username) {
+    public void openGUIAsync(Player viewer, UUID uuid, String username) {
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
             @Override

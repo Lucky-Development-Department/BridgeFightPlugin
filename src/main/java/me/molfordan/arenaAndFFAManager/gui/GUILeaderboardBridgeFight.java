@@ -12,11 +12,11 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.List;
 
-public class GUILeaderboard {
+public class GUILeaderboardBridgeFight {
 
     private final ArenaAndFFAManager plugin;
 
-    public GUILeaderboard(ArenaAndFFAManager plugin) {
+    public GUILeaderboardBridgeFight(ArenaAndFFAManager plugin) {
         this.plugin = plugin;
     }
 
@@ -28,53 +28,38 @@ public class GUILeaderboard {
         return pane;
     }
 
-    private ItemStack categoryItem(String name, Material m, String... lore) {
-        ItemStack i = new ItemStack(m);
-        ItemMeta meta = i.getItemMeta();
-        meta.setDisplayName("§e§l" + name);
-        meta.setLore(java.util.Arrays.asList(lore));
-        i.setItemMeta(meta);
-        return i;
+    private ItemStack category(String name, Material material, String... lore) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta m = item.getItemMeta();
+        m.setDisplayName("§e§l" + name);
+        m.setLore(java.util.Arrays.asList(lore));
+        item.setItemMeta(m);
+        return item;
     }
 
-    private ItemStack categoryItem(String name, Material m, int in, short s, String... lore) {
-        ItemStack i = new ItemStack(m, in, s);
-        ItemMeta meta = i.getItemMeta();
-        meta.setDisplayName("§e§l" + name);
-        meta.setLore(java.util.Arrays.asList(lore));
-        i.setItemMeta(meta);
-        return i;
-    }
-
-
-    // -------------------------------------------------------
-    // OPEN leaderboard GUI
-    // -------------------------------------------------------
-    public void open(Player p, String category, String metric, int page, List<LBEntry> list) {
+    public void open(Player p, String metric, int page, List<LBEntry> entries) {
 
         int perPage = 28;
-        int maxPage = (int) Math.ceil(list.size() / (double) perPage);
-        if (maxPage == 0) maxPage = 1;
+        int maxPage = (int) Math.ceil(entries.size() / (double) perPage);
+        if (maxPage <= 0) maxPage = 1;
         if (page < 1) page = 1;
         if (page > maxPage) page = maxPage;
 
         Inventory inv = Bukkit.createInventory(null, 54,
-                "§8Leaderboard: §e" + category + " " + metric + " §7(Page " + page + ")");
+                "§8BridgeFight §7- §e" + metric + " §7(Page " + page + ")");
 
         // Outline
         for (int i = 0; i < 54; i++) {
-
-            // Don't overwrite prev/next page buttons
             if (i == 45 || i == 53) continue;
-
             if (i < 9 || i > 44 || i % 9 == 0 || i % 9 == 8) {
                 inv.setItem(i, outline());
             }
         }
 
-        // Categories
-        inv.setItem(0, categoryItem("BridgeFight", Material.STONE_SWORD, "§7View BridgeFight leaderboards."));
-        inv.setItem(8, categoryItem("BuildFFA", Material.WOOL, 1, (short) 14, "§7View BuildFFA leaderboards."));
+        // Category Buttons
+        inv.setItem(2, category("Kills", Material.IRON_SWORD, "§7Click to view kills leaderboard."));
+        inv.setItem(4, category("Streak", Material.BLAZE_POWDER, "§7Click to view streak leaderboard."));
+        inv.setItem(6, category("Highest Streak", Material.NETHER_STAR, "§7Click to view highest streak leaderboard."));
 
         // Pagination
         if (page > 1) {
@@ -93,9 +78,9 @@ public class GUILeaderboard {
             inv.setItem(53, next);
         }
 
-        // Fill leaderboard
+        // Leaderboard slots
         int start = (page - 1) * perPage;
-        int end = Math.min(start + perPage, list.size());
+        int end = Math.min(start + perPage, entries.size());
 
         int[] slots = {
                 10,11,12,13,14,15,16,
@@ -105,23 +90,40 @@ public class GUILeaderboard {
         };
 
         int si = 0;
+
         for (int i = start; i < end; i++) {
+            int slot = slots[si];
+            LBEntry e = entries.get(i);
 
-            LBEntry e = list.get(i);
+            // create placeholder head & async update
+            ItemStack placeholder = HeadUtils.getHead(
+                    e.uuid,
+                    e.name,
+                    e.value,
+                    i + 1,
+                    updated -> Bukkit.getScheduler().runTask(plugin, () -> inv.setItem(slot, updated))
+            );
 
-            // --- USE NEW SAFE HEAD ---
-            ItemStack skull = HeadUtils.getHead(e.uuid, e.name, e.value, i + 1);
-
-            inv.setItem(slots[si], skull);
+            inv.setItem(slot, placeholder);
             si++;
         }
 
-        // Fill empty remaining slots with '?' heads
         while (si < slots.length) {
-            inv.setItem(slots[si], HeadUtils.getHead(null, null, 0, si + 1));
+            int slot = slots[si];
+
+            ItemStack placeholder = HeadUtils.getHead(
+                    null,
+                    null,
+                    0,
+                    si + 1,
+                    updated -> Bukkit.getScheduler().runTask(plugin, () -> inv.setItem(slot, updated))
+            );
+
+            inv.setItem(slot, placeholder);
             si++;
         }
 
         p.openInventory(inv);
     }
+
 }
