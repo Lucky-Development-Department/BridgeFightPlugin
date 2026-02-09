@@ -4,6 +4,7 @@ import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarManager;
 import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.BridgeFightKitManager;
 import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.Kit;
+import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.Kit2;
 import me.molfordan.arenaAndFFAManager.manager.HotbarDataManager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import org.bukkit.Bukkit;
@@ -38,7 +39,7 @@ public class KitManager {
 
         String kitName = selectedBridgeFightKit.getOrDefault(player.getUniqueId(), "Default");
 
-        Kit kit = manager.get(kitName);
+        Kit2 kit = manager.get(kitName);
         if (kit != null) kit.apply(player);
         Bukkit.getScheduler().runTaskLater(ArenaAndFFAManager.getPlugin(), () -> {
             fixArmor(player);       // ensures final armor is correct
@@ -108,6 +109,7 @@ public class KitManager {
     private void sendArmorUpdate(Player target) {
         int entityId = target.getEntityId();
         ItemStack[] armor = target.getInventory().getArmorContents();
+        ItemStack itemInHand = target.getInventory().getItemInHand();
 
         // armor[] order:
         // armor[0] = BOOTS
@@ -122,6 +124,8 @@ public class KitManager {
             sendEquipment(viewer, entityId, 2, armor[1]); // LEGS → slot 3
             sendEquipment(viewer, entityId, 3, armor[2]); // CHEST → slot 2
             sendEquipment(viewer, entityId, 4, armor[3]); // HELMET → slot 1
+
+            sendEquipment(viewer, entityId, 0, itemInHand); // Item in hand
         }
     }
 
@@ -153,6 +157,8 @@ public class KitManager {
     public String getSelectedBridgeFightKit(UUID uuid) {
         return selectedBridgeFightKit.getOrDefault(uuid, "Default");
     }
+
+
 
 
 }

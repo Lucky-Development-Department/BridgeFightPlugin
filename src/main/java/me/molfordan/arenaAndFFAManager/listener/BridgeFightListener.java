@@ -2,6 +2,7 @@ package me.molfordan.arenaAndFFAManager.listener;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
+import me.molfordan.arenaAndFFAManager.manager.DeathMessageManager;
 import me.molfordan.arenaAndFFAManager.manager.PlatformManager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.PlatformRegion;
@@ -9,6 +10,7 @@ import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -16,15 +18,19 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.Location;
 
+import java.util.UUID;
+
 public class BridgeFightListener implements Listener {
 
     private final PlatformManager platformManager;
     private final ConfigManager configManager;
+    private final ArenaAndFFAManager plugin;
 
     public BridgeFightListener(PlatformManager platformManager,
-                               ConfigManager configManager) {
+                               ConfigManager configManager, ArenaAndFFAManager plugin) {
         this.platformManager = platformManager;
         this.configManager = configManager;
+        this.plugin = plugin;
     }
 
     /**
@@ -57,6 +63,9 @@ public class BridgeFightListener implements Listener {
                     true,  // isVoidDeath = true
                     false  // isQuit = false
             );
+            p.getInventory().clear();
+            p.getInventory().setArmorContents(null);
+            plugin.getKitManager().applyBridgeFightKit(p);
             return;
         }
 
@@ -66,7 +75,7 @@ public class BridgeFightListener implements Listener {
     /**
      * Zero damage but allow knockback
      */
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDamagePlayer(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         if (!(event.getDamager() instanceof Player)) return;
@@ -77,8 +86,17 @@ public class BridgeFightListener implements Listener {
         Player victim = (Player) event.getEntity();
         if (!victim.getWorld().getName().equals(world)) return;
 
+
+        Player damager = (Player) event.getDamager();
+
+        if (!plugin.getDeathMessageManager().handleDuelHit(damager, victim)) {
+            event.setCancelled(true);
+        }
+
         event.setDamage(0.0);
     }
+
+
 
     @EventHandler
     public void onAnvilInteract(PlayerInteractEvent event){

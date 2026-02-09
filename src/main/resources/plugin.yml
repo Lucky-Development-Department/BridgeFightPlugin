@@ -35,6 +35,11 @@ commands:
   bridgefight:
     usage: '/bridgefight'
     description: 'bridgefight'
+    aliases: [housing]
+  syncdata:
+    usage: '/syncdata'
+    description: 'syncdata'
+    permission: arenamap.admin
   loadworld:
     usage: '/loadworld <name> <type>'
     description: 'load worlds'
@@ -111,6 +116,12 @@ commands:
     usage: '/setstats <player> <bridgefight|buildffa> <kills|deaths|streak|highest_streak> <value>'
     description: 'setstats command'
     permission: arenamap.admin
+  kit:
+    usage: '/kit'
+    description: 'kit command'
+  debugging:
+    usage: '/debugging'
+    description: 'debug command'
 
 permissions:
   arenamap.admin:

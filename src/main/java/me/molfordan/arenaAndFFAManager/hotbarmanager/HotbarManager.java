@@ -122,20 +122,25 @@ public class HotbarManager {
             case WOOD_SWORD:
             case STONE_SWORD:
             case IRON_SWORD:
+            case GOLD_SWORD:
             case DIAMOND_SWORD:
                 return "melee";
 
             case WOOD_PICKAXE:
             case STONE_PICKAXE:
             case IRON_PICKAXE:
+            case GOLD_PICKAXE:
             case DIAMOND_PICKAXE:
                 return "pickaxe";
 
             case WOOD_AXE:
             case STONE_AXE:
             case IRON_AXE:
+            case GOLD_AXE:
             case DIAMOND_AXE:
                 return "axe";
+            case EGG:
+                return "egg";
 
             case SHEARS:
                 return "shears";
@@ -150,6 +155,9 @@ public class HotbarManager {
                 return "snowball";
             case GOLDEN_APPLE:
                 return "golden_apple";
+                
+            case FIREBALL:
+                return "fireball";
 
             case WOOL:
             case STAINED_CLAY:

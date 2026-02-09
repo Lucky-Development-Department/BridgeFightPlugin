@@ -38,10 +38,19 @@ public class BuildFFAListener implements Listener {
 
         if (!isInBuildFFAWorld(player)) return;
 
-        // Remove the death screen (1.8 trick)
+        // Clear the drops to prevent items from dropping
+        event.getDrops().clear();
+        event.setDroppedExp(0);
+        event.setKeepInventory(true); // Keep the player's inventory
+
+        // Schedule the respawn
         Bukkit.getScheduler().runTaskLater(
                 ArenaAndFFAManager.getPlugin(),
-                () -> player.spigot().respawn(),
+                () -> {
+                    player.spigot().respawn();
+                    // Set the player to survival mode (in case they were in spectator)
+                    player.setGameMode(GameMode.SURVIVAL);
+                },
                 1L
         );
     }

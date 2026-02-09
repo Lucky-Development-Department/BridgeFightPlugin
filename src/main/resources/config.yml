@@ -1,1 +1,22 @@
 death-message: true
+fireball:
+  knockback:
+    horizontal: 1.2
+    vertical: 0.85
+    max-y: 1.6
+
+# Local Storage Configuration
+local-storage:
+  enabled: true
+  storage-path: "local_storage"
+  auto-save-interval-seconds: 300  # Save to file every 5 minutes
+  
+# Database Sync Configuration  
+database-sync:
+  enabled: true
+  sync-time: "01:00"  # 1AM Jakarta time (24-hour format)
+  timezone: "Asia/Jakarta"
+  max-retries: 3
+  retry-delay-minutes: 5
+  sync-timeout-minutes: 30
+  create-backup-on-failure: true

@@ -24,17 +24,30 @@ public class StatsManager {
     private final File statsFolder;
 
     private final Map<UUID, PlayerStats> cache = new HashMap<>();
-
-
-
-    public StatsManager(ArenaAndFFAManager plugin) {
-        this.plugin = plugin;
-        this.db = plugin.getDatabaseManager();
+    
+    // Local storage integration
+        private final LocalStorageManager localStorageManager;
+        private final DatabaseSyncScheduler syncScheduler;
+        private final BackupManager backupManager; // New field
+    
+        public StatsManager(ArenaAndFFAManager plugin, BackupManager backupManager) {
+            this.plugin = plugin;
+            this.db = plugin.getDatabaseManager();
+            this.backupManager = backupManager; // Initialize new field
 
         this.statsFolder = new File(plugin.getDataFolder(), "playerstats");
         if (!statsFolder.exists()) statsFolder.mkdirs();
+        
+        // Initialize local storage
+        this.localStorageManager = new LocalStorageManager(plugin);
+        
+        // Initialize sync scheduler
+        this.syncScheduler = new DatabaseSyncScheduler(plugin, localStorageManager, this, backupManager);
 
         setupSQLTables();
+        
+        // Start the sync scheduler
+        syncScheduler.startScheduler();
     }
 
     // --------------------------------------------------------------------------------------
@@ -212,6 +225,25 @@ public class StatsManager {
     public void savePlayerAsync(PlayerStats stats) {
         if (stats == null) return;
 
+        // Save to local storage immediately
+        localStorageManager.savePlayerLocal(stats);
+        
+        // Note: Database sync happens via scheduler at 1AM Jakarta time
+    }
+    
+    /**
+     * Save player directly to database (used by sync scheduler)
+     */
+    public void savePlayerSync(PlayerStats stats) {
+        savePlayer(stats);
+    }
+    
+    /**
+     * Save player to database immediately (legacy method for compatibility)
+     */
+    public void savePlayerToDatabase(PlayerStats stats) {
+        if (stats == null) return;
+
         try {
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> savePlayer(stats));
         } catch (IllegalPluginAccessException e) {
@@ -379,9 +411,30 @@ public class StatsManager {
 
     /** Returns cached stats, or loads if absent */
     public PlayerStats getOrLoad(UUID uuid, String username) {
-        PlayerStats stats = cache.get(uuid);
-        if (stats != null) return stats;
-        return loadPlayer(uuid, username);
+        // First check local storage
+        PlayerStats stats = localStorageManager.getPlayerStats(uuid);
+        if (stats != null) {
+            cache.put(uuid, stats);
+            return stats;
+        }
+        
+        // If not in local storage, try database (for initial migration)
+        stats = cache.get(uuid);
+        if (stats == null) {
+            stats = loadPlayer(uuid, username);
+            if (stats != null) {
+                // Save to local storage for future use
+                localStorageManager.savePlayerLocal(stats);
+            }
+        }
+        
+        if (stats == null) {
+            stats = new PlayerStats(uuid, username);
+            localStorageManager.savePlayerLocal(stats);
+        }
+
+        cache.put(uuid, stats);
+        return stats;
     }
 
     /** Checks if player stats are loaded */
@@ -392,8 +445,16 @@ public class StatsManager {
     /** Safe remove from cache (called on quit) */
     public void unload(UUID uuid) {
         PlayerStats stats = cache.remove(uuid);
-        if (stats != null) savePlayerAsync(stats);
+        if (stats != null) {
+            // Save to local storage before unloading
+            localStorageManager.savePlayerLocal(stats);
+        }
     }
+
+    public LocalStorageManager getLocalStorageManager() {
+        return localStorageManager;
+    }
+
 
     /** Returns immutable snapshot of cached stats */
     public Collection<PlayerStats> getAllCached() {

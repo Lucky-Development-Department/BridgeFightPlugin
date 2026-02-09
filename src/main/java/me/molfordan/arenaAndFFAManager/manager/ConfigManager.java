@@ -9,6 +9,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -28,7 +29,6 @@ public class ConfigManager {
         this.plugin = plugin;
         setupConfig();
         loadLocations();
-        ensureConfigDefaults();
         plugin.saveDefaultConfig();
     }
 
@@ -45,8 +45,45 @@ public class ConfigManager {
     }
 
     private void setDefaults() {
+
+        // ================= FIREBALL =================
+        config.addDefault("fireball.explosion-size", 3.0);
+        config.addDefault("fireball.speed-multiplier", 1.0);
+        config.addDefault("fireball.make-fire", false);
+
+        // ================= KNOCKBACK =================
+        config.addDefault("fireball.knockback.horizontal", 1.2);
+        config.addDefault("fireball.knockback.vertical", 0.85);
+        config.addDefault("fireball.knockback.max-y", 1.6);
+
+        // ================= COOLDOWN =================
+        config.addDefault("fireball.cooldown", 0.5); // seconds
+
+        // ================= DAMAGE =================
+        config.addDefault("fireball.damage.self", 2.0);
+        config.addDefault("fireball.damage.enemy", 2.0);
+        config.addDefault("fireball.damage.teammates", 0.0);
+
+        // ================= APPLY =================
+        config.addDefault("patchnotes", null);
         config.options().copyDefaults(true);
         saveConfig();
+    }
+
+    public List<String> getPatchNotes(){
+        return config.getStringList("patchnotes");
+    }
+
+    public double getFireballHorizontalKnockback() {
+        return config.getDouble("fireball.knockback.horizontal");
+    }
+
+    public double getFireballVerticalKnockback() {
+        return config.getDouble("fireball.knockback.vertical");
+    }
+
+    public double getFireballMaxY() {
+        return config.getDouble("fireball.knockback.max-y");
     }
 
     public void saveConfig() {
@@ -276,7 +313,7 @@ public class ConfigManager {
         return new Location(world, x, y, z, yaw, pitch);
     }
 
-    private void ensureConfigDefaults(){
+    public void ensureConfigDefaults(){
         plugin.saveDefaultConfig();
         FileConfiguration config = plugin.getConfig();
         boolean changed = false;
@@ -397,6 +434,35 @@ public class ConfigManager {
         world.getBlockAt(0, 74, 0).setType(Material.BARRIER);
         world.setSpawnLocation(0, 75, 0);
     }
+
+    public double getFireballExplosionSize() {
+        return config.getDouble("fireball.explosion-size");
+    }
+
+    public double getFireballSpeedMultiplier() {
+        return config.getDouble("fireball.speed-multiplier");
+    }
+
+    public boolean isFireballMakeFire() {
+        return config.getBoolean("fireball.make-fire");
+    }
+
+    public double getFireballCooldown() {
+        return config.getDouble("fireball.cooldown");
+    }
+
+    public double getFireballDamageSelf() {
+        return config.getDouble("fireball.damage.self");
+    }
+
+    public double getFireballDamageEnemy() {
+        return config.getDouble("fireball.damage.enemy");
+    }
+
+    public double getFireballDamageTeammates() {
+        return config.getDouble("fireball.damage.teammates");
+    }
+
 
 }
 

@@ -1,6 +1,25 @@
 package me.molfordan.arenaAndFFAManager;
 
-import me.molfordan.arenaAndFFAManager.commands.*;
+import me.molfordan.arenaAndFFAManager.commands.admin.*;
+import me.molfordan.arenaAndFFAManager.commands.arena.ArenaBypassCommand;
+import me.molfordan.arenaAndFFAManager.commands.arena.ArenaCommand;
+import me.molfordan.arenaAndFFAManager.commands.arena.ArenaConfigReloadCommand;
+import me.molfordan.arenaAndFFAManager.commands.bridgefight.BridgeBanCommand;
+import me.molfordan.arenaAndFFAManager.commands.bridgefight.PlatformCommand;
+import me.molfordan.arenaAndFFAManager.commands.common.HotbarManagerCommand;
+import me.molfordan.arenaAndFFAManager.commands.common.LeaderboardCommand;
+import me.molfordan.arenaAndFFAManager.commands.common.ReportCommand;
+import me.molfordan.arenaAndFFAManager.commands.common.StatsCommand;
+import me.molfordan.arenaAndFFAManager.commands.common.gui.GUICustomKit;
+import me.molfordan.arenaAndFFAManager.commands.utils.*;
+import me.molfordan.arenaAndFFAManager.commands.common.gui.GUILeaderboardCommand;
+import me.molfordan.arenaAndFFAManager.commands.common.gui.GUIStatsCommand;
+import me.molfordan.arenaAndFFAManager.commands.world.BridgeFightCommand;
+import me.molfordan.arenaAndFFAManager.commands.bridgefight.BridgeFightKitCommand;
+import me.molfordan.arenaAndFFAManager.commands.bridgefight.BridgeUnbanCommand;
+import me.molfordan.arenaAndFFAManager.commands.world.BuildFFACommand;
+import me.molfordan.arenaAndFFAManager.commands.world.LobbyCommand;
+import me.molfordan.arenaAndFFAManager.commands.world.PrivateWorldCommand;
 import me.molfordan.arenaAndFFAManager.config.BridgeFightConfig;
 import me.molfordan.arenaAndFFAManager.config.RegionsConfig;
 import me.molfordan.arenaAndFFAManager.database.DatabaseManager;
@@ -11,7 +30,9 @@ import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarListener;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarSorter;
 import me.molfordan.arenaAndFFAManager.kits.KitManager;
 import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.BridgeFightKitManager;
+import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.customkit.gui.CustomKitBaseGUI;
 import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.gui.BridgeFightKitGUI;
+import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.gui.EditKitListener;
 import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.gui.SelectKitListener;
 import me.molfordan.arenaAndFFAManager.listener.*;
 import me.molfordan.arenaAndFFAManager.manager.*;
@@ -40,12 +61,14 @@ import java.util.UUID;
 
 public final class ArenaAndFFAManager extends JavaPlugin {
     public static ArenaAndFFAManager plugin;
+
     private ArenaManager arenaManager;
     private ConfigManager configManager;
     private HotbarSorter hotbarSorter;
     private BridgeFightBanManager bridgeFightBanManager;
     private BridgeFightKitGUI bridgeFightKitGUI;
     private TeleportPendingManager teleportPendingManager;
+    private DatabaseSyncScheduler databaseSyncScheduler;
     private CombatManager combatManager;
     private DeathMessageManager deathMessageManager;
     private PersistentRestoreManager persistentRestoreManager;
@@ -53,10 +76,12 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private HotbarDataManager hotbarDataManager;
     private GUILeaderboardMain guiLeaderboardMain;
     private KitManager kitManager;
+    private CustomKitBaseGUI customKitBaseGUI;
     public FileConfiguration configuration;
     private BridgeFightConfig bridgeFightConfig;
     private PlatformManager platformManager;
     private CommandRegionManager regionManager;
+    private LocalStorageManager localStorageManager;
     private RegionsConfig regionsConfig;
     private StatsManager statsManager;
     private DatabaseManager databaseManager;
@@ -70,6 +95,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private FrozenManager frozenManager;
     private ReportManager reportManager;
     private SpawnItem spawnItem;
+    private BackupManager backupManager; // Add this line
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
     private static final String BRIDGEFIGHT_PATH = "bridgefight";
@@ -82,7 +108,8 @@ public final class ArenaAndFFAManager extends JavaPlugin {
 
         this.configManager = new ConfigManager(this);
         this.databaseManager = new DatabaseManager(this);
-        this.statsManager = new StatsManager(this);
+        this.backupManager = new BackupManager(this); // Instantiate BackupManager
+        this.statsManager = new StatsManager(this, this.backupManager);
         this.bridgeFightConfig = new BridgeFightConfig(this);
         bridgeFightConfig.load();
         this.platformManager = new PlatformManager();
@@ -109,8 +136,11 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.reportManager = new ReportManager(this, getDataFolder());
         this.teleportPendingManager = new TeleportPendingManager();
         //this.flightManager = new FlightManager(configManager.getLobbyWorldName());
-        this.bridgeFightKitManager = new BridgeFightKitManager();
+        this.bridgeFightKitManager = new BridgeFightKitManager(this);
         this.bridgeFightKitGUI = new BridgeFightKitGUI(this);
+        this.customKitBaseGUI = new CustomKitBaseGUI(this);
+        this.localStorageManager = new LocalStorageManager(this);
+        this.databaseSyncScheduler = new DatabaseSyncScheduler(this, this.localStorageManager, this.statsManager, this.backupManager);
         persistentRestoreManager.loadAll();
         persistentRestoreManager.startAutoSave();
         String lobbyWorld = configManager.getLobbyWorldName();
@@ -118,6 +148,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         String bridgeFightWorld = configManager.getBridgeFightWorldName();
         String privateWorldWorld = configManager.getPrivateWorldWorldName();
         double bridgeFightVoidLimit = configManager.getBridgeFightVoidLimit();
+        configManager.ensureConfigDefaults();
         configManager.loadWorld(lobbyWorld, WorldType.NORMAL);
         configManager.loadWorld(buildFFAWorld, WorldType.NORMAL);
         configManager.loadWorld(bridgeFightWorld, WorldType.NORMAL);
@@ -128,14 +159,18 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         Bukkit.getLogger().info("[ArenaManager] Arenas loaded successfully.");
         dailyArenaRestorer = new DailyArenaRestorer(this, arenaManager);
         new CombatTagDisplayTask(combatManager).runTaskTimer(this, 0L, 1L);
-        getCommand("arenamap").setExecutor(new ArenaCommand(arenaManager, configManager));
+        getCommand("arenamap").setExecutor(new ArenaCommand(arenaManager, configManager, this));
         getCommand("arenabypass").setExecutor(new ArenaBypassCommand(arenaManager));
         getCommand("commandbypass").setExecutor(new BypassCommandsCommand(combatManager));
         getCommand("arenaconfig").setExecutor(new ArenaConfigReloadCommand(configManager));
         getCommand("setlobby").setExecutor(new SetLobbyCommand(configManager));
         getCommand("build").setExecutor(new BuildModeCommand(configManager));
         getCommand("buildffa").setExecutor(new BuildFFACommand(configManager));
-        getCommand("bridgefight").setExecutor(new BridgeFightCommand(configManager, this));
+        
+        // Create LobbyListener instance to be used by both event registration and BridgeFightCommand
+        LobbyListener lobbyListener = new LobbyListener(configManager, this, kitManager);
+        
+        getCommand("bridgefight").setExecutor(new BridgeFightCommand(configManager, this, lobbyListener));
         getCommand("loadworld").setExecutor(new LoadWorldCommand(configManager, this));
         getCommand("spawn").setExecutor(new LobbyCommand(configManager, teleportPendingManager, this));
         getCommand("setpos1").setExecutor(new SetPlatformPosCommand(this, platformManager));
@@ -144,7 +179,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("guistats").setExecutor(new GUIStatsCommand(this));
         getCommand("leaderboard").setExecutor(new LeaderboardCommand(this));
         getCommand("guileaderboard").setExecutor(new GUILeaderboardCommand(this));
-        RegionCommand rc = new me.molfordan.arenaAndFFAManager.commands.RegionCommand(regionManager);
+        RegionCommand rc = new RegionCommand(regionManager);
         getCommand("rc").setExecutor(rc);
         getCommand("rc").setTabCompleter(rc);
         getCommand("hotbarmanager").setExecutor(
@@ -154,11 +189,11 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         int maxPlatforms = 10; // change this to any number
         for (int i = 1; i <= maxPlatforms; i++) {
             // plat commands
-            CommandRegister.registerCommand(new me.molfordan.arenaAndFFAManager.commands.PlatformCommand("plat" + i, this, kitManager, platformManager));
-            CommandRegister.registerCommand(new me.molfordan.arenaAndFFAManager.commands.PlatformCommand("bigplat" + i, this, kitManager, platformManager));
+            CommandRegister.registerCommand(new PlatformCommand("plat" + i, this, kitManager, platformManager));
+            CommandRegister.registerCommand(new PlatformCommand("bigplat" + i, this, kitManager, platformManager));
             // spawn setter commands
-            CommandRegister.registerCommand(new me.molfordan.arenaAndFFAManager.commands.PlatformCommand("setplat" + i, this, kitManager, platformManager));
-            CommandRegister.registerCommand(new me.molfordan.arenaAndFFAManager.commands.PlatformCommand("setbigplat" + i, this, kitManager, platformManager));
+            CommandRegister.registerCommand(new PlatformCommand("setplat" + i, this, kitManager, platformManager));
+            CommandRegister.registerCommand(new PlatformCommand("setbigplat" + i, this, kitManager, platformManager));
         }
         getCommand("bridgeban").setExecutor(new BridgeBanCommand(bridgeFightBanManager, this));
         getCommand("bridgeunban").setExecutor(new BridgeUnbanCommand(bridgeFightBanManager));
@@ -170,6 +205,9 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("statsreset").setExecutor(new StatsResetCommand(this));
         getCommand("privateworld").setExecutor(new PrivateWorldCommand(this));
         getCommand("setstats").setExecutor(new SetCommand(this));
+        getCommand("kit").setExecutor(new BridgeFightKitCommand(this));
+        getCommand("debugging").setExecutor(new GUICustomKit(this));
+        //getCommand("syncdata").setExecutor(new SyncCommand(this));
 
         // schedule expiry cleanup every minute
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
@@ -184,10 +222,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CombatLogListener(this,combatManager, arenaManager, deathMessageManager), this);
         getServer().getPluginManager().registerEvents(new TeleportSnowballListener(combatManager), this);
         getServer().getPluginManager().registerEvents(new ItemDropBlockerListener(arenaManager), this);
-        getServer().getPluginManager().registerEvents(new LobbyListener(configManager, this, kitManager), this);
+        getServer().getPluginManager().registerEvents(lobbyListener, this);
         getServer().getPluginManager().registerEvents(new GlobalListener(statsManager, this), this);
         getServer().getPluginManager().registerEvents(new BuildFFAListener(configManager, kitManager), this);
-        getServer().getPluginManager().registerEvents(new BridgeFightListener(platformManager, configManager), this);
+        getServer().getPluginManager().registerEvents(new BridgeFightListener(platformManager, configManager, this), this);
         getServer().getPluginManager().registerEvents(new HotbarListener(this, hotbarSessionManager, kitManager), this);
         getConfig().addDefault("debug", true);
         getConfig().options().copyDefaults(true);
@@ -199,6 +237,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(this.frozenManager, this);
         getServer().getPluginManager().registerEvents(new TeleportCancelListener(this.teleportPendingManager), this);
         getServer().getPluginManager().registerEvents(new StatsGUIListener(this), this);
+        getServer().getPluginManager().registerEvents(new EggBridgeListener(), this);
         getServer().getPluginManager().registerEvents(
                 new BridgeFightBanListener(bridgeFightBanManager), this
         );
@@ -206,6 +245,8 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RegionFlagListener(regionManager), this);
         getServer().getPluginManager().registerEvents(new InvisPlayerListener(this), this);
         getServer().getPluginManager().registerEvents(new SelectKitListener(this), this);
+        getServer().getPluginManager().registerEvents(new EditKitListener(this), this);
+        getServer().getPluginManager().registerEvents(new FireballListener(this.configManager), this);
 
         //new RegionTriggerTask(regionManager).runTaskTimer(this, 0L, 10L);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "nebula:main");
@@ -288,10 +329,20 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         return plugin;
     }
 
-    public void debug(String message) {
+    public static ArenaAndFFAManager getInstance(){
+        return plugin;
+    }
 
-        if (getConfigManager().getConfig().getBoolean("debug", true)) {
-            Bukkit.getLogger().info("[DEBUG] " + message);
+    public void debug(String msg) {
+        try {
+            if (configManager != null
+                    && configManager.getConfig() != null
+                    && configManager.getConfig().getBoolean("debug")) {
+
+                Bukkit.getLogger().info("[ArenaManager] " + msg);
+            }
+        } catch (Exception ignored) {
+            // Never break startup
         }
     }
 
@@ -357,5 +408,9 @@ public final class ArenaAndFFAManager extends JavaPlugin {
 
     public InvisPlayerListener getInvisPlayerListener() {
         return invisPlayerListener;
+    }
+
+    public CustomKitBaseGUI getCustomKitBaseGUI() {
+        return customKitBaseGUI;
     }
 }

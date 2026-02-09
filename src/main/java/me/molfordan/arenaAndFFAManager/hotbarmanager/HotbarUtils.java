@@ -39,6 +39,9 @@ public class HotbarUtils {
 
             case GOLDEN_APPLE:
                 return "golden_apple";
+                
+            case FIREBALL:
+                return "fireball";
 
             default:
                 return null; // irrelevant item, ignore

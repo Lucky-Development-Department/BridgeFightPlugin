@@ -58,15 +58,18 @@ public class DeathEventListener implements Listener {
 
         // Prevent duplicate handling
         if (DeathMessageManager.voidHandled.contains(id)) {
+            plugin.debug("Void death: " + player.getName() + " already handled.");
             return;
         }
 
         // Mark as handled
         DeathMessageManager.voidHandled.add(id);
+        plugin.debug("Void death: " + player.getName() + " detected. Arena: " + arena.getName());
 
         // Clear the flag after a short delay (2 seconds should be enough)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             DeathMessageManager.voidHandled.remove(id);
+            plugin.debug("Void death: " + player.getName() + " voidHandled flag cleared.");
         }, 40L); // 40 ticks = 2 seconds
 
         // For BuildFFA, just set health to 0 and let the natural death event handle it

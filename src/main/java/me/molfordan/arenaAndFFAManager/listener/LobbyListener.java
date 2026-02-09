@@ -22,6 +22,11 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.potion.PotionEffect;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
 public class LobbyListener implements Listener {
 
     private final ConfigManager configManager;
@@ -31,12 +36,20 @@ public class LobbyListener implements Listener {
     private ArenaAndFFAManager plugin;
 
     private KitManager kitManager;
+    
+    // Track players who should receive bridge fight spawn items
+    private final Set<UUID> bridgeFightSpawnRecipients = new HashSet<>();
 
     // Must have a constructor to inject the ConfigManager
     public LobbyListener(ConfigManager configManager, ArenaAndFFAManager plugin, KitManager kitManager) {
         this.configManager = configManager;
         this.plugin = plugin;
         this.kitManager = kitManager;
+    }
+
+    // Add player to bridge fight spawn recipients list
+    public void addBridgeFightSpawnRecipient(UUID playerId) {
+        bridgeFightSpawnRecipients.add(playerId);
     }
 
     // Helper method to check if the player is in the lobby world
@@ -72,16 +85,11 @@ public class LobbyListener implements Listener {
         }
 
         // Teleport player to lobby
-        /*
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            player.teleport(lobbyLoc);
-        }, 1L);
+        player.teleport(lobbyLoc);
 
-         */
         for (PotionEffect effect : player.getActivePotionEffects()) {
             player.removePotionEffect(effect.getType());
         }
-        player.teleport(lobbyLoc);
 
         plugin.getSpawnItem().giveSpawnItem(player);
         ArenaAndFFAManager.getPlugin().getStatsManager().resetStreak(player.getUniqueId(), ArenaType.FFA);
@@ -89,6 +97,16 @@ public class LobbyListener implements Listener {
         // Requirement: Set gamemode to Adventure
         player.setGameMode(GameMode.ADVENTURE);
         event.setJoinMessage(null);
+
+        // Send patch notes to player
+        List<String> patchNotes = configManager.getPatchNotes();
+        if (patchNotes != null) {
+            player.sendMessage(ChatColor.GOLD + "----- Patch Notes -----");
+            for (String note : patchNotes) {
+                player.sendMessage(ChatColor.WHITE + "- " + note);
+            }
+            player.sendMessage(ChatColor.GOLD + "-----------------------");
+        }
     }
 
 
@@ -239,7 +257,11 @@ public class LobbyListener implements Listener {
             }
             player.setGameMode(GameMode.SURVIVAL);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                plugin.getSpawnItem().giveBridgeFightSpawnItem(player);
+                // Only give bridge fight spawn items if player used /bridgefight or /housing command
+                if (bridgeFightSpawnRecipients.contains(player.getUniqueId())) {
+                    plugin.getSpawnItem().giveBridgeFightSpawnItem(player);
+                    bridgeFightSpawnRecipients.remove(player.getUniqueId()); // Remove after giving items
+                }
             }, 1);
             return;
         }

@@ -9,6 +9,8 @@ import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import me.molfordan.arenaAndFFAManager.utils.CustomItem;
 import org.bukkit.*;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Fireball;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -35,6 +37,7 @@ public class DeathMessageManager {
     private final StatsManager statsManager;
 
     private ArenaManager arenaManager;
+    public String PREFIX;
 
     public DeathMessageManager(ArenaAndFFAManager plugin,
                                CombatManager combatManager,
@@ -46,36 +49,78 @@ public class DeathMessageManager {
         this.arenaManager = arenaManager;
         this.hotbarDataManager = hotbarDataManager;
         this.statsManager = statsManager;
+        this.PREFIX = plugin.getConfigManager().getServerPrefix();
+        startDuelCleaner();
     }
 
     /**
      * Void death message — does NOT modify stats (stats already updated in handleDeath)
      */
     public void sendVoidDeathMessage(Player victim, Player attacker, Arena arena, int attackerStreak) {
+        plugin.debug("sendVoidDeathMessage: Victim=" + victim.getName() + ", Attacker=" + (attacker != null ? attacker.getName() : "none") + ", Arena=" + (arena != null ? arena.getName() : "none") + ", AttackerStreak=" + attackerStreak);
+
         // Always re-resolve arena from victim's location for correctness
-        arena = arenaManager.getArenaByLocationIgnoreY(victim.getLocation());
-        if (arena == null) return;
-        if (!arena.isInside(victim.getLocation(), true)) return;
+        Arena resolvedArena = arenaManager.getArenaByLocationIgnoreY(victim.getLocation());
+        plugin.debug("sendVoidDeathMessage: Resolved Arena from victim's location: " + (resolvedArena != null ? resolvedArena.getName() : "none"));
+
+        if (resolvedArena == null) {
+            plugin.debug("sendVoidDeathMessage: Resolved Arena is null. Returning.");
+            return;
+        }
+        if (!resolvedArena.isInside(victim.getLocation(), true)) {
+            plugin.debug("sendVoidDeathMessage: Victim not inside resolved arena. Returning.");
+            return;
+        }
+        arena = resolvedArena; // Use the re-resolved arena
 
         // Prevent duplicate handling (short window)
-        if (recentlyHandled.contains(victim.getUniqueId())) return;
+        if (recentlyHandled.contains(victim.getUniqueId())) {
+            plugin.debug("sendVoidDeathMessage: Victim " + victim.getName() + " recently handled. Returning.");
+            return;
+        }
         recentlyHandled.add(victim.getUniqueId());
         Bukkit.getScheduler().runTaskLater(plugin, () -> recentlyHandled.remove(victim.getUniqueId()), 2L);
+        plugin.debug("sendVoidDeathMessage: Victim " + victim.getName() + " added to recentlyHandled.");
 
         String message = (attacker != null && attacker.isOnline())
                 ? ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by "
                 + ChatColor.GREEN + attacker.getName() + ChatColor.GRAY + "[" + attackerStreak + "]"
                 : ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] fell into the void.";
 
+        plugin.debug("sendVoidDeathMessage: Constructed message: " + message);
+
         // Rewards / effects should use the already computed streak
         if (attacker != null && attacker.isOnline()) {
             if (arena.getType() == ArenaType.FFABUILD) {
                 giveKillRewards(attacker, attackerStreak);
                 giveKillEffect(attacker);
+                plugin.debug("sendVoidDeathMessage: Attacker " + attacker.getName() + " received FFABUILD rewards.");
             }
         }
 
         broadcastMessage(arena, message);
+        plugin.debug("sendVoidDeathMessage: Message broadcasted for " + victim.getName());
+    }
+
+    public void clearDuel(UUID uuid) {
+        DuelSession duel = duels.remove(uuid);
+        if (duel == null) return;
+
+        duels.remove(duel.p1);
+        duels.remove(duel.p2);
+    }
+
+    private void startDuelCleaner() {
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            Iterator<DuelSession> it = new HashSet<>(duels.values()).iterator();
+            while (it.hasNext()) {
+                DuelSession duel = it.next();
+                if (duel.expired()) {
+                    duels.remove(duel.p1);
+                    duels.remove(duel.p2);
+                }
+            }
+        }, 20L, 20L);
     }
 
     /**
@@ -88,6 +133,8 @@ public class DeathMessageManager {
      */
     public void handleDeath(Player victim, Arena arena, boolean isVoidDeath, boolean isQuit) {
         UUID id = victim.getUniqueId();
+
+        clearDuel(victim.getUniqueId());
 
         // Global duplicate-protection
         if (!deathHandled.add(id)) {
@@ -349,6 +396,35 @@ public class DeathMessageManager {
         broadcastMessage(arena, message);
     }
 
+    private boolean handleExplosionDeath(Player victim, Player killer) {
+        if (killer == null) return false;
+
+        // Check if the killer is the same as the victim (self-kill)
+        if (killer.getUniqueId().equals(victim.getUniqueId())) {
+            return true;
+        }
+
+        // Check if the killer is a fireball or TNT owned by the victim
+        if (killer instanceof Fireball || killer.getType() == EntityType.PRIMED_TNT) {
+            if (killer instanceof Fireball) {
+                Fireball fireball = (Fireball) killer;
+                if (fireball.getShooter() instanceof Player) {
+                    Player shooter = (Player) fireball.getShooter();
+                    return shooter.getUniqueId().equals(victim.getUniqueId());
+                }
+            } else if (killer.getType() == EntityType.PRIMED_TNT) {
+                // For TNT, check if it was placed by the victim
+                // This requires the TNT to be tracked when placed
+                // You'll need to implement this tracking in a TNT listener
+                // For now, we'll just check if the TNT is very close to the victim
+                return killer.getLocation().distanceSquared(victim.getLocation()) < 9; // within 3 blocks
+            }
+        }
+
+        return false;
+    }
+
+    // Modify the sendPlayerKillMessage method to handle self-explosion
     public void sendPlayerKillMessage(Player victim, Player killer, Arena arena, int newStreak) {
         // Resolve arena reliably
         arena = arenaManager.getArenaByLocation(killer != null ? killer.getLocation() : victim.getLocation());
@@ -360,12 +436,20 @@ public class DeathMessageManager {
         recentlyHandled.add(victim.getUniqueId());
         Bukkit.getScheduler().runTaskLater(plugin, () -> recentlyHandled.remove(victim.getUniqueId()), 2L);
 
-        // Stats were already updated in handleDeath() — do not touch them here.
-        String message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was killed by "
-                + ChatColor.GREEN + (killer != null ? killer.getName() : "unknown") + ChatColor.GRAY + "[" + newStreak + "]";
+        String message;
+
+        // Check for self-explosion
+        if (handleExplosionDeath(victim, killer)) {
+            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] died.";
+        } else {
+            // Normal kill message
+            String killString = killer != null ? "was killed by" : "was killed";
+            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + " " + (killer != null ? killString : "was killed")
+                    + ChatColor.GRAY + (killer != null ? " " + ChatColor.GREEN + killer.getName() + ChatColor.GRAY + "[" + newStreak + "]" : "");
+        }
 
         // Rewards/effects for killer if appropriate
-        if (killer != null && killer.isOnline() && arena.getType() == ArenaType.FFABUILD) {
+        if (killer != null && killer.isOnline() && arena.getType() == ArenaType.FFABUILD && !handleExplosionDeath(victim, killer)) {
             giveKillRewards(killer, newStreak);
             giveKillEffect(killer);
         }
@@ -395,6 +479,16 @@ public class DeathMessageManager {
         }
     }
 
+    private String fireballName = ChatColor.RED + "Fireball";
+
+    private ItemStack giveFireballItem() {
+        ItemStack item = new ItemStack(Material.FIREBALL);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(fireballName);
+        item.setItemMeta(meta);
+        return item;
+    }
+
     private void giveKillRewards(Player killer, int streak) {
         if (killer == null || !killer.isOnline()) return;
         killer.setHealth(killer.getMaxHealth());
@@ -407,9 +501,16 @@ public class DeathMessageManager {
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             HotbarManager.resortInventory(killer, hotbarDataManager);
         });
-        if (streak > 0 && streak % 5 == 0) {
+        if (streak > 0 && streak % 3 == 0) {
+            ensureItem(killer, Material.FIREBALL, 1, giveFireballItem(), 2);
+            ensureItem(killer, Material.EGG, 1, new ItemStack(Material.EGG), 2);
+
+        }
+
+        if (streak > 0 && streak % 5 == 0){
             killer.getInventory().addItem(new ItemStack(Material.GOLDEN_APPLE, 2));
         }
+
         switch (streak) {
             case 5:
                 break;
@@ -603,5 +704,93 @@ public class DeathMessageManager {
         }
 
         statsManager.savePlayerAsync(stats);
+    }
+
+    private final Map<UUID, DuelSession> duels = new HashMap<>();
+
+    private static final long DUEL_TIMEOUT = 30000L; // 30 seconds
+
+    private static class DuelSession {
+        private final UUID p1;
+        private final UUID p2;
+        private long lastHit;
+
+        DuelSession(UUID p1, UUID p2) {
+            this.p1 = p1;
+            this.p2 = p2;
+            this.lastHit = System.currentTimeMillis();
+        }
+
+        private final Set<UUID> notified = new HashSet<>();
+
+
+        boolean contains(UUID uuid) {
+            return p1.equals(uuid) || p2.equals(uuid);
+        }
+
+        UUID getOpponent(UUID uuid) {
+            return p1.equals(uuid) ? p2 : p1;
+        }
+
+        void refresh() {
+            lastHit = System.currentTimeMillis();
+        }
+
+        boolean expired() {
+            return System.currentTimeMillis() - lastHit >= DUEL_TIMEOUT;
+        }
+
+        boolean notifyOnce(UUID uuid) {
+            return notified.add(uuid); // true only the first time
+        }
+
+    }
+
+    public boolean handleDuelHit(Player damager, Player victim) {
+        UUID d = damager.getUniqueId();
+        UUID v = victim.getUniqueId();
+
+        DuelSession duelD = duels.get(d);
+        DuelSession duelV = duels.get(v);
+
+        // Case 1: neither is in a duel → create new duel
+        if (duelD == null && duelV == null) {
+            DuelSession duel = new DuelSession(d, v);
+            duels.put(d, duel);
+            duels.put(v, duel);
+
+            // Send "now fighting" message ONCE
+            damager.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + ChatColor.GREEN + " You're now fighting " + ChatColor.RED + victim.getName());
+            victim.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + ChatColor.GREEN + " You're now fighting " + ChatColor.RED + damager.getName());
+
+            duel.notifyOnce(d);
+            duel.notifyOnce(v);
+
+            return true;
+        }
+
+        // Case 2: both are in the SAME duel → refresh timer
+        if (duelD != null && duelD == duelV) {
+            duelD.refresh();
+
+            // If one of them never got the message (edge case)
+            if (duelD.notifyOnce(d)) {
+                damager.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX)+ChatColor.GREEN + " You're now fighting " +
+                        ChatColor.RED + Bukkit.getPlayer(duelD.getOpponent(d)).getName());
+            }
+
+            return true;
+        }
+
+        // Case 3: third-party interrupt → deny hit + message
+        if (duelV != null && !duelV.contains(d)) {
+            Player opponent = Bukkit.getPlayer(duelV.getOpponent(v));
+            if (opponent != null) {
+                damager.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX)+ChatColor.RED + " This player is fighting " +
+                        ChatColor.YELLOW + opponent.getName());
+            }
+        }
+
+        return false;
     }
 }

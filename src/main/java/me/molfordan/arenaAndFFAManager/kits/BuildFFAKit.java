@@ -47,8 +47,8 @@ public class BuildFFAKit {
         // ======================================================
         woolStack = new ItemStack(Material.WOOL, 64, woolColor);
         sword = createItem(Material.STONE_SWORD);
-        pickaxe = createItem(Material.WOOD_PICKAXE, Enchantment.DIG_SPEED, 1);
-        axe = createItem(Material.WOOD_AXE, Enchantment.DIG_SPEED, 1);
+        pickaxe = createItem(Material.GOLD_PICKAXE, Enchantment.DIG_SPEED, 3);
+        axe = createItem(Material.IRON_AXE, Enchantment.DIG_SPEED, 2);
         shears = createItem(Material.SHEARS);
         kbStick = createItem(Material.STICK, Enchantment.KNOCKBACK, 1);
         pearl = new ItemStack(Material.ENDER_PEARL, 1);

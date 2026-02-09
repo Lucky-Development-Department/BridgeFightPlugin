@@ -20,9 +20,15 @@ public class PlayerStats {
     private int buildStreak;
     private int buildHighestStreak;
 
+    private long lastUpdated;
+
     public PlayerStats(UUID uuid, String username) {
         this.uuid = uuid;
         this.username = username;
+    }
+
+    public PlayerStats(UUID uuid) {
+        this(uuid, "Unknown"); // Calls the existing constructor with a default username
     }
 
     // -----------------------------
@@ -43,6 +49,7 @@ public class PlayerStats {
     public int getBuildStreak() { return buildStreak; }
     public int getBuildHighestStreak() { return buildHighestStreak; }
 
+    public long getLastUpdated() { return lastUpdated; }
     // -----------------------------
     //          Setters
     // -----------------------------
@@ -61,6 +68,8 @@ public class PlayerStats {
 
     public void setBridgeHighestStreak(int value) { this.bridgeHighestStreak = Math.max(0, value); }
     public void setBuildHighestStreak(int value) { this.buildHighestStreak = Math.max(0, value); }
+
+    public void setLastUpdated(long lastUpdated) { this.lastUpdated = lastUpdated; }
 
     // -----------------------------
     //      Increment Functions

@@ -75,14 +75,16 @@ public class HotbarSession {
         //putCategory(slot++, "tnt");
         //putCategory(slot++, "ladder");
         putCategory(slot++, "golden_apple");
-       // putCategory(slot++, "fireball");
+        putCategory(slot++, "fireball");
         putCategory(slot++, "knockbackstick");
         //putCategory(slot++, "respawn_item");
         putCategory(slot++, "ender_pearl");
+        putCategory(slot++, "egg");
         //putCategory(slot++, "water_bucket");
 
         // optional extras
         putCategory(27, "snowball");
+
         //putCategory(28, "compass");
     }
 
@@ -298,6 +300,8 @@ public class HotbarSession {
         Set<String> seen = new HashSet<>();
         int blocksCount = 0;
         int pearlCount = 0;
+        int fireballCount = 0;
+        int eggCount = 0;
 
         for (String id : hotbarLayout.values()) {
             if (id == null) continue;
@@ -321,6 +325,16 @@ public class HotbarSession {
             if (id.equals("ender_pearl")) {
                 pearlCount++;
                 if (pearlCount > 1) return false;
+            }
+
+            if (id.equals("fireball")){
+                fireballCount++;
+                if (fireballCount > 1) return false;
+            }
+
+            if (id.equals("egg")){
+                eggCount++;
+                if (eggCount > 1) return false;
             }
 
 
@@ -395,6 +409,7 @@ public class HotbarSession {
             }
             case "compass": return buildItem(Material.COMPASS, ChatColor.WHITE + "Compass");
             case "snowball": return buildItem(Material.SNOW_BALL, ChatColor.WHITE + "Snowballs");
+            case "egg": return buildItem(Material.EGG, ChatColor.WHITE + "Egg");
             default: return buildItem(Material.STONE, ChatColor.WHITE + id);
         }
     }
@@ -435,6 +450,7 @@ public class HotbarSession {
         if (normalized.contains("potion") || normalized.contains("brewing") || normalized.contains("pearl")) return "potions";
         if (normalized.contains("tnt")) return "tnt";
         if (normalized.contains("fireball")) return "fireball";
+        if (normalized.contains("egg")) return "egg";
         if (normalized.contains("golden_apple")) return "golden_apple";
         if (normalized.contains("tripwire_hook")) return "respawn_item";
         if (normalized.contains("ender_pearl")) return "ender_pearl";

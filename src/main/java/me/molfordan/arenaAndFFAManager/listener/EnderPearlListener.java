@@ -44,6 +44,7 @@ public class EnderPearlListener implements Listener {
 
                 // Restore pearl if client consumed it early
                 //player.getInventory().addItem(new ItemStack(Material.ENDER_PEARL));
+                player.updateInventory();
 
                 double sec = remaining / 1000.0;
                 player.sendMessage("§cYou must wait §e" + String.format("%.1f", sec) + "s §cbefore using another Ender Pearl!");

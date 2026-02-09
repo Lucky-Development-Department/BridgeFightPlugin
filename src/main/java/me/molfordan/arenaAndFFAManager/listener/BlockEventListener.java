@@ -193,6 +193,9 @@ public class BlockEventListener implements Listener {
     ========================================================== */
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
+        if (event.getBlock().hasMetadata("egg_bridge_block")) {
+            return;
+        }
         Player player = event.getPlayer();
         if (manager.isBypassing(player.getUniqueId())) return;
 

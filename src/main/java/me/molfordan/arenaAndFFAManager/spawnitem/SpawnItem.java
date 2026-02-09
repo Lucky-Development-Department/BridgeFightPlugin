@@ -233,12 +233,16 @@ public class SpawnItem implements Listener {
         String[] parts = formatted.split(" ");
         if (parts.length < 2) return null;
 
-        String base = parts[0].toLowerCase();
-        String number = parts[1];
+        String base;
+        String number = parts[parts.length - 1]; // Get the last part (number)
 
-        if (base.equals("platform")) return "plat" + number;
-        if (base.equals("big")) return "bigplat" + number;
-        if (base.equals("small")) return "smallplat" + number;
+        if (formatted.startsWith("Big Platform")) {
+            return "bigplat" + number;
+        } else if (formatted.startsWith("Small Platform")) {
+            return "smallplat" + number;
+        } else if (formatted.startsWith("Platform")) {
+            return "plat" + number;
+        }
 
         return null;
     }
