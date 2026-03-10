@@ -6,22 +6,30 @@ import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
 import me.molfordan.arenaAndFFAManager.listener.PlayerKillEventListener;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
+import me.molfordan.arenaAndFFAManager.utils.WorldGuardUtils;
 import me.molfordan.arenaAndFFAManager.utils.CustomItem;
 import org.bukkit.*;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DeathMessageManager {
+public class DeathMessageManager implements Listener {
 
     private final Set<UUID> recentlyHandled = new HashSet<>();
 
@@ -35,6 +43,7 @@ public class DeathMessageManager {
 
     private final HotbarDataManager hotbarDataManager;
     private final StatsManager statsManager;
+    private final FireballTracker fireballTracker;
 
     private ArenaManager arenaManager;
     public String PREFIX;
@@ -43,12 +52,14 @@ public class DeathMessageManager {
                                CombatManager combatManager,
                                ArenaManager arenaManager,
                                HotbarDataManager hotbarDataManager,
-                               StatsManager statsManager) {
+                               StatsManager statsManager,
+                               FireballTracker fireballTracker) {
         this.plugin = plugin;
         this.combatManager = combatManager;
         this.arenaManager = arenaManager;
         this.hotbarDataManager = hotbarDataManager;
         this.statsManager = statsManager;
+        this.fireballTracker = fireballTracker;
         this.PREFIX = plugin.getConfigManager().getServerPrefix();
         startDuelCleaner();
     }
@@ -82,19 +93,34 @@ public class DeathMessageManager {
         Bukkit.getScheduler().runTaskLater(plugin, () -> recentlyHandled.remove(victim.getUniqueId()), 2L);
         plugin.debug("sendVoidDeathMessage: Victim " + victim.getName() + " added to recentlyHandled.");
 
-        String message = (attacker != null && attacker.isOnline())
-                ? ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by "
-                + ChatColor.GREEN + attacker.getName() + ChatColor.GRAY + "[" + attackerStreak + "]"
-                : ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] fell into the void.";
+        // Check if victim was recently hit by a fireball and find the fireball owner
+        Player fireballOwner = null;
+        if (fireballTracker.wasRecentlyHitByFireball(victim)) {
+            // Try to find the most recent fireball owner from combat manager or other means
+            // For now, we'll use the existing attacker if available
+            fireballOwner = attacker;
+        }
+
+        String message;
+        if (fireballOwner != null && fireballOwner.isOnline()) {
+            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by a fireball from "
+                    + ChatColor.GREEN + fireballOwner.getName() + ChatColor.GRAY + "[" + attackerStreak + "]";
+        } else if (attacker != null && attacker.isOnline()) {
+            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by "
+                    + ChatColor.GREEN + attacker.getName() + ChatColor.GRAY + "[" + attackerStreak + "]";
+        } else {
+            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] fell into the void.";
+        }
 
         plugin.debug("sendVoidDeathMessage: Constructed message: " + message);
 
         // Rewards / effects should use the already computed streak
-        if (attacker != null && attacker.isOnline()) {
+        Player rewardPlayer = fireballOwner != null ? fireballOwner : attacker;
+        if (rewardPlayer != null && rewardPlayer.isOnline()) {
             if (arena.getType() == ArenaType.FFABUILD) {
-                giveKillRewards(attacker, attackerStreak);
-                giveKillEffect(attacker);
-                plugin.debug("sendVoidDeathMessage: Attacker " + attacker.getName() + " received FFABUILD rewards.");
+                giveKillRewards(rewardPlayer, attackerStreak);
+                giveKillEffect(rewardPlayer);
+                plugin.debug("sendVoidDeathMessage: Reward player " + rewardPlayer.getName() + " received FFABUILD rewards.");
             }
         }
 
@@ -106,6 +132,17 @@ public class DeathMessageManager {
         DuelSession duel = duels.remove(uuid);
         if (duel == null) return;
 
+        // Restore visibility for both players
+        Player p1 = Bukkit.getPlayer(duel.p1);
+        Player p2 = Bukkit.getPlayer(duel.p2);
+
+        if (p1 != null && p1.isOnline()) {
+            showAllFor(p1);
+        }
+        if (p2 != null && p2.isOnline()) {
+            showAllFor(p2);
+        }
+
         duels.remove(duel.p1);
         duels.remove(duel.p2);
     }
@@ -116,6 +153,13 @@ public class DeathMessageManager {
             while (it.hasNext()) {
                 DuelSession duel = it.next();
                 if (duel.expired()) {
+
+                    Player p1 = Bukkit.getPlayer(duel.p1);
+                    Player p2 = Bukkit.getPlayer(duel.p2);
+
+                    if (p1 != null && p1.isOnline()) showAllFor(p1);
+                    if (p2 != null && p2.isOnline()) showAllFor(p2);
+
                     duels.remove(duel.p1);
                     duels.remove(duel.p2);
                 }
@@ -165,9 +209,15 @@ public class DeathMessageManager {
                 arenaManager.isInArenaIgnoreY(killer);
 
         // Get current streak before any increments
-        int currentKillerStreak = killerValid
-                ? statsManager.addKillToStreak(killer.getUniqueId(), arena.getType())
-                : 0;
+        int currentKillerStreak = 0;
+        if (killerValid) {
+            // Get the correct streak based on arena type BEFORE incrementing
+            if (arena.getType() == ArenaType.FFABUILD) {
+                currentKillerStreak = statsManager.getStats(killer.getUniqueId()).getBuildStreak();
+            } else {
+                currentKillerStreak = statsManager.getStats(killer.getUniqueId()).getBridgeStreak();
+            }
+        }
 
         // Update totals and increment streaks
         addDeath(victim, arena);
@@ -346,6 +396,125 @@ public class DeathMessageManager {
         }
     }
 
+    @EventHandler
+    public void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
+        Player player = e.getPlayer();
+        String fromWorld = e.getFrom().getName();
+        String toWorld = player.getWorld().getName();
+        
+        String lobbyWorld = plugin.getConfigManager().getLobbyWorldName();
+        String bridgeFightWorld = plugin.getConfigManager().getBridgeFightWorldName();
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // If player is entering BridgeFight world, handle duel visibility
+            if (toWorld.equals(bridgeFightWorld)) {
+                for (DuelSession duel : new HashSet<>(duels.values())) {
+                    Player p1 = Bukkit.getPlayer(duel.p1);
+                    Player p2 = Bukkit.getPlayer(duel.p2);
+
+                    if (p1 == null || p2 == null) continue;
+
+                    // If the player is not part of this duel, hide them from duelers
+                    if (!duel.contains(player.getUniqueId())) {
+                        p1.hidePlayer(player);
+                        p2.hidePlayer(player);
+                    }
+
+                    // Player should see duelers
+                    player.showPlayer(p1);
+                    player.showPlayer(p2);
+                }
+            }
+            // If player is leaving BridgeFight world, restore full visibility
+            else if (fromWorld.equals(bridgeFightWorld)) {
+                showAllFor(player);
+                
+                // Also update duelers to show this player if they're not in a duel
+                for (DuelSession duel : new HashSet<>(duels.values())) {
+                    Player p1 = Bukkit.getPlayer(duel.p1);
+                    Player p2 = Bukkit.getPlayer(duel.p2);
+
+                    if (p1 == null || p2 == null) continue;
+                    if (!duel.contains(player.getUniqueId())) {
+                        p1.showPlayer(player);
+                        p2.showPlayer(player);
+                    }
+                }
+            }
+        }, 10);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        
+        // Debug: Log movement event
+        plugin.debug("PlayerMoveEvent triggered for " + player.getName() + ", in duel: " + isInDuel(player));
+        
+        // Only check if player is in a duel
+        if (!isInDuel(player)) {
+            return;
+        }
+        
+        Location from = event.getFrom();
+        Location to = event.getTo();
+        
+        // Only check if the player actually moved to a different block (not just looking around)
+        if (from.getBlockX() == to.getBlockX() && 
+            from.getBlockY() == to.getBlockY() && 
+            from.getBlockZ() == to.getBlockZ()) {
+            return;
+        }
+        
+        // Debug: Log block movement
+        plugin.debug("Player " + player.getName() + " moved from block [" + from.getBlockX() + "," + from.getBlockY() + "," + from.getBlockZ() + 
+                    "] to [" + to.getBlockX() + "," + to.getBlockY() + "," + to.getBlockZ() + "]");
+        
+        // Check if WorldGuard is available
+        if (!WorldGuardUtils.isWorldGuardAvailable()) {
+            plugin.debug("WorldGuard not available for " + player.getName());
+            return;
+        }
+        
+        // Check if the target location is in a WorldGuard region
+        boolean inRegion = WorldGuardUtils.isInAnyRegion(to);
+        plugin.debug("Player " + player.getName() + " target location in region: " + inRegion);
+        
+        if (inRegion) {
+            // Cancel the movement and push player back
+            plugin.debug("Cancelling movement for " + player.getName() + " and pushing back");
+            event.setCancelled(true);
+            pushPlayerBackFromRegion(player, to);
+        }
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent e) {
+        Player joiner = e.getPlayer();
+        
+        // Handle initial visibility for players joining in BridgeFight world
+        if (joiner.getWorld().getName().equals(plugin.getConfigManager().getBridgeFightWorldName())) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (DuelSession duel : new HashSet<>(duels.values())) {
+                    Player p1 = Bukkit.getPlayer(duel.p1);
+                    Player p2 = Bukkit.getPlayer(duel.p2);
+
+                    if (p1 == null || p2 == null) continue;
+
+                    // If the joiner is not part of this duel, hide them from duelers
+                    if (!duel.contains(joiner.getUniqueId())) {
+                        p1.hidePlayer(joiner);
+                        p2.hidePlayer(joiner);
+                    }
+
+                    // Joiner should see duelers
+                    joiner.showPlayer(p1);
+                    joiner.showPlayer(p2);
+                }
+            }, 10);
+        }
+    }
+
     private void ensureItem(Player player, Material material, int minAmount, int giveAmount, int maxAmount) {
         giveReward(player, material, new ItemStack(material, giveAmount), minAmount, maxAmount);
     }
@@ -474,7 +643,11 @@ public class DeathMessageManager {
     private void broadcastMessage(Arena arena, String message) {
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (arena != null && arena.isInside(player.getLocation(), true)) {
-                player.sendMessage(message);
+                // Check if player is in an arena of the same type
+                Arena playerArena = arenaManager.getArenaByLocationIgnoreY(player.getLocation());
+                if (playerArena != null && playerArena.getType() == arena.getType()) {
+                    player.sendMessage(message);
+                }
             }
         }
     }
@@ -746,22 +919,161 @@ public class DeathMessageManager {
 
     }
 
+    private void hideOthersFor(Player p, DuelSession duel) {
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            if (other.getUniqueId().equals(p.getUniqueId())) continue;
+            if (duel.contains(other.getUniqueId())) continue; // opponent stays visible
+
+            p.hidePlayer(other);
+        }
+    }
+
+    private void showAllFor(Player p) {
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            if (other.getUniqueId().equals(p.getUniqueId())) continue;
+            p.showPlayer(other);
+        }
+    }
+
+    /**
+     * Check if a player is in an active duel
+     */
+    public boolean isInDuel(Player player) {
+        return duels.containsKey(player.getUniqueId());
+    }
+
+    /**
+     * Check if a player can enter a location (used for WorldGuard region checking)
+     */
+    public boolean canEnterLocation(Player player, Location location) {
+        // If player is not in a duel, allow movement
+        if (!isInDuel(player)) {
+            return true;
+        }
+
+        // If WorldGuard is not available, allow movement
+        if (!WorldGuardUtils.isWorldGuardAvailable()) {
+            return true;
+        }
+
+        // Check if the target location is in ANY WorldGuard region (block all duelers)
+        if (WorldGuardUtils.isInAnyRegion(location)) {
+            Set<String> regions = WorldGuardUtils.getRegionNamesAt(location);
+            String regionList = String.join(", ", regions);
+            
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + 
+                ChatColor.RED + " Cannot enter the platform while in duel: " + ChatColor.YELLOW + regionList);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Push player back from WorldGuard region with appropriate message
+     */
+    private void pushPlayerBackFromRegion(Player player, Location targetLocation) {
+        plugin.debug("pushPlayerBackFromRegion called for " + player.getName());
+        
+        Set<String> regions = WorldGuardUtils.getRegionNamesAt(targetLocation);
+        String regionList = String.join(", ", regions);
+        
+        plugin.debug("Regions found: " + regionList);
+        
+        // Send message to player
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) +
+                ChatColor.RED + " Cannot enter the safe zone platform during fight! ");
+        
+        // Calculate push-back direction (opposite to movement direction)
+        Location currentLocation = player.getLocation();
+        Location pushBackLocation = currentLocation.clone();
+        
+        // Push the player back by 3 blocks in the opposite direction they were moving
+        Vector direction = currentLocation.toVector().subtract(targetLocation.toVector()).normalize();
+        if (direction.length() == 0) {
+            // If no clear direction, push backwards
+            direction = player.getLocation().getDirection().multiply(-1);
+        }
+        direction.multiply(3); // Push back 3 blocks
+        
+        pushBackLocation.add(direction);
+        
+        plugin.debug("Pushing player from [" + currentLocation.getBlockX() + "," + currentLocation.getBlockY() + "," + currentLocation.getBlockZ() + 
+                    "] to [" + pushBackLocation.getBlockX() + "," + pushBackLocation.getBlockY() + "," + pushBackLocation.getBlockZ() + "]");
+        
+        // Ensure the push-back location is safe (not in another region)
+        if (WorldGuardUtils.isInAnyRegion(pushBackLocation)) {
+            // If still in a region, try to find a safe location nearby
+            plugin.debug("Push-back location still in region, finding safe location");
+            pushBackLocation = findSafeLocationNearby(currentLocation, 5);
+        }
+        
+        // Teleport player to push-back location
+        player.teleport(pushBackLocation);
+        plugin.debug("Teleport completed for " + player.getName());
+    }
+
+    /**
+     * Find a safe location near the given location that is not in a WorldGuard region
+     */
+    private Location findSafeLocationNearby(Location center, int radius) {
+        // Check in a spiral pattern around the center
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                Location testLocation = center.clone().add(x, 0, z);
+                if (!WorldGuardUtils.isInAnyRegion(testLocation)) {
+                    // Make sure the location is safe (not in void)
+                    if (testLocation.getY() > 0) {
+                        return testLocation;
+                    }
+                }
+            }
+        }
+        
+        // If no safe location found, return the original location
+        return center;
+    }
+
     public boolean handleDuelHit(Player damager, Player victim) {
         UUID d = damager.getUniqueId();
         UUID v = victim.getUniqueId();
 
+        // Check if either player is in ANY WorldGuard region (prevent dueling in protected areas)
+        if (WorldGuardUtils.isWorldGuardAvailable()) {
+            boolean damagerInRegion = WorldGuardUtils.isInAnyRegion(damager.getLocation());
+            boolean victimInRegion = WorldGuardUtils.isInAnyRegion(victim.getLocation());
+            
+            if (damagerInRegion || victimInRegion) {
+                // Cancel the duel attempt if either player is in a WorldGuard region
+                String regionName = damagerInRegion ? 
+                    WorldGuardUtils.getRegionNamesAt(damager.getLocation()).iterator().next() :
+                    WorldGuardUtils.getRegionNamesAt(victim.getLocation()).iterator().next();
+                
+                damager.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + 
+                    ChatColor.RED + " Cannot enter the safe zone platform during fight! ");
+                return false;
+            }
+        }
+
         DuelSession duelD = duels.get(d);
         DuelSession duelV = duels.get(v);
 
+        // Case 1: neither is in a duel → create new duel
         // Case 1: neither is in a duel → create new duel
         if (duelD == null && duelV == null) {
             DuelSession duel = new DuelSession(d, v);
             duels.put(d, duel);
             duels.put(v, duel);
 
+            // Hide others for both duelers
+            hideOthersFor(damager, duel);
+            hideOthersFor(victim, duel);
+
             // Send "now fighting" message ONCE
-            damager.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + ChatColor.GREEN + " You're now fighting " + ChatColor.RED + victim.getName());
-            victim.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + ChatColor.GREEN + " You're now fighting " + ChatColor.RED + damager.getName());
+            damager.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX)
+                    + ChatColor.GREEN + " You're now fighting " + ChatColor.RED + victim.getName());
+            victim.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX)
+                    + ChatColor.GREEN + " You're now fighting " + ChatColor.RED + damager.getName());
 
             duel.notifyOnce(d);
             duel.notifyOnce(v);

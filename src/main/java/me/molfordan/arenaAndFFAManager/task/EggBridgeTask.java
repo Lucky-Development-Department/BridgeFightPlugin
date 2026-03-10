@@ -1,5 +1,9 @@
 package me.molfordan.arenaAndFFAManager.task;
 
+import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
+import me.molfordan.arenaAndFFAManager.object.Arena;
+import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
+import me.molfordan.arenaAndFFAManager.region.FlagType;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
@@ -74,6 +78,19 @@ public class EggBridgeTask implements Runnable {
     }
 
     private void placeBlock(Location location) {
+        // 1. Check Region flags
+        if (ArenaAndFFAManager.getInstance().getRegionManager().isDenied(location, FlagType.BUILD)) {
+            return;
+        }
+
+        // 2. Check Arena build limit
+        Arena arena = ArenaAndFFAManager.getInstance().getArenaManager().getArenaByLocationIgnoreY(location);
+        if (arena != null && arena.getType() == ArenaType.FFABUILD) {
+            if (location.getY() > arena.getBuildLimitY() + 1) {
+                return;
+            }
+        }
+
         Block block = location.getBlock();
 
         if (block.getType() == Material.AIR) {

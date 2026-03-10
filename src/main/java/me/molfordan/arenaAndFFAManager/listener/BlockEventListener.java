@@ -229,7 +229,7 @@ public class BlockEventListener implements Listener {
 
         // Break the block manually (since event.setDropItems(false) doesn't exist)
         block.setType(Material.AIR);
-        block.getWorld().playEffect(loc, Effect.STEP_SOUND, originalState.getType());
+        //block.getWorld().playEffect(loc, Effect.STEP_SOUND, originalState.getType());
 
         // Prevent item drops (remove entities next tick)
         Bukkit.getScheduler().runTaskLater(plugin, () -> removeItemsAt(loc), 1L);

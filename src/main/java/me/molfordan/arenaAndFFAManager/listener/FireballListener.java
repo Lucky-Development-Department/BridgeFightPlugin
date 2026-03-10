@@ -2,6 +2,7 @@ package me.molfordan.arenaAndFFAManager.listener;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
+import me.molfordan.arenaAndFFAManager.manager.FireballTracker;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -34,6 +35,7 @@ public class FireballListener implements Listener {
     private final double fireballHorizontal;
     private final double fireballVertical;
     private final ConfigManager config;
+    private final FireballTracker fireballTracker;
 
     private final double damageSelf;
     private final double damageEnemy;
@@ -54,8 +56,9 @@ public class FireballListener implements Listener {
     private static final double GUARANTEED_LIFT_MIN = 0.45;
     private static final double GUARANTEED_LIFT_MAX = 1.05;
 
-    public FireballListener(ConfigManager config) {
+    public FireballListener(ConfigManager config, FireballTracker fireballTracker) {
         this.config = config;
+        this.fireballTracker = fireballTracker;
         this.fireballExplosionSize = 3.5;
         this.fireballMakeFire = false;
         this.fireballHorizontal = 1.3;
@@ -66,73 +69,9 @@ public class FireballListener implements Listener {
     }
 
     @EventHandler
-    public void fireballHit(ProjectileHitEvent e) {
-        if(!(e.getEntity() instanceof Fireball)) return;
-        Location location = e.getEntity().getLocation();
-
-        ProjectileSource projectileSource = e.getEntity().getShooter();
-        if(!(projectileSource instanceof Player)) return;
-        Player source = (Player) projectileSource;
-
-
-
-        Vector vector = location.toVector();
-
-        World world = location.getWorld();
-
-        assert world != null;
-        Collection<Entity> nearbyEntities = world
-                .getNearbyEntities(location, fireballExplosionSize, fireballExplosionSize, fireballExplosionSize);
-        for(Entity entity : nearbyEntities) {
-            if(!(entity instanceof Player)) continue;
-            Player player = (Player) entity;
-            //if(!getAPI().getArenaUtil().isPlaying(player)) continue;
-
-
-            Vector playerVector = player.getLocation().toVector();
-            Vector normalizedVector = vector.subtract(playerVector).normalize();
-            Vector horizontalVector = normalizedVector.multiply(fireballHorizontal);
-            double y = normalizedVector.getY();
-            if(y < 0 ) y += 1.5;
-            if(y <= 0.5) {
-                y = fireballVertical*1.5; // kb for not jumping
-            } else {
-                y = y*fireballVertical*1.5; // kb for jumping
-            }
-            player.setVelocity(horizontalVector.setY(y));
-
-            /*
-
-            LastHit lh = LastHit.getLastHit(player);
-            if (lh != null) {
-                lh.setDamager(source);
-                lh.setTime(System.currentTimeMillis());
-            } else {
-                new LastHit(player, source, System.currentTimeMillis());
-            }
-
-             */
-
-            if(player.equals(source)) {
-                if(damageSelf > 0) {
-                    player.damage(damageSelf); // damage shooter
-                }
-
-            } else {
-                if(damageEnemy > 0) {
-                    player.damage(damageEnemy); // damage enemies
-                }
-            }
-        }
-    }
-
-
-    @EventHandler
     public void fireballDirectHit(EntityDamageByEntityEvent e) {
         if(!(e.getDamager() instanceof Fireball)) return;
         if(!(e.getEntity() instanceof Player)) return;
-
-        //if(Arena.getArenaByPlayer((Player) e.getEntity()) == null) return;
 
         e.setCancelled(true);
     }
@@ -140,11 +79,9 @@ public class FireballListener implements Listener {
     @EventHandler
     public void fireballPrime(ExplosionPrimeEvent e) {
         if(!(e.getEntity() instanceof Fireball)) return;
-        ProjectileSource shooter = ((Fireball)e.getEntity()).getShooter();
+        org.bukkit.projectiles.ProjectileSource shooter = ((Fireball)e.getEntity()).getShooter();
         if(!(shooter instanceof Player)) return;
         Player player = (Player) shooter;
-
-        //if(Arena.getArenaByPlayer(player) == null) return;
 
         e.setFire(fireballMakeFire);
     }
@@ -173,6 +110,23 @@ public class FireballListener implements Listener {
         for (Entity near : fireball.getNearbyEntities(EXPLOSION_RADIUS, EXPLOSION_RADIUS, EXPLOSION_RADIUS)) {
             if (!(near instanceof Player)) continue;
             Player player = (Player) near;
+            
+            // Mark player as hit by fireball for void death tracking
+            fireballTracker.markPlayerHitByFireball(player, fireball);
+            
+            // Apply damage and credit the shooter
+            if (shooter != null) {
+                if (player.equals(shooter)) {
+                    if (damageSelf > 0) {
+                        player.damage(damageSelf, shooter);
+                    }
+                } else {
+                    if (damageEnemy > 0) {
+                        player.damage(damageEnemy, shooter);
+                    }
+                }
+            }
+
             Location playerLoc = player.getLocation();
 
             double distance = playerLoc.distance(explosionLoc);
@@ -395,6 +349,9 @@ public class FireballListener implements Listener {
         // Launch fireball
         final Fireball fb = p.launchProjectile(Fireball.class);
         fb.setShooter(p);
+        
+        // Track fireball ownership
+        fireballTracker.trackFireball(fb, p);
 
         // === CONTROLLED SPEED (1.8.8 SAFE) ===
         final Vector direction = p.getEyeLocation().getDirection().normalize();
@@ -422,14 +379,6 @@ public class FireballListener implements Listener {
             inHand.setAmount(inHand.getAmount() - 1);
         } else {
             p.getInventory().setItemInHand(null);
-        }
-    }
-
-    @EventHandler
-    public void onFireballPrime(ExplosionPrimeEvent event) {
-        if (event.getEntity() instanceof Fireball) {
-            event.setFire(fireballMakeFire);
-            event.setRadius((float) fireballExplosionSize);
         }
     }
 

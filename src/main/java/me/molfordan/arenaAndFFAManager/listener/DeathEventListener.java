@@ -72,27 +72,24 @@ public class DeathEventListener implements Listener {
             plugin.debug("Void death: " + player.getName() + " voidHandled flag cleared.");
         }, 40L); // 40 ticks = 2 seconds
 
-        // For BuildFFA, just set health to 0 and let the natural death event handle it
-        if (arena.getType() != ArenaType.FFABUILD) {
-
+        // For BuildFFA, we call handleDeath here to send the "Void Death" message,
+        // then set health to 0 to trigger the natural death process.
+        if (arena.getType() == ArenaType.FFABUILD) {
+            // Handle the death with the correct context (isVoidDeath = true)
+            Player killer = plugin.getCombatManager().getAttacker(player);
+            deathMessageManager.handleDeath(
+                    player,
+                    arena,
+                    true,  // isVoidDeath
+                    false  // isQuit
+            );
+            
+            player.setHealth(0);
+            EnderPearlListener.getCooldowns().remove(id);
             return;
         }
 
-        // For other arena types, handle the death directly
-        PlayerStats stats = plugin.getStatsManager().getStats(id);
-        stats.resetBuildStreak();
-        plugin.getStatsManager().savePlayerAsync(stats);
-
-        // Handle the death with the correct context
-        Player killer = plugin.getCombatManager().getAttacker(player);
-        deathMessageManager.handleDeath(
-                player,
-                arena,
-                true,  // isVoidDeath
-                false  // isQuit
-        );
-        player.setHealth(0);
-        EnderPearlListener.getCooldowns().remove(id);
+        // For other arena types, void handling is done elsewhere (e.g. BridgeFightListener)
     }
 
     /**

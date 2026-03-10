@@ -110,6 +110,13 @@ public class BridgeFightKitGUI {
         }
 
         plugin.getKitManager().setSelectedBridgeFightKit(player.getUniqueId(), kit.getName());
+        
+        // Save last selected kit to database
+        if (stats != null) {
+            stats.setLastSelectedBridgeKit(kit.getName());
+            plugin.getStatsManager().savePlayer(stats);
+        }
+        
         player.sendMessage("§aEquipped kit: " + kit.getDisplayName());
         player.closeInventory();
     }

@@ -46,7 +46,16 @@ public class CombatLogListener implements Listener {
         if (!(event.getEntity() instanceof Player)) return;
 
         Player victim = (Player) event.getEntity();
-        Player attacker = (event.getDamager() instanceof Player) ? (Player) event.getDamager() : null;
+        Player attacker = null;
+
+        if (event.getDamager() instanceof Player) {
+            attacker = (Player) event.getDamager();
+        } else if (event.getDamager() instanceof org.bukkit.entity.Projectile) {
+            org.bukkit.entity.Projectile projectile = (org.bukkit.entity.Projectile) event.getDamager();
+            if (projectile.getShooter() instanceof Player) {
+                attacker = (Player) projectile.getShooter();
+            }
+        }
         
         // Ignore creative mode attackers and self-damage
         if (attacker == null || attacker.getGameMode() == GameMode.CREATIVE || attacker.equals(victim)) {

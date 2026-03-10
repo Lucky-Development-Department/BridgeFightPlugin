@@ -1,14 +1,23 @@
 package me.molfordan.arenaAndFFAManager.placeholder;
 
+//import com.mysql.jdbc.PreparedStatement;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import me.molfordan.arenaAndFFAManager.manager.StatsManager;
+import me.molfordan.arenaAndFFAManager.database.*;
+import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -36,6 +45,9 @@ public class LeaderboardPlaceholderExpansion extends PlaceholderExpansion {
     public LeaderboardPlaceholderExpansion(ArenaAndFFAManager plugin) {
         this.plugin = plugin;
         this.statsManager = plugin.getStatsManager();
+        
+        // Initialize cache on startup
+        Bukkit.getScheduler().runTaskLater(plugin, this::updateLeaderboardCache, 20L);
     }
 
     @Override
@@ -50,195 +62,342 @@ public class LeaderboardPlaceholderExpansion extends PlaceholderExpansion {
     @Override
     public boolean persist() { return true; }
 
+    // Also register stats identifier for personal stats
+    public String getStatsIdentifier() { return "stats"; }
+
     // ========================================================================
-    // CACHE UPDATE (EVERY 10s)
+    // CACHE UPDATE (EVERY 2s)
     // ========================================================================
     public void updateLeaderboardCache() {
 
-        if (System.currentTimeMillis() - lastUpdate < 10_000)
+        if (System.currentTimeMillis() - lastUpdate < 2_000)
             return;
 
         lastUpdate = System.currentTimeMillis();
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
-            @Override
-            public void run() {
-                try {
+        try {
 
-                Map<String, List<LBEntry>> newCache = new HashMap<>();
-                List<PlayerStats> allPlayers = new ArrayList<>(statsManager.getAllPlayers());
+            Map<String, List<LBEntry>> newCache = new HashMap<>();
+            
+            //plugin.debug("[Leaderboard] Updating cache - getting top players from database");
+            
+            // Get top players from database for each category
+            List<PlayerStats> bridgeKills = statsManager.getTopPlayers(ArenaType.BRIDGE, "kills", 100);
+            List<PlayerStats> bridgeDeaths = statsManager.getTopPlayers(ArenaType.BRIDGE, "deaths", 100);
+            List<PlayerStats> bridgeHighestStreak = statsManager.getTopPlayers(ArenaType.BRIDGE, "highest_streak", 100);
+            List<PlayerStats> bridgeCurrentStreak = statsManager.getTopPlayers(ArenaType.BRIDGE, "streak", 100);
+            
+            List<PlayerStats> buildKills = statsManager.getTopPlayers(ArenaType.BUILD, "kills", 100);
+            List<PlayerStats> buildDeaths = statsManager.getTopPlayers(ArenaType.BUILD, "deaths", 100);
+            List<PlayerStats> buildHighestStreak = statsManager.getTopPlayers(ArenaType.BUILD, "highest_streak", 100);
+            List<PlayerStats> buildCurrentStreak = statsManager.getTopPlayers(ArenaType.BUILD, "streak", 100);
+/*
+            //plugin.debug("[Leaderboard] Retrieved from database - bridgeKills: " + bridgeKills.size() + 
+            //            ", bridgeDeaths: " + bridgeDeaths.size() + ", bridgeHighestStreak: " + bridgeHighestStreak.size() +
+            //            ", bridgeCurrentStreak: " + bridgeCurrentStreak.size() + ", buildKills: " + buildKills.size() + 
+            //            ", buildDeaths: " + buildDeaths.size() + ", buildHighestStreak: " + buildHighestStreak.size() + 
+            //            ", buildCurrentStreak: " + buildCurrentStreak.size());
 
-                List<PlayerStats> stats = new ArrayList<>(allPlayers);
 
-                // --- BRIDGE ---
-                newCache.put("bridge_kills", sort(stats, new Getter() {
-                    public int get(PlayerStats s) { return s.getBridgeKills(); }
-                }));
+ */
+            // Bridge leaderboards
+            newCache.put("bridge_kills", convertToLBEntries(bridgeKills, 
+                s -> s.getBridgeKills()));
+            newCache.put("bridge_deaths", convertToLBEntries(bridgeDeaths, 
+                s -> s.getBridgeDeaths()));
+            newCache.put("bridge_highest_streak", convertToLBEntries(bridgeHighestStreak, 
+                s -> s.getBridgeHighestStreak()));
+            newCache.put("bridge_streak", convertToLBEntries(bridgeCurrentStreak, 
+                s -> s.getBridgeStreak()));
 
-                newCache.put("bridge_deaths", sort(stats, new Getter() {
-                    public int get(PlayerStats s) { return s.getBridgeDeaths(); }
-                }));
+            // Build leaderboards
+            newCache.put("build_kills", convertToLBEntries(buildKills, 
+                s -> s.getBuildKills()));
+            newCache.put("build_deaths", convertToLBEntries(buildDeaths, 
+                s -> s.getBuildDeaths()));
+            newCache.put("build_highest_streak", convertToLBEntries(buildHighestStreak, 
+                s -> s.getBuildHighestStreak()));
+            newCache.put("build_streak", convertToLBEntries(buildCurrentStreak, 
+                s -> s.getBuildStreak()));
 
-                newCache.put("bridge_highest_streak", sort(stats, new Getter() {
-                    public int get(PlayerStats s) { return s.getBridgeHighestStreak(); }
-                }));
+            //plugin.debug("[Leaderboard] Cache keys created: " + String.join(", ", newCache.keySet()));
 
-                newCache.put("bridge_streak", sort(stats, new Getter() {
-                    public int get(PlayerStats s) { return s.getBridgeStreak(); }
-                }));
+            leaderboardCache.clear();
+            leaderboardCache.putAll(newCache);
 
-                // --- BUILD ---
-                newCache.put("build_kills", sort(stats, new Getter() {
-                    public int get(PlayerStats s) { return s.getBuildKills(); }
-                }));
+            //plugin.debug("[Leaderboard] Cache updated with " + newCache.size() + " categories");
 
-                newCache.put("build_deaths", sort(stats, new Getter() {
-                    public int get(PlayerStats s) { return s.getBuildDeaths(); }
-                }));
-
-                newCache.put("build_highest_streak", sort(stats, new Getter() {
-                    public int get(PlayerStats s) { return s.getBuildHighestStreak(); }
-                }));
-
-                newCache.put("build_streak", sort(stats, new Getter() {
-                    public int get(PlayerStats s) { return s.getBuildStreak(); }
-                }));
-
-                leaderboardCache.clear();
-                leaderboardCache.putAll(newCache);
-                } catch (Exception e) {
-                    plugin.getLogger().warning("Error updating leaderboard: " + e.getMessage());
-            }
-            }
-        });
+        } catch (Exception e) {
+            plugin.getLogger().warning("Failed to update leaderboard cache: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
-    // Java-8 compatible functional interface
-    private interface Getter {
+    private List<LBEntry> convertToLBEntries(List<PlayerStats> stats, java.util.function.Function<PlayerStats, Integer> getter) {
+        return stats.stream()
+                .limit(100)
+                .map(s -> new LBEntry(s.getUuid(), s.getUsername(), getter.apply(s)))
+                .collect(Collectors.toList());
+    }
+
+    // ========================================================================
+    // PLACEHOLDER REQUEST
+    // ========================================================================
+    @Override
+    public String onPlaceholderRequest(Player player, @NotNull String identifier) {
+
+        //plugin.debug("[Leaderboard] === PLACEHOLDER REQUEST ===");
+        //plugin.debug("[Leaderboard] Raw identifier: '" + identifier + "'");
+        //plugin.debug("[Leaderboard] Requested by player: " + (player != null ? player.getName() : "null"));
+        //plugin.debug("[Leaderboard] Identifier length: " + identifier.length());
+        //plugin.debug("[Leaderboard] Starts with 'top_': " + identifier.startsWith("top_"));
+        //plugin.debug("[Leaderboard] Starts with 'stats_': " + identifier.startsWith("stats_"));
+
+        // Update cache if needed
+        updateLeaderboardCache();
+
+        // -------------------------------------------------------------------
+        // PERSONAL STATS (new format: %stats_<type>_<stat>%)
+        // -------------------------------------------------------------------
+        if (identifier.startsWith("stats_")) {
+            if (player == null) return "N/A";
+
+            PlayerStats stats = statsManager.getStats(player.getUniqueId());
+            if (stats == null) return "N/A";
+
+            String[] parts = identifier.split("_");
+            if (parts.length < 3) return "Invalid format";
+
+            String type = parts[1]; // bridge or build
+            String stat = parts[2]; // kills, deaths, highest, kda, streak
+
+            if (type.equals("bridge")) {
+                switch (stat) {
+                    case "kills": return String.valueOf(stats.getBridgeKills());
+                    case "deaths": return String.valueOf(stats.getBridgeDeaths());
+                    case "highest": return String.valueOf(stats.getBridgeHighestStreak());
+                    case "streak": return String.valueOf(stats.getBridgeStreak());
+                    case "kda": {
+                        int deaths = stats.getBridgeDeaths();
+                        if (deaths == 0) return String.valueOf(stats.getBridgeKills());
+                        double kda = (double) stats.getBridgeKills() / deaths;
+                        return String.format("%.2f", kda);
+                    }
+                    default: return "N/A";
+                }
+            } else if (type.equals("build")) {
+                switch (stat) {
+                    case "kills": return String.valueOf(stats.getBuildKills());
+                    case "deaths": return String.valueOf(stats.getBuildDeaths());
+                    case "highest": return String.valueOf(stats.getBuildHighestStreak());
+                    case "streak": return String.valueOf(stats.getBuildStreak());
+                    case "kda": {
+                        int deaths = stats.getBuildDeaths();
+                        if (deaths == 0) return String.valueOf(stats.getBuildKills());
+                        double kda = (double) stats.getBuildKills() / deaths;
+                        return String.format("%.2f", kda);
+                    }
+                    default: return "N/A";
+                }
+            }
+            return "N/A";
+        }
+
+        // -------------------------------------------------------------------
+        // LEADERBOARD ENTRIES (new format: %arena_top_<rank>_<type>_<stat>_<name|value>%)
+        // -------------------------------------------------------------------
+        if (identifier.startsWith("top_")) {
+            //plugin.debug("[Leaderboard] Processing TOP_ placeholder");
+            
+            // Parse: top_<rank>_<type>_<stat>_<name|value>
+            // Example: top_1_bridge_highest_streak_name
+            String[] parts = identifier.split("_");
+            //plugin.debug("[Leaderboard] Split parts: " + Arrays.toString(parts));
+            //plugin.debug("[Leaderboard] Parts length: " + parts.length);
+            
+            if (parts.length < 5) {
+                //plugin.debug("[Leaderboard] Invalid format for identifier: " + identifier + 
+            //            ". Expected format: top_<rank>_<type>_<stat>_<name|value>");
+                return ChatColor.RED + "Invalid format. Use: top_<rank>_<type>_<stat>_<name|value>";
+            }
+
+            int rank;
+            try {
+                rank = Integer.parseInt(parts[1]);
+                if (rank < 1) {
+                    //plugin.debug("[Leaderboard] Rank must be positive: " + rank + " in identifier: " + identifier);
+                    return ChatColor.RED + "Rank must be 1 or higher";
+                }
+            } catch (NumberFormatException e) {
+                //plugin.debug("[Leaderboard] Invalid rank number in identifier: " + identifier + 
+            //            ". Rank must be a number.");
+                return ChatColor.RED + "Invalid rank number";
+            }
+
+            String type = parts[2]; // bridge or build
+            
+            // Reconstruct stat name from remaining parts (excluding rank, type, and final dataType)
+            String dataType = parts[parts.length - 1]; // Last part is always name or value
+            StringBuilder statBuilder = new StringBuilder();
+            
+            // Build stat name from parts[3] to parts[length-2]
+            for (int i = 3; i < parts.length - 1; i++) {
+                if (i > 3) statBuilder.append("_");
+                statBuilder.append(parts[i]);
+            }
+            String stat = statBuilder.toString();
+            
+            //plugin.debug("[Leaderboard] Parsed - Type: " + type + ", Stat: " + stat + ", DataType: " + dataType + ", Rank: " + rank);
+
+            // Convert stat name to database format
+            String dbStat;
+            if (stat.equals("highest")) {
+                dbStat = "highest_streak";
+            } else if (stat.equals("current")) {
+                dbStat = "streak";
+            } else {
+                dbStat = stat; // Use as-is for "streak", "highest_streak", etc.
+            }
+            
+            String key = type + "_" + dbStat;
+            //plugin.debug("[Leaderboard] Stat conversion: " + stat + " -> " + dbStat + " (key: " + key + ")");
+            //plugin.debug("[Leaderboard] Available cache keys: " + String.join(", ", leaderboardCache.keySet()));
+            List<LBEntry> leaderboard = leaderboardCache.get(key);
+
+            //plugin.debug("[Leaderboard] Requesting: " + key + " rank " + rank + " (" + dataType + ") (cache size: " + 
+            //            (leaderboard != null ? leaderboard.size() : "null") + ")");
+
+            // If cache is empty or null, try to update it immediately
+            if (leaderboard == null || leaderboard.isEmpty()) {
+                //plugin.debug("[Leaderboard] Cache empty, updating immediately");
+                lastUpdate = 0; // Force update
+                updateLeaderboardCache();
+                leaderboard = leaderboardCache.get(key);
+            }
+
+            if (leaderboard == null) {
+                //plugin.debug("[Leaderboard] No leaderboard data available for: " + key);
+                return ChatColor.GRAY + "No data";
+            }
+
+            if (leaderboard.isEmpty()) {
+                //plugin.debug("[Leaderboard] Empty leaderboard for: " + key);
+                return ChatColor.GRAY + "No entries";
+            }
+
+            if (rank > leaderboard.size()) {
+                //plugin.debug("[Leaderboard] Rank " + rank + " exceeds available entries (" + 
+            //            leaderboard.size() + ") for: " + key);
+                return ChatColor.GRAY + "Rank " + rank + " (Top " + leaderboard.size() + ")";
+            }
+
+            LBEntry entry = leaderboard.get(rank - 1);
+            
+            if (dataType.equals("name")) {
+                String name = entry.name != null && !entry.name.isEmpty() ? entry.name : "Unknown";
+                return name;
+            } else if (dataType.equals("value")) {
+                return String.valueOf(entry.value);
+            } else {
+                return ChatColor.RED + "Invalid data type. Use: name or value";
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // LEGACY FORMAT SUPPORT (old format for backward compatibility)
+        // -------------------------------------------------------------------
+        String[] parts = identifier.split("_");
+        /*
+        if (parts.length < 3) {
+            plugin.debug("[Leaderboard] Invalid format for identifier: " + identifier + 
+                        ". Expected format: type_stat_rank or stats_type_stat");
+            return ChatColor.RED + "Invalid format";
+        }
+
+         */
+
+        String type = parts[0]; // bridge or build
+        String stat = parts[1]; // kills, deaths, highest_streak
+        int rank;
+
+        try {
+            rank = Integer.parseInt(parts[2]);
+            if (rank < 1) {
+                //plugin.debug("[Leaderboard] Rank must be positive: " + rank + " in identifier: " + identifier);
+                return ChatColor.RED + "Rank must be 1 or higher";
+            }
+        } catch (NumberFormatException e) {
+            /*
+            plugin.debug("[Leaderboard] Invalid rank number in identifier: " + identifier +
+                        ". Rank must be a number.");
+
+             */
+            return ChatColor.RED + "Invalid rank number";
+        }
+
+        String key = type + "_" + stat;
+        List<LBEntry> leaderboard = leaderboardCache.get(key);
+        /*
+        plugin.debug("[Leaderboard] Requesting (legacy): " + key + " rank " + rank + " (cache size: " + 
+                   (leaderboard != null ? leaderboard.size() : "null") + ")");
+
+         */
+
+        // If cache is empty or null, try to update it immediately
+        if (leaderboard == null || leaderboard.isEmpty()) {
+            ////plugin.debug("[Leaderboard] Cache empty, updating immediately");
+            lastUpdate = 0; // Force update
+            updateLeaderboardCache();
+            leaderboard = leaderboardCache.get(key);
+        }
+        /*
+
+        if (leaderboard == null) {
+            //plugin.debug("[Leaderboard] No leaderboard data available for: " + key);
+            return ChatColor.GRAY + "No data";
+        }
+
+        if (leaderboard.isEmpty()) {
+            //plugin.debug("[Leaderboard] Empty leaderboard for: " + key);
+            return ChatColor.GRAY + "No entries";
+        }
+
+        if (rank > leaderboard.size()) {
+            plugin.debug("[Leaderboard] Rank " + rank + " exceeds available entries (" + 
+                        leaderboard.size() + ") for: " + key);
+            return ChatColor.GRAY + "Rank " + rank + " (Top " + leaderboard.size() + ")";
+        }
+
+         */
+
+        LBEntry entry = leaderboard.get(rank - 1);
+        String name = entry.name != null && !entry.name.isEmpty() ? entry.name : "Unknown";
+        return name + ChatColor.WHITE + ": " + ChatColor.GREEN+ entry.value;
+    }
+
+    // ========================================================================
+    // UTILITY
+    // ========================================================================
+    public interface Getter {
         int get(PlayerStats s);
     }
 
-    private List<LBEntry> sort(List<PlayerStats> list, Getter getter) {
-        plugin.debug("Sorting " + list.size() + " players for leaderboard");
-        return list.stream()
-                .filter(Objects::nonNull)
-                .peek(s -> plugin.debug("Processing player: " + s.getUsername() +
-                        " (UUID: " + s.getUuid() + ")"))
+    private List<LBEntry> sort(List<PlayerStats> stats, Getter getter) {
+        return stats.stream()
                 .sorted((a, b) -> Integer.compare(getter.get(b), getter.get(a)))
-                .map(s -> {
-                    UUID uuid = s.getUuid();
-                    String name = s.getUsername();
-                    plugin.debug("Mapping player: " + name + " (UUID: " + uuid + ")");
-
-                    if (name == null || name.isEmpty()) {
-                        name = Bukkit.getOfflinePlayer(uuid).getName();
-                        if (name == null) {
-                            name = "Unknown";
-                            plugin.debug("Could not resolve name for UUID: " + uuid);
-                        }
-                    }
-
-                    return new LBEntry(uuid, name, getter.get(s));
-                })
+                .limit(100)
+                .map(s -> new LBEntry(s.getUuid(), s.getUsername(), getter.get(s)))
                 .collect(Collectors.toList());
     }
 
+    // Get cached leaderboard data
+    public Map<String, List<LBEntry>> getLeaderboardCache() {
+        return new HashMap<>(leaderboardCache);
+    }
 
-    // ========================================================================
-    // PLACEHOLDER HANDLER
-    // example:
-    // %arena_top_1_bridge_kills_name%
-    // %arena_top_1_bridge_kills_value%
-    // ========================================================================
-    @Override
-    public String onPlaceholderRequest(Player player, String params) {
-
+    // Force cache refresh
+    public void refreshCache() {
+        lastUpdate = 0;
         updateLeaderboardCache();
-
-        if (!params.startsWith("top_")) return null;
-
-        try {
-            // top_1_bridge_kills_name
-            String[] p = params.split("_");
-
-            int rank = Integer.parseInt(p[1]);
-            String type = p[p.length - 1]; // name / value
-
-            // join middle: bridge_kills, build_deaths, etc.
-            StringBuilder sb = new StringBuilder();
-            for (int i = 2; i < p.length - 1; i++) {
-                if (i > 2) sb.append("_");
-                sb.append(p[i]);
-            }
-
-            String key = sb.toString();
-
-            List<LBEntry> list = leaderboardCache.get(key);
-            if (list == null || list.isEmpty()) return ChatColor.GRAY + "(null)" + ChatColor.RESET;
-
-            if (rank < 1 || rank > list.size()) return ChatColor.GRAY + "(null)" + ChatColor.RESET;
-
-            LBEntry entry = list.get(rank - 1);
-
-            if ("name".equalsIgnoreCase(type)) return entry.name;
-            if ("value".equalsIgnoreCase(type)) return String.valueOf(entry.value);
-
-        } catch (Exception ignored) {}
-
-        return "";
-    }
-
-
-    public Map<String, List<LBEntry>> getCache() {
-        return leaderboardCache;
-    }
-
-    private List<LBEntry> getLeaderboardData(String type) {
-        return statsManager.getAllPlayers().stream()
-                .filter(s -> {
-                    int value = 0;
-                    switch (type) {
-                        case "bridge_kills": value = s.getBridgeKills(); break;
-                        case "bridge_deaths": value = s.getBridgeDeaths(); break;
-                        case "bridge_streak": value = s.getBridgeStreak(); break;
-                        case "bridge_highest": value = s.getBridgeHighestStreak(); break;
-                        case "build_kills": value = s.getBuildKills(); break;
-                        case "build_deaths": value = s.getBuildDeaths(); break;
-                        case "build_streak": value = s.getBuildStreak(); break;
-                        case "build_highest": value = s.getBuildHighestStreak(); break;
-                    }
-                    return value > 0;
-                })
-                .sorted((a, b) -> {
-                    int aVal = 0, bVal = 0;
-                    switch (type) {
-                        case "bridge_kills": aVal = a.getBridgeKills(); bVal = b.getBridgeKills(); break;
-                        case "bridge_deaths": aVal = a.getBridgeDeaths(); bVal = b.getBridgeDeaths(); break;
-                        case "bridge_streak": aVal = a.getBridgeStreak(); bVal = b.getBridgeStreak(); break;
-                        case "bridge_highest": aVal = a.getBridgeHighestStreak(); bVal = b.getBridgeHighestStreak(); break;
-                        case "build_kills": aVal = a.getBuildKills(); bVal = b.getBuildKills(); break;
-                        case "build_deaths": aVal = a.getBuildDeaths(); bVal = b.getBuildDeaths(); break;
-                        case "build_streak": aVal = a.getBuildStreak(); bVal = b.getBuildStreak(); break;
-                        case "build_highest": aVal = a.getBuildHighestStreak(); bVal = b.getBuildHighestStreak(); break;
-                    }
-                    return Integer.compare(bVal, aVal);
-                })
-                .limit(10)
-                .map(s -> new LBEntry(s.getUuid(), s.getUsername(), getValue(s, type)))
-                .collect(Collectors.toList());
-    }
-
-    private int getValue(PlayerStats stats, String type) {
-        switch (type) {
-            case "bridge_kills": return stats.getBridgeKills();
-            case "bridge_deaths": return stats.getBridgeDeaths();
-            case "bridge_streak": return stats.getBridgeStreak();
-            case "bridge_highest": return stats.getBridgeHighestStreak();
-            case "build_kills": return stats.getBuildKills();
-            case "build_deaths": return stats.getBuildDeaths();
-            case "build_streak": return stats.getBuildStreak();
-            case "build_highest": return stats.getBuildHighestStreak();
-            default: return 0;
-        }
     }
 }

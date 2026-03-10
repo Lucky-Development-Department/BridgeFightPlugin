@@ -6,6 +6,9 @@ import me.molfordan.arenaAndFFAManager.database.DatabaseConnector;
 import me.molfordan.arenaAndFFAManager.database.DatabaseManager;
 import me.molfordan.arenaAndFFAManager.database.MongoDatabaseConnector;
 import me.molfordan.arenaAndFFAManager.database.SQLDatabaseConnector;
+import me.molfordan.arenaAndFFAManager.database.connectors.MongoDBConnector;
+import me.molfordan.arenaAndFFAManager.database.connectors.MySQLConnector;
+import me.molfordan.arenaAndFFAManager.database.connectors.SQLiteConnector;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -16,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 import java.util.*;
+import java.util.logging.Level;
 
 public class StatsManager {
 
@@ -25,29 +29,14 @@ public class StatsManager {
 
     private final Map<UUID, PlayerStats> cache = new HashMap<>();
     
-    // Local storage integration
-        private final LocalStorageManager localStorageManager;
-        private final DatabaseSyncScheduler syncScheduler;
-        private final BackupManager backupManager; // New field
-    
-        public StatsManager(ArenaAndFFAManager plugin, BackupManager backupManager) {
-            this.plugin = plugin;
-            this.db = plugin.getDatabaseManager();
-            this.backupManager = backupManager; // Initialize new field
+    public StatsManager(ArenaAndFFAManager plugin) {
+        this.plugin = plugin;
+        this.db = plugin.getDatabaseManager();
 
         this.statsFolder = new File(plugin.getDataFolder(), "playerstats");
         if (!statsFolder.exists()) statsFolder.mkdirs();
-        
-        // Initialize local storage
-        this.localStorageManager = new LocalStorageManager(plugin);
-        
-        // Initialize sync scheduler
-        this.syncScheduler = new DatabaseSyncScheduler(plugin, localStorageManager, this, backupManager);
 
         setupSQLTables();
-        
-        // Start the sync scheduler
-        syncScheduler.startScheduler();
     }
 
     // --------------------------------------------------------------------------------------
@@ -71,17 +60,38 @@ public class StatsManager {
                         "build_kills INT DEFAULT 0," +
                         "build_deaths INT DEFAULT 0," +
                         "build_streak INT DEFAULT 0," +
-                        "build_highest_streak INT DEFAULT 0" +
+                        "build_highest_streak INT DEFAULT 0," +
+                        "last_selected_bridge_kit VARCHAR(64) DEFAULT 'Default'" +
                         ");";
 
         try (Connection conn = sql.getConnection();
              Statement st = conn.createStatement()) {
 
             st.executeUpdate(create);
-            plugin.debug("[Stats] SQL table ready.");
+            //plugin.debug("[Stats] SQL table ready.");
+            
+            // Add missing columns for existing tables
+            addMissingColumns(conn);
 
         } catch (Exception e) {
-            plugin.debug("[Stats] Failed to create SQL table");
+            //plugin.debug("[Stats] Failed to create SQL table");
+        }
+    }
+    
+    private void addMissingColumns(Connection conn) {
+        try (Statement st = conn.createStatement()) {
+            // Check and add last_selected_bridge_kit if missing
+            try {
+                st.executeQuery("SELECT last_selected_bridge_kit FROM player_stats LIMIT 1");
+            } catch (SQLException e) {
+                //plugin.debug("[Stats] Adding missing last_selected_bridge_kit column");
+                st.executeUpdate("ALTER TABLE player_stats ADD COLUMN last_selected_bridge_kit VARCHAR(64) DEFAULT 'Default'");
+            }
+            
+            //plugin.debug("[Stats] Column migration completed");
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to add missing columns to SQL table", e);
         }
     }
 
@@ -129,92 +139,74 @@ public class StatsManager {
                     stats.setBuildDeaths(rs.getInt("build_deaths"));
                     stats.setBuildStreak(rs.getInt("build_streak"));
                     stats.setBuildHighestStreak(rs.getInt("build_highest_streak"));
+                    stats.setLastSelectedBridgeKit(rs.getString("last_selected_bridge_kit"));
 
                     return stats;
                 }
             }
 
-            // create new entry
-            try (PreparedStatement insert =
-                         conn.prepareStatement("INSERT INTO player_stats (uuid, username) VALUES (?, ?)")) {
-
-                insert.setString(1, uuid.toString());
-                insert.setString(2, username);
-                insert.executeUpdate();
-            }
-
-            return new PlayerStats(uuid, username);
-
         } catch (Exception e) {
-            plugin.debug("[Stats] SQL load failed → using YAML");
-            return loadFromYAML(uuid, username);
+            plugin.getLogger().log(Level.SEVERE, "Failed to load player stats from SQL", e);
         }
+
+        return new PlayerStats(uuid, username);
     }
 
     private PlayerStats loadFromMongo(UUID uuid, String username) {
-        MongoDatabaseConnector mongo = (MongoDatabaseConnector) db.getConnector();
+        MongoDBConnector mongo = (MongoDBConnector) db.getConnector();
+        com.mongodb.client.MongoDatabase database = mongo.getMongoDatabase();
+        com.mongodb.client.MongoCollection<org.bson.Document> collection = database.getCollection("player_stats");
 
-        try {
-            org.bson.Document doc = mongo.getMongoDatabase()
-                    .getCollection("player_stats")
-                    .find(new org.bson.Document("uuid", uuid.toString()))
-                    .first();
+        org.bson.Document doc = collection.find(new org.bson.Document("_id", uuid.toString())).first();
+        if (doc != null) {
+            PlayerStats stats = new PlayerStats(uuid, username);
+            stats.setUsername(doc.getString("username"));
 
-            if (doc != null) {
-                PlayerStats stats = new PlayerStats(uuid, username);
+            stats.setBridgeKills(doc.getInteger("bridge_kills", 0));
+            stats.setBridgeDeaths(doc.getInteger("bridge_deaths", 0));
+            stats.setBridgeStreak(doc.getInteger("bridge_streak", 0));
+            stats.setBridgeHighestStreak(doc.getInteger("bridge_highest_streak", 0));
+            stats.setBridgeDailyStreak(doc.getInteger("bridge_daily_streak", 0));
+            stats.setBridgeDailyHighestStreak(doc.getInteger("bridge_daily_highest_streak", 0));
 
-                stats.setUsername(doc.getString("username"));
+            stats.setBuildKills(doc.getInteger("build_kills", 0));
+            stats.setBuildDeaths(doc.getInteger("build_deaths", 0));
+            stats.setBuildStreak(doc.getInteger("build_streak", 0));
+            stats.setBuildHighestStreak(doc.getInteger("build_highest_streak", 0));
+            stats.setBuildDailyStreak(doc.getInteger("build_daily_streak", 0));
+            stats.setBuildDailyHighestStreak(doc.getInteger("build_daily_highest_streak", 0));
+            String kitName = doc.getString("last_selected_bridge_kit");
+            stats.setLastSelectedBridgeKit(kitName != null ? kitName : "Default");
 
-                stats.setBridgeKills(doc.getInteger("bridge_kills", 0));
-                stats.setBridgeDeaths(doc.getInteger("bridge_deaths", 0));
-                stats.setBridgeStreak(doc.getInteger("bridge_streak", 0));
-                stats.setBridgeHighestStreak(doc.getInteger("bridge_highest_streak", 0));
-
-                stats.setBuildKills(doc.getInteger("build_kills", 0));
-                stats.setBuildDeaths(doc.getInteger("build_deaths", 0));
-                stats.setBuildStreak(doc.getInteger("build_streak", 0));
-                stats.setBuildHighestStreak(doc.getInteger("build_highest_streak", 0));
-
-                return stats;
-            }
-
-            // new user
-            mongo.getMongoDatabase()
-                    .getCollection("player_stats")
-                    .insertOne(new org.bson.Document()
-                            .append("uuid", uuid.toString())
-                            .append("username", username)
-                    );
-
-            return new PlayerStats(uuid, username);
-
-        } catch (Exception e) {
-            return loadFromYAML(uuid, username);
+            return stats;
         }
+
+        return new PlayerStats(uuid, username);
     }
 
     private PlayerStats loadFromYAML(UUID uuid, String username) {
         File file = new File(statsFolder, uuid.toString() + ".yml");
-        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+        if (!file.exists()) return new PlayerStats(uuid, username);
 
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
         PlayerStats stats = new PlayerStats(uuid, username);
 
-        if (!file.exists()) {
-            saveToYAML(stats);
-            return stats;
-        }
+        stats.setUsername(config.getString("username", username));
 
-        stats.setUsername(cfg.getString("username", username));
+        stats.setBridgeKills(config.getInt("bridge_kills", 0));
+        stats.setBridgeDeaths(config.getInt("bridge_deaths", 0));
+        stats.setBridgeStreak(config.getInt("bridge_streak", 0));
+        stats.setBridgeHighestStreak(config.getInt("bridge_highest_streak", 0));
+        stats.setBridgeDailyStreak(config.getInt("bridge_daily_streak", 0));
+        stats.setBridgeDailyHighestStreak(config.getInt("bridge_daily_highest_streak", 0));
 
-        stats.setBridgeKills(cfg.getInt("bridge.kills", 0));
-        stats.setBridgeDeaths(cfg.getInt("bridge.deaths", 0));
-        stats.setBridgeStreak(cfg.getInt("bridge.streak", 0));
-        stats.setBridgeHighestStreak(cfg.getInt("bridge.highest_streak", 0));
-
-        stats.setBuildKills(cfg.getInt("build.kills", 0));
-        stats.setBuildDeaths(cfg.getInt("build.deaths", 0));
-        stats.setBuildStreak(cfg.getInt("build.streak", 0));
-        stats.setBuildHighestStreak(cfg.getInt("build.highest_streak", 0));
+        stats.setBuildKills(config.getInt("build_kills", 0));
+        stats.setBuildDeaths(config.getInt("build_deaths", 0));
+        stats.setBuildStreak(config.getInt("build_streak", 0));
+        stats.setBuildHighestStreak(config.getInt("build_highest_streak", 0));
+        stats.setBuildDailyStreak(config.getInt("build_daily_streak", 0));
+        stats.setBuildDailyHighestStreak(config.getInt("build_daily_highest_streak", 0));
+        stats.setLastSelectedBridgeKit(config.getString("last_selected_bridge_kit", "Default"));
 
         return stats;
     }
@@ -222,362 +214,379 @@ public class StatsManager {
     // --------------------------------------------------------------------------------------
     // SAVE PLAYER
     // --------------------------------------------------------------------------------------
-    public void savePlayerAsync(PlayerStats stats) {
-        if (stats == null) return;
-
-        // Save to local storage immediately
-        localStorageManager.savePlayerLocal(stats);
-        
-        // Note: Database sync happens via scheduler at 1AM Jakarta time
-    }
-    
-    /**
-     * Save player directly to database (used by sync scheduler)
-     */
-    public void savePlayerSync(PlayerStats stats) {
-        savePlayer(stats);
-    }
-    
-    /**
-     * Save player to database immediately (legacy method for compatibility)
-     */
-    public void savePlayerToDatabase(PlayerStats stats) {
-        if (stats == null) return;
-
-        try {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> savePlayer(stats));
-        } catch (IllegalPluginAccessException e) {
-            savePlayer(stats);
-        }
-    }
-
-    private void savePlayer(PlayerStats stats) {
+    public void savePlayer(PlayerStats stats) {
         DatabaseConnector connector = db.getConnector();
 
         if (connector instanceof SQLDatabaseConnector) {
             saveToSQL(stats);
-            return;
-        }
-
-        if (connector instanceof MongoDatabaseConnector) {
+        } else if (connector instanceof MongoDatabaseConnector) {
             saveToMongo(stats);
-            return;
+        } else {
+            saveToYAML(stats);
         }
 
-        saveToYAML(stats);
+        cache.put(stats.getUuid(), stats);
     }
 
-    private void saveToSQL(PlayerStats s) {
+    private void saveToSQL(PlayerStats stats) {
         SQLDatabaseConnector sql = (SQLDatabaseConnector) db.getConnector();
 
-        String update = "UPDATE player_stats SET username=?, " +
-                "bridge_kills=?, bridge_deaths=?, bridge_streak=?, bridge_highest_streak=?," +
-                "build_kills=?, build_deaths=?, build_streak=?, build_highest_streak=? " +
-                "WHERE uuid=?";
-
         try (Connection conn = sql.getConnection();
-             PreparedStatement ps = conn.prepareStatement(update)) {
+             PreparedStatement ps = conn.prepareStatement(
+                     "INSERT INTO player_stats (uuid, username, bridge_kills, bridge_deaths, bridge_streak, bridge_highest_streak, " +
+                             "build_kills, build_deaths, build_streak, build_highest_streak, last_selected_bridge_kit) " +
+                             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                             "ON DUPLICATE KEY UPDATE username=?, bridge_kills=?, bridge_deaths=?, bridge_streak=?, bridge_highest_streak=?, " +
+                             "build_kills=?, build_deaths=?, build_streak=?, build_highest_streak=?, last_selected_bridge_kit=?"
+             )) {
 
-            ps.setString(1, s.getUsername());
+            String uuid = stats.getUuid().toString();
+            ps.setString(1, uuid);
+            ps.setString(2, stats.getUsername());
+            ps.setInt(3, stats.getBridgeKills());
+            ps.setInt(4, stats.getBridgeDeaths());
+            ps.setInt(5, stats.getBridgeStreak());
+            ps.setInt(6, stats.getBridgeHighestStreak());
+            ps.setInt(7, stats.getBuildKills());
+            ps.setInt(8, stats.getBuildDeaths());
+            ps.setInt(9, stats.getBuildStreak());
+            ps.setInt(10, stats.getBuildHighestStreak());
+            ps.setString(11, stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
 
-            ps.setInt(2, s.getBridgeKills());
-            ps.setInt(3, s.getBridgeDeaths());
-            ps.setInt(4, s.getBridgeStreak());
-            ps.setInt(5, s.getBridgeHighestStreak());
-
-            ps.setInt(6, s.getBuildKills());
-            ps.setInt(7, s.getBuildDeaths());
-            ps.setInt(8, s.getBuildStreak());
-            ps.setInt(9, s.getBuildHighestStreak());
-
-            ps.setString(10, s.getUuid().toString());
+            ps.setString(12, stats.getUsername());
+            ps.setInt(13, stats.getBridgeKills());
+            ps.setInt(14, stats.getBridgeDeaths());
+            ps.setInt(15, stats.getBridgeStreak());
+            ps.setInt(16, stats.getBridgeHighestStreak());
+            ps.setInt(17, stats.getBuildKills());
+            ps.setInt(18, stats.getBuildDeaths());
+            ps.setInt(19, stats.getBuildStreak());
+            ps.setInt(20, stats.getBuildHighestStreak());
+            ps.setString(21, stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
 
             ps.executeUpdate();
 
         } catch (Exception e) {
-            saveToYAML(s);
+            plugin.getLogger().log(Level.SEVERE, "Failed to save player stats to SQL", e);
         }
     }
 
-    private void saveToMongo(PlayerStats s) {
-        MongoDatabaseConnector mongo = (MongoDatabaseConnector) db.getConnector();
+    private void saveToMongo(PlayerStats stats) {
+        MongoDBConnector mongo = (MongoDBConnector) db.getConnector();
+        com.mongodb.client.MongoDatabase database = mongo.getMongoDatabase();
+        com.mongodb.client.MongoCollection<org.bson.Document> collection = database.getCollection("player_stats");
+
+        org.bson.Document doc = new org.bson.Document("_id", stats.getUuid().toString())
+                .append("username", stats.getUsername())
+                .append("bridge_kills", stats.getBridgeKills())
+                .append("bridge_deaths", stats.getBridgeDeaths())
+                .append("bridge_streak", stats.getBridgeStreak())
+                .append("bridge_highest_streak", stats.getBridgeHighestStreak())
+                .append("bridge_daily_streak", stats.getBridgeDailyStreak())
+                .append("bridge_daily_highest_streak", stats.getBridgeDailyHighestStreak())
+                .append("build_kills", stats.getBuildKills())
+                .append("build_deaths", stats.getBuildDeaths())
+                .append("build_streak", stats.getBuildStreak())
+                .append("build_highest_streak", stats.getBuildHighestStreak())
+                .append("build_daily_streak", stats.getBuildDailyStreak())
+                .append("build_daily_highest_streak", stats.getBuildDailyHighestStreak())
+                .append("last_selected_bridge_kit", stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
+
+        collection.replaceOne(
+                new org.bson.Document("_id", stats.getUuid().toString()),
+                doc,
+                new com.mongodb.client.model.ReplaceOptions().upsert(true)
+        );
+    }
+
+    private void saveToYAML(PlayerStats stats) {
+        File file = new File(statsFolder, stats.getUuid().toString() + ".yml");
+        YamlConfiguration config = new YamlConfiguration();
+
+        config.set("username", stats.getUsername());
+        config.set("bridge_kills", stats.getBridgeKills());
+        config.set("bridge_deaths", stats.getBridgeDeaths());
+        config.set("bridge_streak", stats.getBridgeStreak());
+        config.set("bridge_highest_streak", stats.getBridgeHighestStreak());
+        config.set("bridge_daily_streak", stats.getBridgeDailyStreak());
+        config.set("bridge_daily_highest_streak", stats.getBridgeDailyHighestStreak());
+        config.set("build_kills", stats.getBuildKills());
+        config.set("build_deaths", stats.getBuildDeaths());
+        config.set("build_streak", stats.getBuildStreak());
+        config.set("build_highest_streak", stats.getBuildHighestStreak());
+        config.set("build_daily_streak", stats.getBuildDailyStreak());
+        config.set("build_daily_highest_streak", stats.getBuildDailyHighestStreak());
+        config.set("last_selected_bridge_kit", stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
 
         try {
-            mongo.getMongoDatabase()
-                    .getCollection("player_stats")
-                    .updateOne(
-                            new org.bson.Document("uuid", s.getUuid().toString()),
-                            new org.bson.Document("$set", new org.bson.Document()
-                                    .append("username", s.getUsername())
-
-                                    .append("bridge_kills", s.getBridgeKills())
-                                    .append("bridge_deaths", s.getBridgeDeaths())
-                                    .append("bridge_streak", s.getBridgeStreak())
-                                    .append("bridge_highest_streak", s.getBridgeHighestStreak())
-
-                                    .append("build_kills", s.getBuildKills())
-                                    .append("build_deaths", s.getBuildDeaths())
-                                    .append("build_streak", s.getBuildStreak())
-                                    .append("build_highest_streak", s.getBuildHighestStreak())
-                            ),
-                            new com.mongodb.client.model.UpdateOptions().upsert(true)
-                    );
-
-        } catch (Exception e) {
-            saveToYAML(s);
+            config.save(file);
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to save player stats to YAML", e);
         }
     }
-
-    private void saveToYAML(PlayerStats s) {
-        File file = new File(statsFolder, s.getUuid().toString() + ".yml");
-        YamlConfiguration cfg = new YamlConfiguration();
-
-        cfg.set("username", s.getUsername());
-
-        cfg.set("bridge.kills", s.getBridgeKills());
-        cfg.set("bridge.deaths", s.getBridgeDeaths());
-        cfg.set("bridge.streak", s.getBridgeStreak());
-        cfg.set("bridge.highest_streak", s.getBridgeHighestStreak());
-
-        cfg.set("build.kills", s.getBuildKills());
-        cfg.set("build.deaths", s.getBuildDeaths());
-        cfg.set("build.streak", s.getBuildStreak());
-        cfg.set("build.highest_streak", s.getBuildHighestStreak());
-
-        try {
-            cfg.save(file);
-        } catch (IOException ignored) {}
-    }
-
 
     // --------------------------------------------------------------------------------------
-    // STREAK HELPERS
+    // STATS MANAGEMENT
     // --------------------------------------------------------------------------------------
-    public int addKillToStreak(UUID uuid, ArenaType type) {
-        PlayerStats s = cache.get(uuid);
-        if (s == null) return 0;
-
-        int currentStreak = type == ArenaType.FFA ? s.getBridgeStreak() : s.getBuildStreak();
-        savePlayerAsync(s); // Save the current state
-        return currentStreak; // Return the current streak before increment
-    }
-
-    public void resetAllPlayerStreaks() {
-        for (Map.Entry<UUID, PlayerStats> entry : cache.entrySet()) {
-            PlayerStats stats = entry.getValue();
-            if (stats != null) {
-                stats.setBridgeStreak(0);
-                stats.setBuildStreak(0);
-                savePlayerAsync(stats);
+    public void addKill(UUID uuid, ArenaType type) {
+        PlayerStats stats = loadPlayer(uuid, null);
+        if (type == ArenaType.BRIDGE) {
+            stats.setBridgeKills(stats.getBridgeKills() + 1);
+            stats.setBridgeStreak(stats.getBridgeStreak() + 1);
+            if (stats.getBridgeStreak() > stats.getBridgeHighestStreak()) {
+                stats.setBridgeHighestStreak(stats.getBridgeStreak());
+            }
+        } else if (type == ArenaType.BUILD) {
+            stats.setBuildKills(stats.getBuildKills() + 1);
+            stats.setBuildStreak(stats.getBuildStreak() + 1);
+            if (stats.getBuildStreak() > stats.getBuildHighestStreak()) {
+                stats.setBuildHighestStreak(stats.getBuildStreak());
             }
         }
+        savePlayer(stats);
     }
 
-    public void resetStreak(UUID uuid, ArenaType type) {
-        PlayerStats s = cache.get(uuid);
-        if (s == null) return;
-
-        if (type == ArenaType.FFA)
-            s.resetBridgeStreak();
-        else if (type == ArenaType.FFABUILD)
-            s.resetBuildStreak();
-
-        savePlayerAsync(s);
-    }
-
-    public void saveAllAsync() {
-        if (!plugin.isEnabled()) {
-            saveAllSync(); // fallback to sync if plugin is shutting down
-            return;
+    public void addDeath(UUID uuid, ArenaType type) {
+        PlayerStats stats = loadPlayer(uuid, null);
+        if (type == ArenaType.BRIDGE) {
+            stats.setBridgeDeaths(stats.getBridgeDeaths() + 1);
+            stats.setBridgeStreak(0);
+        } else if (type == ArenaType.BUILD) {
+            stats.setBuildDeaths(stats.getBuildDeaths() + 1);
+            stats.setBuildStreak(0);
         }
-
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
-            @Override
-            public void run() {
-                saveAllSync();
-            }
-        });
-    }
-
-    public void saveAllSync() {
-        for (PlayerStats stats : cache.values()) {
-            savePlayer(stats);
-        }
+        savePlayer(stats);
     }
 
     public PlayerStats getStats(UUID uuid) {
-        return cache.get(uuid);
+        return loadPlayer(uuid, null);
     }
 
-    /** Returns cached stats, or loads if absent */
-    public PlayerStats getOrLoad(UUID uuid, String username) {
-        // First check local storage
-        PlayerStats stats = localStorageManager.getPlayerStats(uuid);
-        if (stats != null) {
-            cache.put(uuid, stats);
-            return stats;
-        }
-        
-        // If not in local storage, try database (for initial migration)
-        stats = cache.get(uuid);
-        if (stats == null) {
-            stats = loadPlayer(uuid, username);
-            if (stats != null) {
-                // Save to local storage for future use
-                localStorageManager.savePlayerLocal(stats);
-            }
-        }
-        
-        if (stats == null) {
-            stats = new PlayerStats(uuid, username);
-            localStorageManager.savePlayerLocal(stats);
-        }
-
-        cache.put(uuid, stats);
-        return stats;
+    public void resetStats(UUID uuid) {
+        PlayerStats stats = loadPlayer(uuid, null);
+        stats.setBridgeKills(0);
+        stats.setBridgeDeaths(0);
+        stats.setBridgeStreak(0);
+        stats.setBridgeHighestStreak(0);
+        stats.setBuildKills(0);
+        stats.setBuildDeaths(0);
+        stats.setBuildStreak(0);
+        stats.setBuildHighestStreak(0);
+        savePlayer(stats);
     }
 
-    /** Checks if player stats are loaded */
-    public boolean isLoaded(UUID uuid) {
-        return cache.containsKey(uuid);
-    }
-
-    /** Safe remove from cache (called on quit) */
-    public void unload(UUID uuid) {
-        PlayerStats stats = cache.remove(uuid);
-        if (stats != null) {
-            // Save to local storage before unloading
-            localStorageManager.savePlayerLocal(stats);
-        }
-    }
-
-    public LocalStorageManager getLocalStorageManager() {
-        return localStorageManager;
-    }
-
-
-    /** Returns immutable snapshot of cached stats */
-    public Collection<PlayerStats> getAllCached() {
-        if (cache.isEmpty()) {
-            // If cache is empty, try to load all players
-            List<PlayerStats> allPlayers = getAllPlayers();
-            for (PlayerStats stats : allPlayers) {
-                cache.putIfAbsent(stats.getUuid(), stats);
-            }
-        }
-        return Collections.unmodifiableCollection(cache.values());
-    }
-
-    public List<PlayerStats> getAllPlayers() {
+    // --------------------------------------------------------------------------------------
+    // LEADERBOARD
+    // --------------------------------------------------------------------------------------
+    public List<PlayerStats> getTopPlayers(ArenaType type, String stat, int limit) {
+        List<PlayerStats> topPlayers = new ArrayList<>();
         DatabaseConnector connector = db.getConnector();
+        
+        //plugin.debug("[Stats] Getting top players for " + type + " " + stat + " (limit: " + limit + ")");
+        //plugin.debug("[Stats] Using connector: " + connector.getClass().getSimpleName());
+        //plugin.debug("[Stats] Connector connected: " + connector.isConnected());
 
         if (connector instanceof SQLDatabaseConnector) {
-            return loadAllPlayersFromSQL();
+            topPlayers = getTopPlayersSQL(type, stat, limit);
+        } else if (connector instanceof MongoDatabaseConnector) {
+            topPlayers = getTopPlayersMongo(type, stat, limit);
+        } else {
+            //plugin.debug("[Stats] No specific connector found, using YAML fallback");
         }
-        if (connector instanceof MongoDatabaseConnector) {
-            return loadAllPlayersFromMongo();
-        }
-        return loadAllPlayersFromYAML();
+
+        //plugin.debug("[Stats] Retrieved " + topPlayers.size() + " players");
+        return topPlayers;
     }
 
-    private List<PlayerStats> loadAllPlayersFromSQL() {
-        List<PlayerStats> list = new ArrayList<>();
+    private List<PlayerStats> getTopPlayersSQL(ArenaType type, String stat, int limit) {
+        List<PlayerStats> topPlayers = new ArrayList<>();
         SQLDatabaseConnector sql = (SQLDatabaseConnector) db.getConnector();
 
-        String query = "SELECT * FROM player_stats";
+        String column;
+        if (type == ArenaType.BRIDGE) {
+            column = "bridge_" + stat;
+        } else {
+            column = "build_" + stat;
+        }
+        
+        String query = "SELECT uuid, username, " + column + " FROM player_stats ORDER BY " + column + " DESC LIMIT ?";
+        //plugin.debug("[Stats] SQL Query: " + query);
 
         try (Connection conn = sql.getConnection();
-             PreparedStatement ps = conn.prepareStatement(query);
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = conn.prepareStatement(query)) {
 
-            while (rs.next()) {
-                UUID uuid = UUID.fromString(rs.getString("uuid"));
-                PlayerStats stats = new PlayerStats(uuid, rs.getString("username"));
+            ps.setInt(1, limit);
+            //plugin.debug("[Stats] Executing query with limit: " + limit);
 
-                stats.setBridgeKills(rs.getInt("bridge_kills"));
-                stats.setBridgeDeaths(rs.getInt("bridge_deaths"));
-                stats.setBridgeStreak(rs.getInt("bridge_streak"));
-                stats.setBridgeHighestStreak(rs.getInt("bridge_highest_streak"));
-
-                stats.setBuildKills(rs.getInt("build_kills"));
-                stats.setBuildDeaths(rs.getInt("build_deaths"));
-                stats.setBuildStreak(rs.getInt("build_streak"));
-                stats.setBuildHighestStreak(rs.getInt("build_highest_streak"));
-
-                list.add(stats);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    UUID uuid = UUID.fromString(rs.getString("uuid"));
+                    String username = rs.getString("username");
+                    PlayerStats stats = loadPlayer(uuid, username);
+                    topPlayers.add(stats);
+                }
             }
 
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to get top players from SQL", e);
+            //plugin.debug("[Stats] SQL Error: " + e.getMessage());
         }
 
-        return list;
+        //plugin.debug("[Stats] SQL returned " + topPlayers.size() + " results");
+        return topPlayers;
     }
 
+    private List<PlayerStats> getTopPlayersMongo(ArenaType type, String stat, int limit) {
+        List<PlayerStats> topPlayers = new ArrayList<>();
+        MongoDBConnector mongo = (MongoDBConnector) db.getConnector();
+        com.mongodb.client.MongoDatabase database = mongo.getMongoDatabase();
+        com.mongodb.client.MongoCollection<org.bson.Document> collection = database.getCollection("player_stats");
 
-    private List<PlayerStats> loadAllPlayersFromMongo() {
-        List<PlayerStats> list = new ArrayList<>();
-        MongoDatabaseConnector mongo = (MongoDatabaseConnector) db.getConnector();
-
-        for (org.bson.Document doc : mongo.getMongoDatabase()
-                .getCollection("player_stats")
-                .find()) {
-
-            UUID uuid = UUID.fromString(doc.getString("uuid"));
-            PlayerStats stats = new PlayerStats(uuid, doc.getString("username"));
-
-            stats.setBridgeKills(doc.getInteger("bridge_kills", 0));
-            stats.setBridgeDeaths(doc.getInteger("bridge_deaths", 0));
-            stats.setBridgeStreak(doc.getInteger("bridge_streak", 0));
-            stats.setBridgeHighestStreak(doc.getInteger("bridge_highest_streak", 0));
-
-            stats.setBuildKills(doc.getInteger("build_kills", 0));
-            stats.setBuildDeaths(doc.getInteger("build_deaths", 0));
-            stats.setBuildStreak(doc.getInteger("build_streak", 0));
-            stats.setBuildHighestStreak(doc.getInteger("build_highest_streak", 0));
-
-            list.add(stats);
+        String field;
+        if (type == ArenaType.BRIDGE) {
+            field = "bridge_" + stat;
+        } else {
+            field = "build_" + stat;
         }
 
-        return list;
+        org.bson.Document sort = new org.bson.Document(field, -1);
+        for (org.bson.Document doc : collection.find().sort(sort).limit(limit)) {
+            UUID uuid = UUID.fromString(doc.getString("_id"));
+            String username = doc.getString("username");
+            PlayerStats stats = loadPlayer(uuid, username);
+            topPlayers.add(stats);
+        }
+
+        return topPlayers;
     }
 
+    // --------------------------------------------------------------------------------------
+    // CACHE MANAGEMENT
+    // --------------------------------------------------------------------------------------
+    public void clearCache() {
+        cache.clear();
+    }
 
-    private List<PlayerStats> loadAllPlayersFromYAML() {
-        List<PlayerStats> list = new ArrayList<>();
-        File folder = new File(plugin.getDataFolder(), "playerstats");
+    public void removeFromCache(UUID uuid) {
+        cache.remove(uuid);
+    }
 
-        if (!folder.exists()) return list;
+    public Map<UUID, PlayerStats> getCache() {
+        return new HashMap<>(cache);
+    }
 
-        File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
-        if (files == null) return list;
+    // --------------------------------------------------------------------------------------
+    // ADDITIONAL METHODS FOR COMPATIBILITY
+    // --------------------------------------------------------------------------------------
+    public PlayerStats getOrLoad(UUID uuid, String username) {
+        return loadPlayer(uuid, username);
+    }
 
+    public void savePlayerAsync(PlayerStats stats) {
+        // For now, save synchronously. Could be made truly async later.
+        savePlayer(stats);
+    }
+
+    public void resetStreak(UUID uuid, ArenaType type) {
+        PlayerStats stats = loadPlayer(uuid, null);
+        if (type == ArenaType.BRIDGE) {
+            stats.setBridgeStreak(0);
+        } else if (type == ArenaType.FFABUILD || type == ArenaType.BUILD) {
+            stats.setBuildStreak(0);
+        }
+        savePlayer(stats);
+    }
+
+    public void addKillToStreak(UUID uuid, ArenaType type) {
+        PlayerStats stats = loadPlayer(uuid, null);
+        if (type == ArenaType.BRIDGE) {
+            stats.setBridgeStreak(stats.getBridgeStreak() + 1);
+            if (stats.getBridgeStreak() > stats.getBridgeHighestStreak()) {
+                stats.setBridgeHighestStreak(stats.getBridgeStreak());
+            }
+        } else if (type == ArenaType.FFABUILD || type == ArenaType.BUILD) {
+            stats.setBuildStreak(stats.getBuildStreak() + 1);
+            if (stats.getBuildStreak() > stats.getBuildHighestStreak()) {
+                stats.setBuildHighestStreak(stats.getBuildStreak());
+            }
+        }
+        savePlayer(stats);
+    }
+
+    public void shutdown() {
+        clearCache();
+    }
+
+    // --------------------------------------------------------------------------------------
+    // DAILY STREAK RESET
+    // --------------------------------------------------------------------------------------
+    public void resetAllDailyStreaks() {
+        DatabaseConnector connector = db.getConnector();
+        
+        plugin.getLogger().info("[Stats] Resetting all daily streaks...");
+        
+        if (connector instanceof SQLDatabaseConnector) {
+            resetAllDailyStreaksSQL();
+        } else if (connector instanceof MongoDatabaseConnector) {
+            resetAllDailyStreaksMongo();
+        } else {
+            resetAllDailyStreaksYAML();
+        }
+        
+        // Clear cache to force reload with reset values
+        clearCache();
+        
+        plugin.getLogger().info("[Stats] All daily streaks have been reset.");
+    }
+    
+    private void resetAllDailyStreaksSQL() {
+        SQLDatabaseConnector sql = (SQLDatabaseConnector) db.getConnector();
+        
+        try (Connection conn = sql.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "UPDATE player_stats SET bridge_streak = 0, build_streak = 0"
+             )) {
+            
+            int rowsUpdated = ps.executeUpdate();
+            plugin.getLogger().info("[Stats] Reset daily streaks for " + rowsUpdated + " players in SQL database.");
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to reset daily streaks in SQL database", e);
+        }
+    }
+    
+    private void resetAllDailyStreaksMongo() {
+        MongoDBConnector mongo = (MongoDBConnector) db.getConnector();
+        com.mongodb.client.MongoDatabase database = mongo.getMongoDatabase();
+        com.mongodb.client.MongoCollection<org.bson.Document> collection = database.getCollection("player_stats");
+        
+        org.bson.Document update = new org.bson.Document("$set", 
+            new org.bson.Document("bridge_streak", 0)
+                .append("build_streak", 0));
+        
+        com.mongodb.client.result.UpdateResult result = collection.updateMany(new org.bson.Document(), update);
+        plugin.getLogger().info("[Stats] Reset daily streaks for " + result.getModifiedCount() + " players in MongoDB.");
+    }
+    
+    private void resetAllDailyStreaksYAML() {
+        if (!statsFolder.exists()) return;
+        
+        File[] files = statsFolder.listFiles((dir, name) -> name.endsWith(".yml"));
+        if (files == null) return;
+        
+        int resetCount = 0;
         for (File file : files) {
             try {
-                UUID uuid = UUID.fromString(file.getName().replace(".yml", ""));
-                YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
-
-                PlayerStats stats = new PlayerStats(uuid, cfg.getString("username", "Unknown"));
-
-                stats.setBridgeKills(cfg.getInt("bridge.kills"));
-                stats.setBridgeDeaths(cfg.getInt("bridge.deaths"));
-                stats.setBridgeStreak(cfg.getInt("bridge.streak"));
-                stats.setBridgeHighestStreak(cfg.getInt("bridge.highest_streak"));
-
-                stats.setBuildKills(cfg.getInt("build.kills"));
-                stats.setBuildDeaths(cfg.getInt("build.deaths"));
-                stats.setBuildStreak(cfg.getInt("build.streak"));
-                stats.setBuildHighestStreak(cfg.getInt("build.highest_streak"));
-
-                list.add(stats);
-
-            } catch (Exception ignored) {}
+                YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+                config.set("bridge_streak", 0);
+                config.set("build_streak", 0);
+                config.save(file);
+                resetCount++;
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to reset daily streaks for file: " + file.getName(), e);
+            }
         }
-
-        return list;
+        
+        plugin.getLogger().info("[Stats] Reset daily streaks for " + resetCount + " players in YAML files.");
     }
-
-
-
-
 }

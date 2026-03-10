@@ -29,6 +29,7 @@ public class ConfigManager {
         this.plugin = plugin;
         setupConfig();
         loadLocations();
+        loadDefaults();
         plugin.saveDefaultConfig();
     }
 
@@ -102,6 +103,27 @@ public class ConfigManager {
 
     public FileConfiguration getConfig() {
         return config;
+    }
+
+    public void loadDefaults(){
+        if (!config.contains("autorestart")){
+            config.set("autorestart.enabled", false);
+            config.set("autorestart.time", "1AM");
+            config.set("autorestart.timezone", "Jakarta");
+            saveConfig();
+        }
+    }
+
+    public boolean isAutoRestartEnabled() {
+        return config.getBoolean("autorestart.enabled", false);
+    }
+
+    public String getAutoRestartTime() {
+        return config.getString("autorestart.time", "1AM");
+    }
+
+    public String getAutoRestartTimezone() {
+        return config.getString("autorestart.timezone", "Jakarta");
     }
 
     public void setPrivateWorldLocation(Location loc){
@@ -462,7 +484,6 @@ public class ConfigManager {
     public double getFireballDamageTeammates() {
         return config.getDouble("fireball.damage.teammates");
     }
-
 
 }
 

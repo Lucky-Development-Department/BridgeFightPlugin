@@ -46,6 +46,7 @@ import me.molfordan.arenaAndFFAManager.restore.PersistentRestoreManager;
 import me.molfordan.arenaAndFFAManager.spawnitem.SpawnItem;
 import me.molfordan.arenaAndFFAManager.task.CombatTagDisplayTask;
 import me.molfordan.arenaAndFFAManager.utils.CommandRegister;
+import me.molfordan.arenaAndFFAManager.utils.WorldGuardUtils;
 //import me.molfordan.arenaAndFFAManager.utils.FlightManager;
 import org.bukkit.Bukkit;
 import org.bukkit.WorldType;
@@ -68,7 +69,6 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private BridgeFightBanManager bridgeFightBanManager;
     private BridgeFightKitGUI bridgeFightKitGUI;
     private TeleportPendingManager teleportPendingManager;
-    private DatabaseSyncScheduler databaseSyncScheduler;
     private CombatManager combatManager;
     private DeathMessageManager deathMessageManager;
     private PersistentRestoreManager persistentRestoreManager;
@@ -81,7 +81,6 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private BridgeFightConfig bridgeFightConfig;
     private PlatformManager platformManager;
     private CommandRegionManager regionManager;
-    private LocalStorageManager localStorageManager;
     private RegionsConfig regionsConfig;
     private StatsManager statsManager;
     private DatabaseManager databaseManager;
@@ -96,6 +95,8 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private ReportManager reportManager;
     private SpawnItem spawnItem;
     private BackupManager backupManager; // Add this line
+    private AutoRestartManager autoRestartManager;
+    private FireballTracker fireballTracker;
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
     private static final String BRIDGEFIGHT_PATH = "bridgefight";
@@ -105,11 +106,18 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     public void onEnable() {
         plugin = this;
 
+        // Initialize WorldGuard integration
+        WorldGuardUtils.initialize(this);
+        if (WorldGuardUtils.isWorldGuardAvailable()) {
+            getLogger().info("WorldGuard integration enabled!");
+        } else {
+            getLogger().warning("WorldGuard not found - some features may be limited");
+        }
+
 
         this.configManager = new ConfigManager(this);
         this.databaseManager = new DatabaseManager(this);
-        this.backupManager = new BackupManager(this); // Instantiate BackupManager
-        this.statsManager = new StatsManager(this, this.backupManager);
+        this.statsManager = new StatsManager(this);
         this.bridgeFightConfig = new BridgeFightConfig(this);
         bridgeFightConfig.load();
         this.platformManager = new PlatformManager();
@@ -124,7 +132,8 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.hotbarDataManager = new HotbarDataManager(this);
         this.kitManager = new KitManager(hotbarDataManager);
         this.hotbarSessionManager = new HotbarSessionManager(this, hotbarDataManager, kitManager);
-        this.deathMessageManager = new DeathMessageManager(this,combatManager, arenaManager, hotbarDataManager, statsManager);
+        this.fireballTracker = new FireballTracker();
+        this.deathMessageManager = new DeathMessageManager(this,combatManager, arenaManager, hotbarDataManager, statsManager, fireballTracker);
         this.hotbarSorter = new HotbarSorter(hotbarDataManager);
         this.bridgeFightBanManager = new BridgeFightBanManager(getDataFolder());
         this.placeholderLeaderboardExpansion = new LeaderboardPlaceholderExpansion(this);
@@ -139,8 +148,6 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.bridgeFightKitManager = new BridgeFightKitManager(this);
         this.bridgeFightKitGUI = new BridgeFightKitGUI(this);
         this.customKitBaseGUI = new CustomKitBaseGUI(this);
-        this.localStorageManager = new LocalStorageManager(this);
-        this.databaseSyncScheduler = new DatabaseSyncScheduler(this, this.localStorageManager, this.statsManager, this.backupManager);
         persistentRestoreManager.loadAll();
         persistentRestoreManager.startAutoSave();
         String lobbyWorld = configManager.getLobbyWorldName();
@@ -158,6 +165,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         arenaManager.loadArenas();
         Bukkit.getLogger().info("[ArenaManager] Arenas loaded successfully.");
         dailyArenaRestorer = new DailyArenaRestorer(this, arenaManager);
+        this.autoRestartManager = new AutoRestartManager(this, configManager);
         new CombatTagDisplayTask(combatManager).runTaskTimer(this, 0L, 1L);
         getCommand("arenamap").setExecutor(new ArenaCommand(arenaManager, configManager, this));
         getCommand("arenabypass").setExecutor(new ArenaBypassCommand(arenaManager));
@@ -182,6 +190,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         RegionCommand rc = new RegionCommand(regionManager);
         getCommand("rc").setExecutor(rc);
         getCommand("rc").setTabCompleter(rc);
+        
         getCommand("hotbarmanager").setExecutor(
                 new HotbarManagerCommand(hotbarSessionManager)
         );
@@ -207,7 +216,6 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("setstats").setExecutor(new SetCommand(this));
         getCommand("kit").setExecutor(new BridgeFightKitCommand(this));
         getCommand("debugging").setExecutor(new GUICustomKit(this));
-        //getCommand("syncdata").setExecutor(new SyncCommand(this));
 
         // schedule expiry cleanup every minute
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
@@ -246,7 +254,9 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new InvisPlayerListener(this), this);
         getServer().getPluginManager().registerEvents(new SelectKitListener(this), this);
         getServer().getPluginManager().registerEvents(new EditKitListener(this), this);
-        getServer().getPluginManager().registerEvents(new FireballListener(this.configManager), this);
+        getServer().getPluginManager().registerEvents(new FireballListener(this.configManager, fireballTracker), this);
+        getServer().getPluginManager().registerEvents(new ArmorRemovalListener(this, arenaManager), this);
+        getServer().getPluginManager().registerEvents(this.deathMessageManager, this);
 
         //new RegionTriggerTask(regionManager).runTaskTimer(this, 0L, 10L);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "nebula:main");
@@ -273,13 +283,26 @@ public final class ArenaAndFFAManager extends JavaPlugin {
             getLogger().info("PlaceholderAPI not found - arena placeholders not registered.");
         }
 
+        // Start auto-restart system
+        autoRestartManager.start();
+
         getLogger().info("ArenaAndFFAManager has been enabled.");
+
+        // Reset all daily streaks on server startup
+        if (statsManager != null) {
+            statsManager.resetAllDailyStreaks();
+        }
 
 
     }
     @Override
     public void onDisable() {
         getLogger().info("ArenaAndFFAManager has been disabled.");
+
+        // Reset all daily streaks on server shutdown
+        if (statsManager != null) {
+            statsManager.resetAllDailyStreaks();
+        }
 
         if (arenaManager != null) {
             arenaManager.saveAllArenas();
@@ -290,8 +313,15 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         }
 
         if (statsManager != null) {
-            statsManager.resetAllPlayerStreaks();
-            statsManager.saveAllAsync();
+            statsManager.shutdown();
+        }
+
+        if (autoRestartManager != null) {
+            autoRestartManager.stop();
+        }
+
+        if (fireballTracker != null) {
+            fireballTracker.cleanup();
         }
 
         if (databaseManager != null) {
@@ -384,6 +414,14 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         return bridgeFightKitGUI;
     }
 
+    public AutoRestartManager getAutoRestartManager() {
+        return autoRestartManager;
+    }
+
+    public FireballTracker getFireballTracker() {
+        return fireballTracker;
+    }
+
     public FrozenManager getFrozenManager(){
         return frozenManager;
     }
@@ -392,7 +430,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         return placeholderLeaderboardExpansion;
     }
     public List<LeaderboardPlaceholderExpansion.LBEntry> getLeaderboard(String key) {
-        return placeholderLeaderboardExpansion.getCache().getOrDefault(key, java.util.Collections.emptyList());
+        return placeholderLeaderboardExpansion.getLeaderboardCache().getOrDefault(key, java.util.Collections.emptyList());
     }
     public DeathMessageManager getDeathMessageManager() {
         return deathMessageManager;

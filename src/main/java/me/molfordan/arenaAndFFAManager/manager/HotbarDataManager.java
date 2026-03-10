@@ -3,23 +3,17 @@ package me.molfordan.arenaAndFFAManager.manager;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.database.*;
 
-import org.bukkit.configuration.file.YamlConfiguration;
 import redis.clients.jedis.Jedis;
 
-import java.io.File;
-import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
 public class HotbarDataManager {
 
     private final ArenaAndFFAManager plugin;
-    private final File dir;
 
     public HotbarDataManager(ArenaAndFFAManager plugin) {
         this.plugin = plugin;
-        this.dir = new File(plugin.getDataFolder(), "hotbars");
-        if (!dir.exists()) dir.mkdirs();
 
         // Delay table generation by 1 tick
         plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
@@ -58,7 +52,6 @@ public class HotbarDataManager {
     //  LOAD
     // --------------------------------------------------------------------
     public Map<Integer, String> load(UUID uuid) {
-
         DatabaseConnector connector = plugin.getDatabaseManager().getConnector();
 
         if (connector instanceof SQLDatabaseConnector) {
@@ -73,14 +66,14 @@ public class HotbarDataManager {
             return loadRedis(uuid);
         }
 
-        return loadYAML(uuid);
+        plugin.getLogger().severe("No database connector available for hotbar data loading!");
+        return new HashMap<>();
     }
 
     // --------------------------------------------------------------------
     //  SAVE
     // --------------------------------------------------------------------
     public void save(UUID uuid, Map<Integer, String> map) {
-
         DatabaseConnector connector = plugin.getDatabaseManager().getConnector();
 
         if (connector instanceof SQLDatabaseConnector) {
@@ -98,7 +91,7 @@ public class HotbarDataManager {
             return;
         }
 
-        saveYAML(uuid, map);
+        plugin.getLogger().severe("No database connector available for hotbar data saving!");
     }
 
     // --------------------------------------------------------------------
@@ -110,20 +103,22 @@ public class HotbarDataManager {
         try {
             DatabaseManager dbManager = plugin.getDatabaseManager();
             if (dbManager == null) {
-                return loadYAML(uuid);
+                plugin.getLogger().severe("[HotbarData] DatabaseManager is null!");
+                return new HashMap<>();
             }
 
             DatabaseConnector connector = dbManager.getConnector();
             if (!(connector instanceof SQLDatabaseConnector)) {
-                return loadYAML(uuid);
+                plugin.getLogger().severe("[HotbarData] Connector is not SQLDatabaseConnector!");
+                return new HashMap<>();
             }
 
             SQLDatabaseConnector sql = (SQLDatabaseConnector) connector;
 
             Connection conn = sql.getConnection();
             if (conn == null || conn.isClosed()) {
-                plugin.getLogger().warning("[HotbarData] SQL connection dead, falling back to YAML.");
-                return loadYAML(uuid);
+                plugin.getLogger().severe("[HotbarData] SQL connection is dead!");
+                return new HashMap<>();
             }
 
             try (PreparedStatement ps = conn.prepareStatement(
@@ -135,8 +130,8 @@ public class HotbarDataManager {
 
                     // SAFETY CHECK: broken resultset
                     if (rs == null) {
-                        plugin.getLogger().warning("[HotbarData] ResultSet was null. Falling back to YAML.");
-                        return loadYAML(uuid);
+                        plugin.getLogger().severe("[HotbarData] ResultSet was null!");
+                        return new HashMap<>();
                     }
 
                     while (true) {
@@ -145,16 +140,16 @@ public class HotbarDataManager {
                             out.put(rs.getInt("slot"), rs.getString("value"));
                         } catch (SQLException brokenRs) {
                             // Resultset corrupted due to link failure mid-query.
-                            plugin.getLogger().warning("[HotbarData] SQL row fetch failed: " + brokenRs.getMessage());
-                            return loadYAML(uuid);
+                            plugin.getLogger().severe("[HotbarData] SQL row fetch failed: " + brokenRs.getMessage());
+                            return new HashMap<>();
                         }
                     }
                 }
             }
 
         } catch (Exception e) {
-            plugin.getLogger().warning("[HotbarData] SQL load error: " + e.getMessage());
-            return loadYAML(uuid);
+            plugin.getLogger().severe("[HotbarData] SQL load error: " + e.getMessage());
+            return new HashMap<>();
         }
 
         return out;
@@ -165,13 +160,13 @@ public class HotbarDataManager {
         try {
             DatabaseManager dbManager = plugin.getDatabaseManager();
             if (dbManager == null) {
-                saveYAML(uuid, map);
+                plugin.getLogger().severe("[HotbarData] DatabaseManager is null!");
                 return;
             }
 
             DatabaseConnector connector = dbManager.getConnector();
             if (!(connector instanceof SQLDatabaseConnector)) {
-                saveYAML(uuid, map);
+                plugin.getLogger().severe("[HotbarData] Connector is not SQLDatabaseConnector!");
                 return;
             }
 
@@ -179,8 +174,7 @@ public class HotbarDataManager {
 
             Connection conn = sql.getConnection();
             if (conn == null || conn.isClosed()) {
-                plugin.getLogger().warning("[HotbarData] Save aborted, SQL connection closed.");
-                saveYAML(uuid, map);
+                plugin.getLogger().severe("[HotbarData] Save aborted, SQL connection closed!");
                 return;
             }
 
@@ -206,46 +200,10 @@ public class HotbarDataManager {
             }
 
         } catch (Exception e) {
-            plugin.getLogger().warning("[HotbarData] SQL save failed: " + e.getMessage());
-            saveYAML(uuid, map);
+            plugin.getLogger().severe("[HotbarData] SQL save failed: " + e.getMessage());
         }
     }
 
-
-    // --------------------------------------------------------------------
-    //  YAML FALLBACK
-    // --------------------------------------------------------------------
-    private Map<Integer, String> loadYAML(UUID uuid) {
-        File f = new File(dir, uuid.toString() + ".yml");
-        if (!f.exists()) return new HashMap<>();
-
-        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(f);
-        Map<Integer, String> out = new HashMap<>();
-
-        for (String key : cfg.getKeys(false)) {
-            try {
-                int slot = Integer.parseInt(key);
-                String val = cfg.getString(key);
-                if (val != null) out.put(slot, val);
-            } catch (Exception ignored) {}
-        }
-        return out;
-    }
-
-    private void saveYAML(UUID uuid, Map<Integer, String> map) {
-        File f = new File(dir, uuid.toString() + ".yml");
-        YamlConfiguration cfg = new YamlConfiguration();
-
-        for (Map.Entry<Integer, String> e : map.entrySet()) {
-            cfg.set(String.valueOf(e.getKey()), e.getValue());
-        }
-
-        try {
-            cfg.save(f);
-        } catch (IOException ex) {
-            plugin.debug("Could not save hotbar for " + uuid + ": " + ex.getMessage());
-        }
-    }
 
     // --------------------------------------------------------------------
     //  REDIS

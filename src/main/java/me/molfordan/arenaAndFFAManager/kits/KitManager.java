@@ -7,6 +7,7 @@ import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.Kit;
 import me.molfordan.arenaAndFFAManager.kits.bridgefightkit.Kit2;
 import me.molfordan.arenaAndFFAManager.manager.HotbarDataManager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
+import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -37,7 +38,13 @@ public class KitManager {
         clearInventory(player);
         BridgeFightKitManager manager = ArenaAndFFAManager.getPlugin().getBridgeFightKitManager();
 
-        String kitName = selectedBridgeFightKit.getOrDefault(player.getUniqueId(), "Default");
+        // Try to get last selected kit from database first, then fall back to memory map
+        String kitName = getLastSelectedBridgeKit(player.getUniqueId());
+        
+        // If no kit in database, try the memory map as fallback
+        if (kitName == null || kitName.equals("Default")) {
+            kitName = selectedBridgeFightKit.getOrDefault(player.getUniqueId(), "Default");
+        }
 
         Kit2 kit = manager.get(kitName);
         if (kit != null) kit.apply(player);
@@ -156,6 +163,14 @@ public class KitManager {
 
     public String getSelectedBridgeFightKit(UUID uuid) {
         return selectedBridgeFightKit.getOrDefault(uuid, "Default");
+    }
+
+    private String getLastSelectedBridgeKit(UUID uuid) {
+        PlayerStats stats = ArenaAndFFAManager.getPlugin().getStatsManager().getStats(uuid);
+        if (stats != null && stats.getLastSelectedBridgeKit() != null) {
+            return stats.getLastSelectedBridgeKit();
+        }
+        return "Default";
     }
 
 

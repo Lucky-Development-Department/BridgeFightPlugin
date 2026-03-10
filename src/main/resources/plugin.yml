@@ -4,6 +4,7 @@ main: me.molfordan.arenaAndFFAManager.ArenaAndFFAManager
 api-version: '1.8'
 softdepend:
   - PlaceholderAPI
+  - WorldGuard
 commands:
   arenamap:
     usage: '/arenamap <create|pos1|pos2|finish|remove> <name>'

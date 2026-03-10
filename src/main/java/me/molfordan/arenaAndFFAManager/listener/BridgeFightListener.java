@@ -7,6 +7,7 @@ import me.molfordan.arenaAndFFAManager.manager.PlatformManager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.PlatformRegion;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -15,9 +16,11 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.Location;
 
+import java.util.HashSet;
 import java.util.UUID;
 
 public class BridgeFightListener implements Listener {
@@ -95,7 +98,6 @@ public class BridgeFightListener implements Listener {
 
         event.setDamage(0.0);
     }
-
 
 
     @EventHandler

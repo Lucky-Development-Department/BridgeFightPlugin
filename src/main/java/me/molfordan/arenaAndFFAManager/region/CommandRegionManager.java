@@ -174,4 +174,18 @@ public class CommandRegionManager {
         regions.clear();
     }
 
+    public boolean isDenied(Player p, FlagType type) {
+        return isDenied(p.getLocation(), type);
+    }
+
+    public boolean isDenied(Location loc, FlagType type) {
+        for (CommandRegion r : regions.values()) {
+            if (r.isInside(loc)) {
+                String v = r.getFlag(type);
+                return "deny".equalsIgnoreCase(v) || "false".equalsIgnoreCase(v);
+            }
+        }
+        return false;
+    }
+
 }

@@ -22,23 +22,11 @@ public class RegionFlagListener implements Listener {
     }
 
     private boolean isDenied(Player p, FlagType type) {
-        for (CommandRegion r : manager.getRegions()) {
-            if (r.isInside(p.getLocation())) {
-                String v = r.getFlag(type);
-                return "deny".equalsIgnoreCase(v) || "false".equalsIgnoreCase(v);
-            }
-        }
-        return false;
+        return manager.isDenied(p, type);
     }
 
     private boolean isDenied(Location loc, FlagType type) {
-        for (CommandRegion r : manager.getRegions()) {
-            if (r.isInside(loc)) {
-                String v = r.getFlag(type);
-                return "deny".equalsIgnoreCase(v) || "false".equalsIgnoreCase(v);
-            }
-        }
-        return false;
+        return manager.isDenied(loc, type);
     }
 
     private CommandRegion getRegion(Location loc) {

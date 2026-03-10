@@ -64,11 +64,13 @@ public class PlatformCommand extends BukkitCommand {
 
         // =============== TELEPORT ===============
         if (cmd.startsWith("plat") || cmd.startsWith("bigplat")) {
-
+            /*
             if (!p.hasPermission("bridgefight.teleport")) {
                 p.sendMessage("§cYou don't have permission.");
                 return true;
             }
+
+             */
 
             if (plugin.getBridgeFightBanManager().isPlayerBanned(p.getUniqueId())) {
 

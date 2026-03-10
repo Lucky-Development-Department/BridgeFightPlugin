@@ -20,6 +20,16 @@ public class PlayerStats {
     private int buildStreak;
     private int buildHighestStreak;
 
+    // --- Daily Streaks ---
+    private int bridgeDailyStreak;
+    private int bridgeDailyHighestStreak;
+
+    private int buildDailyStreak;
+    private int buildDailyHighestStreak;
+
+    // --- Kit Selection ---
+    private String lastSelectedBridgeKit;
+
     private long lastUpdated;
 
     public PlayerStats(UUID uuid, String username) {
@@ -49,6 +59,14 @@ public class PlayerStats {
     public int getBuildStreak() { return buildStreak; }
     public int getBuildHighestStreak() { return buildHighestStreak; }
 
+    public int getBridgeDailyStreak() { return bridgeDailyStreak; }
+    public int getBridgeDailyHighestStreak() { return bridgeDailyHighestStreak; }
+
+    public int getBuildDailyStreak() { return buildDailyStreak; }
+    public int getBuildDailyHighestStreak() { return buildDailyHighestStreak; }
+
+    public String getLastSelectedBridgeKit() { return lastSelectedBridgeKit; }
+
     public long getLastUpdated() { return lastUpdated; }
     // -----------------------------
     //          Setters
@@ -68,6 +86,15 @@ public class PlayerStats {
 
     public void setBridgeHighestStreak(int value) { this.bridgeHighestStreak = Math.max(0, value); }
     public void setBuildHighestStreak(int value) { this.buildHighestStreak = Math.max(0, value); }
+
+    // Daily Streaks (used internally only)
+    public void setBridgeDailyStreak(int value) { this.bridgeDailyStreak = Math.max(0, value); }
+    public void setBuildDailyStreak(int value) { this.buildDailyStreak = Math.max(0, value); }
+
+    public void setBridgeDailyHighestStreak(int value) { this.bridgeDailyHighestStreak = Math.max(0, value); }
+    public void setBuildDailyHighestStreak(int value) { this.buildDailyHighestStreak = Math.max(0, value); }
+
+    public void setLastSelectedBridgeKit(String kitName) { this.lastSelectedBridgeKit = kitName; }
 
     public void setLastUpdated(long lastUpdated) { this.lastUpdated = lastUpdated; }
 
@@ -117,6 +144,11 @@ public class PlayerStats {
 
     public void resetBuildStreak() {
         buildStreak = 0;
+    }
+
+    public void resetAllDailyStreaks() {
+        bridgeDailyStreak = 0;
+        buildDailyStreak = 0;
     }
 
     public void addBridgeKill(boolean incrementStreak) {

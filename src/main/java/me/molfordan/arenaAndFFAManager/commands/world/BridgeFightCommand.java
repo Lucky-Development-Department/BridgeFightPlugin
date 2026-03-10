@@ -69,11 +69,11 @@ public class BridgeFightCommand implements CommandExecutor {
         player.sendMessage(ChatColor.translateAlternateColorCodes('&', prefix + " sending you to BridgeFight...."));
 
         // Remove the direct call to giveBridgeFightSpawnItem since it will be handled by LobbyListener
-        /*
+
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             plugin.getSpawnItem().giveBridgeFightSpawnItem(player);
         }, 1);
-        */
+
 
         return true;
     }

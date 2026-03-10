@@ -2,6 +2,7 @@ package me.molfordan.arenaAndFFAManager.placeholder;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
+import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
 import me.molfordan.arenaAndFFAManager.manager.StatsManager;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import org.bukkit.Bukkit;
@@ -16,6 +17,7 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
 
     private final ArenaAndFFAManager plugin;
     private final StatsManager statsManager;
+    private final ConfigManager configManager;
 
     private static final Pattern UUID_PATTERN =
             Pattern.compile("^([0-9a-fA-F\\-]{36})_(.+)$");
@@ -23,6 +25,7 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
     public ArenaPlaceholderExpansion(ArenaAndFFAManager plugin) {
         this.plugin = plugin;
         this.statsManager = plugin.getStatsManager();
+        this.configManager = plugin.getConfigManager();
     }
 
     @Override
@@ -71,7 +74,7 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
             try {
                 UUID uuid = UUID.fromString(uuidStr);
                 PlayerStats stats = loadStats(uuid);
-                return resolve(stats, key);
+                return resolve(stats, key, null);
 
             } catch (IllegalArgumentException ex) {
                 return "";
@@ -81,7 +84,7 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
         // If requesting player's own stats
         if (player != null) {
             PlayerStats stats = loadStats(player.getUniqueId());
-            return resolve(stats, params);
+            return resolve(stats, params, player);
         }
 
         return "";
@@ -100,10 +103,39 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
         return statsManager.loadPlayer(uuid, name);
     }
 
-    private String resolve(PlayerStats s, String key) {
+    private String resolve(PlayerStats s, String key, Player player) {
         if (s == null) return "0";
 
         switch (key.toLowerCase()) {
+
+            // World Detection
+            case "in_buildffa":
+                if (player != null && player.getWorld() != null) {
+                    String worldName = player.getWorld().getName();
+                    return worldName.equals(configManager.getBuildFFAWorldName()) ? "true" : "false";
+                }
+                return "false";
+            case "in_bridgefight":
+                if (player != null && player.getWorld() != null) {
+                    String worldName = player.getWorld().getName();
+                    return worldName.equals(configManager.getBridgeFightWorldName()) ? "true" : "false";
+                }
+                return "false";
+            case "current_arena":
+                if (player != null && player.getWorld() != null) {
+                    String worldName = player.getWorld().getName();
+                    if (worldName.equals(configManager.getBuildFFAWorldName())) return "BuildFFA";
+                    if (worldName.equals(configManager.getBridgeFightWorldName())) return "BridgeFight";
+                    if (worldName.equals(configManager.getLobbyWorldName())) return "Spawn";
+                }
+                return "None";
+            case "daily":
+                if (player != null && player.getWorld() != null) {
+                    String worldName = player.getWorld().getName();
+                    if (worldName.equals(configManager.getBuildFFAWorldName())) return String.valueOf(s.getBuildStreak());
+                    if (worldName.equals(configManager.getBridgeFightWorldName())) return String.valueOf(s.getBridgeStreak());
+                }
+                return "0";
 
             // Bridge Fight
             case "bridge_kills":

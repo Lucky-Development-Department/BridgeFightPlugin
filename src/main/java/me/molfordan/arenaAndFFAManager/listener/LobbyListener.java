@@ -38,7 +38,7 @@ public class LobbyListener implements Listener {
     private KitManager kitManager;
     
     // Track players who should receive bridge fight spawn items
-    private final Set<UUID> bridgeFightSpawnRecipients = new HashSet<>();
+    public final Set<UUID> bridgeFightSpawnRecipients = new HashSet<>();
 
     // Must have a constructor to inject the ConfigManager
     public LobbyListener(ConfigManager configManager, ArenaAndFFAManager plugin, KitManager kitManager) {
@@ -249,6 +249,8 @@ public class LobbyListener implements Listener {
             return;
         }
 
+
+
         if (player.getWorld().equals(bridgeFightWorld)){
             boolean isBanned = plugin.getBridgeFightBanManager().isPlayerBanned(player.getUniqueId());
             if (isBanned){
@@ -256,6 +258,7 @@ public class LobbyListener implements Listener {
                 return;
             }
             player.setGameMode(GameMode.SURVIVAL);
+            /*
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 // Only give bridge fight spawn items if player used /bridgefight or /housing command
                 if (bridgeFightSpawnRecipients.contains(player.getUniqueId())) {
@@ -264,6 +267,10 @@ public class LobbyListener implements Listener {
                 }
             }, 1);
             return;
+
+             */
         }
+
+
     }
 }
