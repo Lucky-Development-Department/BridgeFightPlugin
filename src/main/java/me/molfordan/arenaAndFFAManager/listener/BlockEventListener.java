@@ -1,5 +1,6 @@
 package me.molfordan.arenaAndFFAManager.listener;
 
+import com.comphenix.protocol.wrappers.BlockPosition;
 import me.molfordan.arenaAndFFAManager.*;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.BlockHotbarSorter;
 import me.molfordan.arenaAndFFAManager.manager.ArenaManager;
@@ -15,6 +16,7 @@ import org.bukkit.block.BlockState;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -23,6 +25,10 @@ import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.ProtocolLibrary;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +44,8 @@ public class BlockEventListener implements Listener {
     private final Map<String, UUID> ffabuildPlacers = new ConcurrentHashMap<>();
     private final Map<String, Integer> ladderRestoreAttempts = new ConcurrentHashMap<>();
 
+    private final Map<String, Long> cancelledPlacements = new ConcurrentHashMap<>();
+
     public BlockEventListener(ArenaManager manager,
                               ArenaAndFFAManager plugin,
                               LadderRestorer ladderRestorer,
@@ -46,34 +54,81 @@ public class BlockEventListener implements Listener {
         this.plugin = plugin;
         this.ladderRestorer = ladderRestorer;
         this.persistentManager = persistentManager;
+        registerPacketListener();
+        registerSoundListener();
     }
 
-    @EventHandler
-    public void onBlockInteract(PlayerInteractEvent event){
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-        Player player = event.getPlayer();
-        if (manager.isBypassing(player.getUniqueId())) return;
-
-        Block block = event.getClickedBlock();
-        if (block == null) return;
-        Location loc = block.getLocation();
-        Arena arena = manager.getArenaByLocation(loc);
-        if (arena == null) return;
-
-        if (arena.getType() == ArenaType.FFABUILD || arena.getType() == ArenaType.FFA) {
-            Material material = block.getType();
-            if (material == Material.CHEST || material == Material.TRAPPED_CHEST || material == Material.ENDER_CHEST) {
-                event.setCancelled(true);
-                player.sendMessage(ChatColor.RED + "You cannot interact with chests in this arena.");
-
+    private void registerSoundListener() {
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(plugin, 
+            PacketType.Play.Server.NAMED_SOUND_EFFECT) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                String soundName = event.getPacket().getStrings().read(0);
+                if (soundName.startsWith("dig.") || soundName.startsWith("step.")) {
+                    double x = event.getPacket().getIntegers().read(0) / 8.0;
+                    double y = event.getPacket().getIntegers().read(1) / 8.0;
+                    double z = event.getPacket().getIntegers().read(2) / 8.0;
+                    
+                    String key = (int)x + "," + (int)y + "," + (int)z;
+                    Long time = cancelledPlacements.get(key);
+                    if (time != null && System.currentTimeMillis() - time < 200) {
+                        event.setCancelled(true);
+                    }
+                }
             }
-        }
+        });
     }
+
+    public void registerPacketListener() {
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(
+            plugin, PacketType.Play.Client.BLOCK_PLACE) {
+            
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                if (event.getPacketType() == PacketType.Play.Client.BLOCK_PLACE) {
+                    Player player = event.getPlayer();
+                    if (manager.isBypassing(player.getUniqueId())) return;
+                    
+                    // Get block location from packet
+                    BlockPosition pos = event.getPacket().getBlockPositionModifier().read(0);
+                    if (pos.getY() < 0) return; 
+
+                    Location loc = new Location(player.getWorld(), pos.getX(), pos.getY(), pos.getZ());
+                    Arena arena = manager.getArenaByLocation(loc);
+                    
+                    boolean cancel = false;
+                    if (arena == null) {
+                        Arena shellArena = findShellArena(loc, 2);
+                        if (shellArena != null) {
+                            cancel = true;
+                        }
+                    } else if (arena.getType() == ArenaType.DUEL
+                            || arena.getType() == ArenaType.TOPFIGHT
+                            || arena.getType() == ArenaType.FFABUILD) {
+                        if (loc.getBlockY() >= arena.getBuildLimitY()) {
+                            cancel = true;
+                        }
+                    }
+
+                    if (cancel) {
+                        event.setCancelled(true);
+                        String key = loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
+                        cancelledPlacements.put(key, System.currentTimeMillis());
+                        
+                        player.sendBlockChange(loc, loc.getBlock().getType(), loc.getBlock().getData());
+                        Bukkit.getScheduler().runTask(plugin, player::updateInventory);
+                    }
+                }
+            }
+        });
+    }
+
+
 
     /* ==========================================================
        BLOCK PLACE EVENT
     ========================================================== */
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
         if (manager.isBypassing(player.getUniqueId())) return;
@@ -91,6 +146,8 @@ public class BlockEventListener implements Listener {
                 // Inside the 2-block invisible border -> cancel placement
                 event.setCancelled(true);
                 player.sendMessage(ChatColor.RED + "You cannot place blocks in the arena border area.");
+                cancelledPlacements.put(loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ(), System.currentTimeMillis());
+                syncPlacement(player, loc);
                 return;
             }
             // Not inside any arena or shell -> not our concern
@@ -104,6 +161,8 @@ public class BlockEventListener implements Listener {
                 || arena.getType() == ArenaType.FFABUILD) {
             if (loc.getBlockY() > arena.getBuildLimitY()) {
                 event.setCancelled(true);
+                cancelledPlacements.put(loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ(), System.currentTimeMillis());
+                syncPlacement(player, loc);
                 return;
             }
         }
@@ -134,10 +193,16 @@ public class BlockEventListener implements Listener {
                         if (placer != null && placer.isOnline()
                                 && placer.getGameMode() == GameMode.SURVIVAL
                                 && arena.isInside(placer.getLocation(), true)) {
-                            ItemStack refund = new ItemStack(placedState.getType(), 1, placedState.getRawData());
+                            
+                            short data = placedState.getRawData();
+                            if (placedState.getType() == Material.LADDER) {
+                                data = 0;
+                            }
+                            
+                            ItemStack refund = new ItemStack(placedState.getType(), 1, data);
                             BlockHotbarSorter blockSorter = new BlockHotbarSorter(plugin.getHotbarDataManager());
 
-// Sort first, returns TRUE if handled
+                            // Sort first, returns TRUE if handled (now handles ladders)
                             boolean handled = blockSorter.sort(placer, refund);
 
                             if (!handled) {
@@ -431,5 +496,10 @@ public class BlockEventListener implements Listener {
             }
         }
         return null;
+    }
+
+    private void syncPlacement(Player player, Location loc) {
+        player.sendBlockChange(loc, loc.getBlock().getType(), loc.getBlock().getData());
+        player.updateInventory();
     }
 }

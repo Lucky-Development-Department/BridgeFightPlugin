@@ -94,6 +94,97 @@ public class HotbarDataManager {
         plugin.getLogger().severe("No database connector available for hotbar data saving!");
     }
 
+    public void resetAll() {
+        DatabaseConnector connector = plugin.getDatabaseManager().getConnector();
+
+        if (connector instanceof SQLDatabaseConnector) {
+            resetAllSQL();
+        } else if (connector instanceof MongoDatabaseConnector) {
+            resetAllMongo();
+        } else if (connector instanceof RedisDatabaseConnector) {
+            resetAllRedis();
+        }
+    }
+
+    private Map<Integer, String> getDefaultLayout() {
+        Map<Integer, String> layout = new HashMap<>();
+        layout.put(0, "melee");
+        layout.put(1, "pickaxe");
+        layout.put(2, "axe");
+        layout.put(3, "shears");
+        layout.put(4, "knockbackstick");
+        layout.put(5, "ender_pearl");
+        layout.put(6, "blocks");
+        layout.put(7, "blocks");
+        layout.put(8, "snowball");
+        return layout;
+    }
+
+    // --------------------------------------------------------------------
+    //  RESET ALL IMPLEMENTATIONS (Looping)
+    // --------------------------------------------------------------------
+    private void resetAllSQL() {
+        try {
+            SQLDatabaseConnector sql = (SQLDatabaseConnector) plugin.getDatabaseManager().getConnector();
+            Map<Integer, String> defaultLayout = getDefaultLayout();
+            
+            List<UUID> uuids = new ArrayList<>();
+            try (Connection conn = sql.getConnection();
+                 PreparedStatement ps = conn.prepareStatement("SELECT DISTINCT uuid FROM hotbars");
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    uuids.add(UUID.fromString(rs.getString("uuid")));
+                }
+            }
+            
+            for (UUID uuid : uuids) {
+                saveSQL(uuid, defaultLayout);
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("[HotbarData] SQL reset all failed: " + e.getMessage());
+        }
+    }
+
+    private void resetAllRedis() {
+        try {
+            RedisDatabaseConnector redisConnector =
+                    (RedisDatabaseConnector) plugin.getDatabaseManager().getConnector();
+            Jedis jedis = redisConnector.getRedisClient();
+            Map<Integer, String> defaultLayout = getDefaultLayout();
+
+            Set<String> keys = jedis.keys("hotbar:*");
+            if (keys != null) {
+                for (String key : keys) {
+                    UUID uuid = UUID.fromString(key.replace("hotbar:", ""));
+                    saveRedis(uuid, defaultLayout);
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("[HotbarData] Redis reset all failed: " + e.getMessage());
+        }
+    }
+
+    private void resetAllMongo() {
+        try {
+            MongoDatabaseConnector mongoConnector =
+                    (MongoDatabaseConnector) plugin.getDatabaseManager().getConnector();
+            com.mongodb.client.MongoDatabase mongo = mongoConnector.getMongoDatabase();
+            com.mongodb.client.MongoCollection<org.bson.Document> coll =
+                    mongo.getCollection("hotbars", org.bson.Document.class);
+            
+            Map<Integer, String> defaultLayout = getDefaultLayout();
+            
+            for (org.bson.Document doc : coll.find()) {
+                String id = doc.getString("_id");
+                if (id != null) {
+                    saveMongo(UUID.fromString(id), defaultLayout);
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("[HotbarData] Mongo reset all failed: " + e.getMessage());
+        }
+    }
+
     // --------------------------------------------------------------------
     //  SQL IMPLEMENTATION
     // --------------------------------------------------------------------

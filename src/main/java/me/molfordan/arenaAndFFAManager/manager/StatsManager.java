@@ -11,6 +11,7 @@ import me.molfordan.arenaAndFFAManager.database.connectors.MySQLConnector;
 import me.molfordan.arenaAndFFAManager.database.connectors.SQLiteConnector;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.IllegalPluginAccessException;
 
@@ -99,7 +100,15 @@ public class StatsManager {
     // LOAD PLAYER
     // --------------------------------------------------------------------------------------
     public PlayerStats loadPlayer(UUID uuid, String username) {
-        if (cache.containsKey(uuid)) return cache.get(uuid);
+        if (cache.containsKey(uuid)) {
+            PlayerStats cached = cache.get(uuid);
+            if (username != null && !username.equalsIgnoreCase("Unknown")) {
+                if (cached.getUsername() == null || cached.getUsername().equalsIgnoreCase("Unknown")) {
+                    cached.setUsername(username);
+                }
+            }
+            return cached;
+        }
 
         DatabaseConnector connector = db.getConnector();
         PlayerStats stats;
@@ -110,6 +119,13 @@ public class StatsManager {
             stats = loadFromMongo(uuid, username);
         } else {
             stats = loadFromYAML(uuid, username);
+        }
+
+        // Final check to ensure username is set if provided
+        if (username != null && !username.equalsIgnoreCase("Unknown")) {
+            if (stats.getUsername() == null || stats.getUsername().equalsIgnoreCase("Unknown")) {
+                stats.setUsername(username);
+            }
         }
 
         cache.put(uuid, stats);
@@ -128,7 +144,12 @@ public class StatsManager {
                 if (rs.next()) {
                     PlayerStats stats = new PlayerStats(uuid, username);
 
-                    stats.setUsername(rs.getString("username"));
+                    String dbUsername = rs.getString("username");
+                    if (dbUsername != null && !dbUsername.equalsIgnoreCase("Unknown")) {
+                        stats.setUsername(dbUsername);
+                    } else if (username != null) {
+                        stats.setUsername(username);
+                    }
 
                     stats.setBridgeKills(rs.getInt("bridge_kills"));
                     stats.setBridgeDeaths(rs.getInt("bridge_deaths"));
@@ -160,7 +181,13 @@ public class StatsManager {
         org.bson.Document doc = collection.find(new org.bson.Document("_id", uuid.toString())).first();
         if (doc != null) {
             PlayerStats stats = new PlayerStats(uuid, username);
-            stats.setUsername(doc.getString("username"));
+            
+            String dbUsername = doc.getString("username");
+            if (dbUsername != null && !dbUsername.equalsIgnoreCase("Unknown")) {
+                stats.setUsername(dbUsername);
+            } else if (username != null) {
+                stats.setUsername(username);
+            }
 
             stats.setBridgeKills(doc.getInteger("bridge_kills", 0));
             stats.setBridgeDeaths(doc.getInteger("bridge_deaths", 0));
@@ -191,7 +218,12 @@ public class StatsManager {
         YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
         PlayerStats stats = new PlayerStats(uuid, username);
 
-        stats.setUsername(config.getString("username", username));
+        String dbUsername = config.getString("username");
+        if (dbUsername != null && !dbUsername.equalsIgnoreCase("Unknown")) {
+            stats.setUsername(dbUsername);
+        } else {
+            stats.setUsername(username != null ? username : "Unknown");
+        }
 
         stats.setBridgeKills(config.getInt("bridge_kills", 0));
         stats.setBridgeDeaths(config.getInt("bridge_deaths", 0));
@@ -420,8 +452,20 @@ public class StatsManager {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    UUID uuid = UUID.fromString(rs.getString("uuid"));
+                    String uuidStr = rs.getString("uuid");
+                    if (uuidStr == null) continue;
+                    
+                    UUID uuid = UUID.fromString(uuidStr);
                     String username = rs.getString("username");
+                    
+                    // Try to resolve "Unknown" names for the leaderboard
+                    if (username == null || username.equalsIgnoreCase("Unknown")) {
+                        OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+                        if (op != null && op.getName() != null) {
+                            username = op.getName();
+                        }
+                    }
+                    
                     PlayerStats stats = loadPlayer(uuid, username);
                     topPlayers.add(stats);
                 }
@@ -453,6 +497,15 @@ public class StatsManager {
         for (org.bson.Document doc : collection.find().sort(sort).limit(limit)) {
             UUID uuid = UUID.fromString(doc.getString("_id"));
             String username = doc.getString("username");
+            
+            // Try to resolve "Unknown" names for the leaderboard
+            if (username == null || username.equalsIgnoreCase("Unknown")) {
+                OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+                if (op != null && op.getName() != null) {
+                    username = op.getName();
+                }
+            }
+            
             PlayerStats stats = loadPlayer(uuid, username);
             topPlayers.add(stats);
         }

@@ -55,23 +55,39 @@ public class EnderPearlListener implements Listener {
         // Register cooldown start
         cooldowns.put(id, now);
 
-        // Schedule notification task
-        long expectedFinish = now + COOLDOWN_MILLIS;
-        Bukkit.getScheduler().runTaskLater(
-                plugin,
-                () -> {
-                    // Player offline or cooldown changed → don't notify
-                    Player p = Bukkit.getPlayer(id);
-                    if (p == null) return;
+        // EXP Bar Countdown Task (100 ticks = 5 seconds)
+        new org.bukkit.scheduler.BukkitRunnable() {
+            private int ticksLeft = 100;
 
-                    Long stored = cooldowns.get(id);
-                    if (stored == null) return;
-                    if (stored + COOLDOWN_MILLIS != expectedFinish) return;
+            @Override
+            public void run() {
+                Player p = Bukkit.getPlayer(id);
+                
+                // If player leaves, stop the task
+                if (p == null || !p.isOnline()) {
+                    cooldowns.remove(id);
+                    this.cancel();
+                    return;
+                }
 
+                // Finish countdown
+                if (ticksLeft <= 0) {
+                    p.setExp(0.0f);
+                    p.setLevel(0);
                     p.sendMessage("§aYou can now use your Ender Pearl again!");
-                },
-                COOLDOWN_SECONDS * 20L
-        );
+                    cooldowns.remove(id);
+                    this.cancel();
+                    return;
+                }
+
+                // Update EXP bar (1.0 to 0.0) and Level (5 to 1)
+                float progress = (float) ticksLeft / 100.0f;
+                p.setExp(progress);
+                p.setLevel((int) Math.ceil(ticksLeft / 20.0));
+
+                ticksLeft--;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     public static long getCooldownSeconds() { return COOLDOWN_SECONDS; }

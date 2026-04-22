@@ -69,6 +69,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private BridgeFightBanManager bridgeFightBanManager;
     private BridgeFightKitGUI bridgeFightKitGUI;
     private TeleportPendingManager teleportPendingManager;
+    private EggBridgeManager eggBridgeManager;
     private CombatManager combatManager;
     private DeathMessageManager deathMessageManager;
     private PersistentRestoreManager persistentRestoreManager;
@@ -144,6 +145,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.frozenManager = new FrozenManager(this);
         this.reportManager = new ReportManager(this, getDataFolder());
         this.teleportPendingManager = new TeleportPendingManager();
+        this.eggBridgeManager = new EggBridgeManager();
         //this.flightManager = new FlightManager(configManager.getLobbyWorldName());
         this.bridgeFightKitManager = new BridgeFightKitManager(this);
         this.bridgeFightKitGUI = new BridgeFightKitGUI(this);
@@ -209,9 +211,11 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("playerhistory").setExecutor(new PlayerHistoryCommand(this));
         getCommand("freeze").setExecutor(new FrozenCommand(this));
         getCommand("unfreeze").setExecutor(new UnfrozenCommand(this));
+        getCommand("togglebridgeegg").setExecutor(new ToggleBridgeEggCommand(this));
         getCommand("report").setExecutor(new ReportCommand(this));
         getCommand("reports").setExecutor(new ReportsCommand(this));
         getCommand("statsreset").setExecutor(new StatsResetCommand(this));
+        getCommand("hbmresetall").setExecutor(new HBMResetAllCommand(this));
         getCommand("privateworld").setExecutor(new PrivateWorldCommand(this));
         getCommand("setstats").setExecutor(new SetCommand(this));
         getCommand("kit").setExecutor(new BridgeFightKitCommand(this));
@@ -450,5 +454,9 @@ public final class ArenaAndFFAManager extends JavaPlugin {
 
     public CustomKitBaseGUI getCustomKitBaseGUI() {
         return customKitBaseGUI;
+    }
+
+    public EggBridgeManager getEggBridgeManager() {
+        return eggBridgeManager;
     }
 }

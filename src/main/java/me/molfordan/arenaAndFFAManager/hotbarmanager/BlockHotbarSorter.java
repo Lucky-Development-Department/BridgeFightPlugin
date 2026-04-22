@@ -1,6 +1,7 @@
 package me.molfordan.arenaAndFFAManager.hotbarmanager;
 
 import me.molfordan.arenaAndFFAManager.manager.HotbarDataManager;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -16,27 +17,49 @@ public class BlockHotbarSorter {
         this.dataManager = dataManager;
     }
 
-    public boolean sort(Player player, ItemStack block) {
-        if (block == null) return false;
+    public boolean sort(Player player, ItemStack item) {
+        if (item == null) return false;
 
         Map<Integer, String> layout = dataManager.load(player.getUniqueId());
         if (layout == null || layout.isEmpty()) return false;
 
-        List<Integer> blockSlots = new ArrayList<>();
-        for (Map.Entry<Integer, String> e : layout.entrySet()) {
-            if ("blocks".equalsIgnoreCase(e.getValue())) {
-                int slot = e.getKey();
-                if (slot >= 0 && slot <= 8) blockSlots.add(slot);
+        String category = "blocks";
+        if (item.getType() == Material.LADDER) {
+            category = "ladder";
+            // Check if player actually has a ladder slot in their layout
+            boolean hasLadderSlot = false;
+            for (String v : layout.values()) {
+                if ("ladder".equalsIgnoreCase(v)) {
+                    hasLadderSlot = true;
+                    break;
+                }
+            }
+            // If no ladder slot, fall back to blocks category
+            if (!hasLadderSlot) {
+                category = "blocks";
             }
         }
 
-        if (blockSlots.isEmpty()) return false;
+        List<Integer> targetSlots = new ArrayList<>();
+        for (Map.Entry<Integer, String> e : layout.entrySet()) {
+            if (category.equalsIgnoreCase(e.getValue())) {
+                int slot = e.getKey();
+                if (slot >= 0 && slot <= 8) targetSlots.add(slot);
+            }
+        }
 
-        // Always add exactly +1 wool
-        ItemStack incoming = new ItemStack(block.getType(), 1, block.getDurability());
+        if (targetSlots.isEmpty()) return false;
+
+        // Always add exactly +1
+        // For ladders, we strip the data (which is facing) so it stacks with kit ladders
+        short data = item.getDurability();
+        if (item.getType() == Material.LADDER) {
+            data = 0;
+        }
+        ItemStack incoming = new ItemStack(item.getType(), 1, data);
 
         // Try stacking
-        for (int slot : blockSlots) {
+        for (int slot : targetSlots) {
             ItemStack existing = player.getInventory().getItem(slot);
             if (existing != null && existing.isSimilar(incoming)) {
                 if (existing.getAmount() < existing.getMaxStackSize()) {
@@ -47,8 +70,8 @@ public class BlockHotbarSorter {
             }
         }
 
-        // Try placing in empty block slot
-        for (int slot : blockSlots) {
+        // Try placing in empty target slot
+        for (int slot : targetSlots) {
             if (player.getInventory().getItem(slot) == null) {
                 player.getInventory().setItem(slot, incoming);
                 return true;

@@ -1,5 +1,6 @@
 package me.molfordan.arenaAndFFAManager.listener;
 
+import me.molfordan.arenaAndFFAManager.commands.admin.ToggleBridgeEggCommand;
 import me.molfordan.arenaAndFFAManager.task.EggBridgeTask;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import org.bukkit.entity.Egg;
@@ -15,6 +16,12 @@ public class EggBridgeListener implements Listener {
 
         if (!(event.getEntity() instanceof Egg)) return;
         if (!(event.getEntity().getShooter() instanceof Player)) return;
+
+        // Check if bridge eggs are enabled
+        if (!ToggleBridgeEggCommand.isBridgeEggEnabled()) {
+            event.setCancelled(true);
+            return;
+        }
 
         Egg egg = (Egg) event.getEntity();
         Player player = (Player) egg.getShooter();

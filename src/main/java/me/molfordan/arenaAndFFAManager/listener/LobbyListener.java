@@ -100,6 +100,9 @@ public class LobbyListener implements Listener {
 
         // Send patch notes to player
         List<String> patchNotes = configManager.getPatchNotes();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+
+
         if (patchNotes != null) {
             player.sendMessage(ChatColor.GOLD + "----- Patch Notes -----");
             for (String note : patchNotes) {
@@ -107,6 +110,7 @@ public class LobbyListener implements Listener {
             }
             player.sendMessage(ChatColor.GOLD + "-----------------------");
         }
+        }, 10);
     }
 
 

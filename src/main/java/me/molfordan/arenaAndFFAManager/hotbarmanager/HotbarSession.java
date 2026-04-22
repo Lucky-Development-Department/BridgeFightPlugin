@@ -62,6 +62,7 @@ public class HotbarSession {
     private void initCategoryPositions() {
         int slot = 9;
         putCategory(slot++, "blocks");
+        putCategory(slot++, "ladder");
         putCategory(slot++, "melee");
         putCategory(slot++, "pickaxe");
         putCategory(slot++, "axe");
@@ -84,6 +85,7 @@ public class HotbarSession {
 
         // optional extras
         putCategory(27, "snowball");
+
 
         //putCategory(28, "compass");
     }
@@ -302,6 +304,7 @@ public class HotbarSession {
         int pearlCount = 0;
         int fireballCount = 0;
         int eggCount = 0;
+        int ladderCount = 0;
 
         for (String id : hotbarLayout.values()) {
             if (id == null) continue;
@@ -319,6 +322,11 @@ public class HotbarSession {
             if (id.equals("blocks")) {
                 blocksCount++;
                 if (blocksCount > 2) return false;
+            }
+
+            if (id.equals("ladder")){
+                ladderCount++;
+                if (ladderCount > 1) return false;
             }
 
 
@@ -383,6 +391,7 @@ public class HotbarSession {
         String k = id.toLowerCase(Locale.ROOT);
         switch (k) {
             case "blocks": return buildItem(Material.WOOL, (short)0, ChatColor.WHITE + "Blocks");
+
             case "melee": return buildItem(Material.IRON_SWORD, ChatColor.WHITE + "Melee");
             case "pickaxe": return buildItem(Material.IRON_PICKAXE, ChatColor.WHITE + "Pickaxe");
             case "axe": return buildItem(Material.IRON_AXE, ChatColor.WHITE + "Axe");

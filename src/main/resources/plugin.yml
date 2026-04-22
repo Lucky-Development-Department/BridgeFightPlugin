@@ -5,6 +5,7 @@ api-version: '1.8'
 softdepend:
   - PlaceholderAPI
   - WorldGuard
+  - ProtocolLib
 commands:
   arenamap:
     usage: '/arenamap <create|pos1|pos2|finish|remove> <name>'
@@ -33,6 +34,7 @@ commands:
   buildffa:
     usage: '/buildffa'
     description: 'buildffa'
+    aliases: [ffa]
   bridgefight:
     usage: '/bridgefight'
     description: 'bridgefight'
@@ -109,6 +111,10 @@ commands:
     usage: '/statsreset <player>'
     description: 'statsreset command'
     permission: arenamap.admin
+  hbmresetall:
+    usage: '/hbmresetall'
+    description: 'reset all hotbar manager data'
+    permission: arenamap.admin
   privateworld:
     usage: '/privateworld'
     description: 'privateworld command'
@@ -123,6 +129,10 @@ commands:
   debugging:
     usage: '/debugging'
     description: 'debug command'
+  togglebridgeegg:
+    usage: '/togglebridgeegg'
+    description: 'toggle bridge egg functionality'
+    permission: arenamap.admin
 
 permissions:
   arenamap.admin:

@@ -10,10 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.CreatureSpawnEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.FoodLevelChangeEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.weather.WeatherChangeEvent;
 import org.bukkit.plugin.RegisteredListener;
@@ -154,6 +151,23 @@ public class GlobalListener implements Listener {
     @EventHandler
     public void onBlockFade(BlockFadeEvent event){
         event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onExpChange(PlayerExpChangeEvent event) {
+        event.setAmount(0);
+    }
+
+    @EventHandler
+    public void onExpBottle(ExpBottleEvent event) {
+        event.setExperience(0);
+    }
+
+    @EventHandler
+    public void onExpSpawn(EntitySpawnEvent event) {
+        if (event.getEntityType() == org.bukkit.entity.EntityType.EXPERIENCE_ORB) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -32,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DeathMessageManager implements Listener {
 
     private final Set<UUID> recentlyHandled = new HashSet<>();
+    private final Set<UUID> immunePlayers = new HashSet<>();
 
     private CombatManager combatManager;
     private ArenaAndFFAManager plugin;
@@ -47,6 +49,7 @@ public class DeathMessageManager implements Listener {
 
     private ArenaManager arenaManager;
     public String PREFIX;
+    public String bridgeFightWorldName;
 
     public DeathMessageManager(ArenaAndFFAManager plugin,
                                CombatManager combatManager,
@@ -61,7 +64,12 @@ public class DeathMessageManager implements Listener {
         this.statsManager = statsManager;
         this.fireballTracker = fireballTracker;
         this.PREFIX = plugin.getConfigManager().getServerPrefix();
+        this.bridgeFightWorldName = plugin.getConfigManager().getBridgeFightWorldName();
         startDuelCleaner();
+    }
+
+    public Set<UUID> getImmunePlayers() {
+        return immunePlayers;
     }
 
     /**
@@ -102,10 +110,10 @@ public class DeathMessageManager implements Listener {
         }
 
         String message;
-        if (fireballOwner != null && fireballOwner.isOnline()) {
+        if (fireballOwner != null && fireballOwner.isOnline() && !fireballOwner.equals(victim)) {
             message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by a fireball from "
                     + ChatColor.GREEN + fireballOwner.getName() + ChatColor.GRAY + "[" + attackerStreak + "]";
-        } else if (attacker != null && attacker.isOnline()) {
+        } else if (attacker != null && attacker.isOnline() && !attacker.equals(victim)) {
             message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by "
                     + ChatColor.GREEN + attacker.getName() + ChatColor.GRAY + "[" + attackerStreak + "]";
         } else {
@@ -241,6 +249,18 @@ public class DeathMessageManager implements Listener {
 
         // Cleanup combat state
         combatManager.clear(victim);
+        
+        // Clear attacker combat state for FFA arenas only
+        if (killerValid && arena.getType() == ArenaType.FFA) {
+            combatManager.clear(killer);
+            
+            // Give killer 5-second post-fight immunity
+            final UUID killerId = killer.getUniqueId();
+            immunePlayers.add(killerId);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                immunePlayers.remove(killerId);
+            }, 5 * 20L); // 5 seconds in ticks
+        }
     }
 
     /**
@@ -513,6 +533,10 @@ public class DeathMessageManager implements Listener {
                 }
             }, 10);
         }
+    }
+
+    public boolean isImmune(Player player) {
+        return immunePlayers.contains(player.getUniqueId());
     }
 
     private void ensureItem(Player player, Material material, int minAmount, int giveAmount, int maxAmount) {
@@ -850,7 +874,7 @@ public class DeathMessageManager implements Listener {
     private void addKill(Player killer, Arena arena, boolean incrementStreak) {
         if (killer == null) return;
 
-        PlayerStats stats = statsManager.getStats(killer.getUniqueId());
+        PlayerStats stats = statsManager.loadPlayer(killer.getUniqueId(), killer.getName());
         if (stats == null) return;
 
         if (arena.getType() == ArenaType.FFA) {
@@ -865,7 +889,7 @@ public class DeathMessageManager implements Listener {
     private void addDeath(Player victim, Arena arena) {
         if (victim == null) return;
 
-        PlayerStats stats = statsManager.getStats(victim.getUniqueId());
+        PlayerStats stats = statsManager.loadPlayer(victim.getUniqueId(), victim.getName());
         if (stats == null) return;
 
         if (arena.getType() == ArenaType.FFA) {
@@ -920,7 +944,7 @@ public class DeathMessageManager implements Listener {
     }
 
     private void hideOthersFor(Player p, DuelSession duel) {
-        for (Player other : Bukkit.getOnlinePlayers()) {
+        for (Player other : Bukkit.getWorld(bridgeFightWorldName).getPlayers()) {
             if (other.getUniqueId().equals(p.getUniqueId())) continue;
             if (duel.contains(other.getUniqueId())) continue; // opponent stays visible
 
@@ -929,7 +953,7 @@ public class DeathMessageManager implements Listener {
     }
 
     private void showAllFor(Player p) {
-        for (Player other : Bukkit.getOnlinePlayers()) {
+        for (Player other : Bukkit.getWorld(bridgeFightWorldName).getPlayers()) {
             if (other.getUniqueId().equals(p.getUniqueId())) continue;
             p.showPlayer(other);
         }
@@ -983,6 +1007,7 @@ public class DeathMessageManager implements Listener {
         // Send message to player
         player.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) +
                 ChatColor.RED + " Cannot enter the safe zone platform during fight! ");
+        //Bukkit.getLogger().info("the message was sent from the line 1008");
         
         // Calculate push-back direction (opposite to movement direction)
         Location currentLocation = player.getLocation();
@@ -1048,9 +1073,12 @@ public class DeathMessageManager implements Listener {
                 String regionName = damagerInRegion ? 
                     WorldGuardUtils.getRegionNamesAt(damager.getLocation()).iterator().next() :
                     WorldGuardUtils.getRegionNamesAt(victim.getLocation()).iterator().next();
-                
-                damager.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + 
+
+                /*damager.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) +
                     ChatColor.RED + " Cannot enter the safe zone platform during fight! ");
+
+                 */
+                //Bukkit.getLogger().info("the message was sent from the line 1077");
                 return false;
             }
         }

@@ -1,6 +1,7 @@
 package me.molfordan.arenaAndFFAManager.task;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
+import me.molfordan.arenaAndFFAManager.manager.EggBridgeManager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
 import me.molfordan.arenaAndFFAManager.region.FlagType;
@@ -19,7 +20,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class EggBridgeTask implements Runnable {
 
@@ -31,6 +34,7 @@ public class EggBridgeTask implements Runnable {
     private final BukkitTask task;
     private final List<Block> placedBlocks = new ArrayList<>();
 
+
     private boolean removalScheduled = false;
 
     public EggBridgeTask(Player player, Egg egg, Plugin plugin) {
@@ -38,6 +42,9 @@ public class EggBridgeTask implements Runnable {
         this.egg = egg;
         this.plugin = plugin;
         this.woolColor = getWoolColor(player);
+
+        // Register with EggBridgeManager
+        ArenaAndFFAManager.getInstance().getEggBridgeManager().registerTask(this);
 
         this.task = Bukkit.getScheduler().runTaskTimer(plugin, this, 0L, 1L);
     }
@@ -101,8 +108,11 @@ public class EggBridgeTask implements Runnable {
         }
     }
 
-    private void cancel() {
+    public void cancel() {
         task.cancel();
+        
+        // Unregister from EggBridgeManager
+        ArenaAndFFAManager.getInstance().getEggBridgeManager().unregisterTask(this);
 
         if (removalScheduled) return;
         removalScheduled = true;

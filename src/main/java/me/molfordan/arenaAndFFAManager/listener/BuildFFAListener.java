@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
@@ -95,4 +96,29 @@ public class BuildFFAListener implements Listener {
             );
         }
     }
+
+    @EventHandler
+    public void onBlockInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        if (!isInBuildFFAWorld(player)) return;
+
+        // 1. Check if the player is sneaking and holding an item
+        // If they are, we DON'T cancel the event so they can place the block.
+        if (player.isSneaking() && event.getItem() != null && event.getItem().getType().isBlock()) {
+            return;
+        }
+
+        // 2. Otherwise, cancel interaction for the specified containers
+        if (event.getClickedBlock() != null) {
+            Material type = event.getClickedBlock().getType();
+            if (type == Material.CHEST ||
+                    type == Material.ENDER_CHEST ||
+                    type == Material.TRAPPED_CHEST ||
+                    type == Material.HOPPER ||
+                    type == Material.WORKBENCH) { // You can combine both methods here
+                event.setCancelled(true);
+            }
+        }
+    }
+
 }

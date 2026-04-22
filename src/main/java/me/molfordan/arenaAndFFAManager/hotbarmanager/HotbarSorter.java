@@ -36,7 +36,24 @@ public class HotbarSorter {
         // no slot for this category → ignore
         if (target < 0 || target > 8) return;
 
-        // 4. place item into target slot
-        p.getInventory().setItem(target, item);
+        // 4. place item into target slot (with stacking)
+        ItemStack existing = p.getInventory().getItem(target);
+        if (existing != null && existing.isSimilar(item)) {
+            int max = existing.getMaxStackSize();
+            int current = existing.getAmount();
+            int toAdd = item.getAmount();
+            
+            if (current + toAdd <= max) {
+                existing.setAmount(current + toAdd);
+                p.getInventory().setItem(target, existing);
+            } else {
+                existing.setAmount(max);
+                p.getInventory().setItem(target, existing);
+                // Overflow back to inventory or drop? 
+                // For simplicity, just cap it.
+            }
+        } else {
+            p.getInventory().setItem(target, item);
+        }
     }
 }

@@ -164,6 +164,8 @@ public class HotbarManager {
             case HARD_CLAY:
             case SANDSTONE:
                 return "blocks";
+            case LADDER:
+                return "ladder";
 
             default:
                 return null;

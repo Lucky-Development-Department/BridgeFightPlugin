@@ -30,6 +30,7 @@ public class BuildFFAKit {
     private ItemStack kbStick;
     private ItemStack pearl;
     private ItemStack woolStack;
+    private ItemStack ladder;
 
     public void giveKit(Player player, Map<Integer, String> hotbarLayout) {
 
@@ -46,6 +47,7 @@ public class BuildFFAKit {
         // CREATE ALL ITEMS AND STORE THEM IN CLASS FIELDS
         // ======================================================
         woolStack = new ItemStack(Material.WOOL, 64, woolColor);
+        ladder = new ItemStack(Material.LADDER, 16);
         sword = createItem(Material.STONE_SWORD);
         pickaxe = createItem(Material.GOLD_PICKAXE, Enchantment.DIG_SPEED, 3);
         axe = createItem(Material.IRON_AXE, Enchantment.DIG_SPEED, 2);
@@ -69,6 +71,7 @@ public class BuildFFAKit {
         kitItems.put("shears", shears);
         kitItems.put("knockbackstick", kbStick);
         kitItems.put("blocks", woolStack);
+        kitItems.put("ladder", ladder);
         kitItems.put("pearl", pearl);
         kitItems.put("ender_pearl", pearl);
 
@@ -83,6 +86,7 @@ public class BuildFFAKit {
         if (!containsValue(hotbarLayout, "axe")) player.getInventory().addItem(axe);
         if (!containsValue(hotbarLayout, "shears")) player.getInventory().addItem(shears);
         if (!containsValue(hotbarLayout, "knockbackstick")) player.getInventory().addItem(kbStick);
+        if (!containsValue(hotbarLayout, "ladder")) player.getInventory().addItem(ladder);
 
         // ======================================================
         // GIVE PEARL (if player placed pearl category)
@@ -133,6 +137,7 @@ public class BuildFFAKit {
         map.put("shears", shears.clone());
         map.put("knockbackstick", kbStick.clone());
         map.put("blocks", woolStack.clone());
+        map.put("ladder", ladder.clone());
         map.put("pearl", pearl.clone());
         map.put("ender_pearl", pearl.clone());
 
