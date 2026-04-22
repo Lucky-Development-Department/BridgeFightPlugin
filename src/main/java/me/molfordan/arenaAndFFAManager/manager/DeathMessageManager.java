@@ -636,8 +636,8 @@ public class DeathMessageManager implements Listener {
             message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] died.";
         } else {
             // Normal kill message
-            String killString = killer != null ? "was killed by" : "was killed";
-            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + " " + (killer != null ? killString : "was killed")
+            String killString = killer != null ? ChatColor.GRAY + "[0] was killed by" : ChatColor.GRAY + "[0] was killed";
+            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + " " + (killer != null ? killString : ChatColor.GRAY + "[0] was killed")
                     + ChatColor.GRAY + (killer != null ? " " + ChatColor.GREEN + killer.getName() + ChatColor.GRAY + "[" + newStreak + "]" : "");
         }
 
