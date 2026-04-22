@@ -4,31 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e1e134a8-8b89-454a-95c4-6acdf11fcdee" name="Changes" comment="AHHH too many things have been added">
-      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/admin/ToggleBridgeEggCommand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/jarRepositories.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/jarRepositories.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="e1e134a8-8b89-454a-95c4-6acdf11fcdee" name="Changes" comment="habis ngedit masalah ladder">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dependency-reduced-pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/dependency-reduced-pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/ArenaAndFFAManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/ArenaAndFFAManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/BlockHotbarSorter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/BlockHotbarSorter.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarSession.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarSession.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarSorter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/hotbarmanager/HotbarSorter.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/BuildFFAKit.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/kits/BuildFFAKit.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BlockEventListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BlockEventListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BridgeFightListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BridgeFightListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BuildFFAListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BuildFFAListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/EggBridgeListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/EggBridgeListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/EnderPearlListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/EnderPearlListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/GlobalListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/GlobalListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/LobbyListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/LobbyListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/DeathMessageManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/DeathMessageManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/HotbarDataManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/HotbarDataManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/StatsManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/StatsManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/task/EggBridgeTask.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/task/EggBridgeTask.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/plugin.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/plugin.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -165,7 +142,7 @@
       <workItem from="1776744449020" duration="3522000" />
       <workItem from="1776763119823" duration="7462000" />
       <workItem from="1776828062842" duration="6076000" />
-      <workItem from="1776840500804" duration="567000" />
+      <workItem from="1776840500804" duration="2740000" />
     </task>
     <task id="LOCAL-00001" summary="Init Commit">
       <option name="closed" value="true" />
@@ -255,7 +232,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773141345396</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="habis ngedit masalah ladder">
+      <option name="closed" value="true" />
+      <created>1776841736341</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1776841736341</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -281,7 +266,8 @@
     <MESSAGE value="fixed KDR formatting" />
     <MESSAGE value="fixed Database connection, pearl and snowball, added potion removal after drinking, and nerfing strength" />
     <MESSAGE value="AHHH too many things have been added" />
-    <option name="LAST_COMMIT_MESSAGE" value="AHHH too many things have been added" />
+    <MESSAGE value="habis ngedit masalah ladder" />
+    <option name="LAST_COMMIT_MESSAGE" value="habis ngedit masalah ladder" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
