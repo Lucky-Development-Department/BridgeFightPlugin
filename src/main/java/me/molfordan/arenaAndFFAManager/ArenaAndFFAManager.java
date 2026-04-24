@@ -97,6 +97,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private SpawnItem spawnItem;
     private BackupManager backupManager; // Add this line
     private AutoRestartManager autoRestartManager;
+    private PatchNotesManager patchNotesManager;
     private FireballTracker fireballTracker;
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
@@ -168,11 +169,14 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         Bukkit.getLogger().info("[ArenaManager] Arenas loaded successfully.");
         dailyArenaRestorer = new DailyArenaRestorer(this, arenaManager);
         this.autoRestartManager = new AutoRestartManager(this, configManager);
+        this.patchNotesManager = new PatchNotesManager(this);
         new CombatTagDisplayTask(combatManager).runTaskTimer(this, 0L, 1L);
         getCommand("arenamap").setExecutor(new ArenaCommand(arenaManager, configManager, this));
         getCommand("arenabypass").setExecutor(new ArenaBypassCommand(arenaManager));
         getCommand("commandbypass").setExecutor(new BypassCommandsCommand(combatManager));
-        getCommand("arenaconfig").setExecutor(new ArenaConfigReloadCommand(configManager));
+        getCommand("arenaconfig").setExecutor(new ConfigReloadCommand(configManager));
+        getCommand("configreload").setExecutor(new ConfigReloadCommand(configManager));
+        getCommand("patchnotes").setExecutor(new PatchNotesCommand(this));
         getCommand("setlobby").setExecutor(new SetLobbyCommand(configManager));
         getCommand("build").setExecutor(new BuildModeCommand(configManager));
         getCommand("buildffa").setExecutor(new BuildFFACommand(configManager));
@@ -220,6 +224,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("setstats").setExecutor(new SetCommand(this));
         getCommand("kit").setExecutor(new BridgeFightKitCommand(this));
         getCommand("debugging").setExecutor(new GUICustomKit(this));
+        getCommand("givepots").setExecutor(new GivePotsCommand(this));
 
         // schedule expiry cleanup every minute
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
@@ -458,5 +463,9 @@ public final class ArenaAndFFAManager extends JavaPlugin {
 
     public EggBridgeManager getEggBridgeManager() {
         return eggBridgeManager;
+    }
+
+    public PatchNotesManager getPatchNotesManager() {
+        return patchNotesManager;
     }
 }

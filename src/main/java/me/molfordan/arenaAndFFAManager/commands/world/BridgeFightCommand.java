@@ -3,6 +3,7 @@ package me.molfordan.arenaAndFFAManager.commands.world;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.listener.LobbyListener;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
+import me.molfordan.arenaAndFFAManager.object.enums.PlatformType;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -33,6 +34,11 @@ public class BridgeFightCommand implements CommandExecutor {
         Location bridgeFightLoc = configManager.getBridgeFightLocation();
 
         String worldName = configManager.getBridgeFightWorldName();
+
+        if (plugin.getPlatformManager().isInPlatform(player, PlatformType.BIGPLAT) 
+            && plugin.getDeathMessageManager().isInDuel(player)) {
+            plugin.getDeathMessageManager().clearDuel(player.getUniqueId());
+        }
 
         if (bridgeFightLoc == null) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', prefix + " &cFailed to send you to the BridgeFight, Please Contact Admins."));

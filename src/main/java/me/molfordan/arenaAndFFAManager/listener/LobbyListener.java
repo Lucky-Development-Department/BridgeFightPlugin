@@ -99,17 +99,17 @@ public class LobbyListener implements Listener {
         event.setJoinMessage(null);
 
         // Send patch notes to player
-        List<String> patchNotes = configManager.getPatchNotes();
+        String lastUpdated = plugin.getPatchNotesManager().getLatestDate();
+        List<String> latestNotes = plugin.getPatchNotesManager().getLatestNotes();
+        
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-
-
-        if (patchNotes != null) {
-            player.sendMessage(ChatColor.GOLD + "----- Patch Notes -----");
-            for (String note : patchNotes) {
-                player.sendMessage(ChatColor.WHITE + "- " + note);
+            if (!latestNotes.isEmpty()) {
+                player.sendMessage(ChatColor.GOLD + "------- Patch Notes (" + lastUpdated + ") -------");
+                for (String note : latestNotes) {
+                    player.sendMessage(ChatColor.WHITE + "- " + ChatColor.translateAlternateColorCodes('&', note));
+                }
+                player.sendMessage(ChatColor.GOLD + "-----------------------");
             }
-            player.sendMessage(ChatColor.GOLD + "-----------------------");
-        }
         }, 10);
     }
 

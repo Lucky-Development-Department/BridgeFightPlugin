@@ -6,6 +6,7 @@ import me.molfordan.arenaAndFFAManager.manager.*;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
+import me.molfordan.arenaAndFFAManager.object.enums.PlatformType;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
@@ -55,6 +56,12 @@ public class CombatLogListener implements Listener {
             if (projectile.getShooter() instanceof Player) {
                 attacker = (Player) projectile.getShooter();
             }
+        }
+
+        // Check if attacker or victim is in platform
+        if ((attacker != null && plugin.getPlatformManager().isInPlatform(attacker, PlatformType.BIGPLAT)) ||
+            plugin.getPlatformManager().isInPlatform(victim, PlatformType.BIGPLAT)) {
+            return;
         }
         
         // Ignore creative mode attackers and self-damage

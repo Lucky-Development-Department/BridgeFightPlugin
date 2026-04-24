@@ -5,14 +5,17 @@ import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import me.molfordan.arenaAndFFAManager.manager.StatsManager;
 //import me.molfordan.arenaAndFFAManager.utils.FlightManager;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.event.weather.WeatherChangeEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.RegisteredListener;
 import org.bukkit.potion.PotionEffect;
 
@@ -133,6 +136,12 @@ public class GlobalListener implements Listener {
                 p.teleport(new Location(loc.getWorld(), loc.getX(), locY + 2, loc.getZ()));
             }
         }
+    }
+
+    @EventHandler
+    public void onCrafting(PrepareItemCraftEvent e){
+        if (e == null) return;
+        e.getInventory().setResult(new ItemStack(Material.AIR));
     }
 
     @EventHandler

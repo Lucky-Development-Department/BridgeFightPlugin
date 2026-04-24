@@ -52,8 +52,18 @@ public class CombatTagDisplayTask extends BukkitRunnable {
 
     // ✅ 1.8.9-compatible action bar method using NMS
     public void sendActionBar(Player player, String message) {
-        IChatBaseComponent component = new ChatComponentText(message);
-        PacketPlayOutChat packet = new PacketPlayOutChat(component, (byte) 2);
-        ((CraftPlayer) player).getHandle().playerConnection.sendPacket(packet);
+        if (player == null || !player.isOnline()) return;
+        
+        try {
+            IChatBaseComponent component = new ChatComponentText(message);
+            PacketPlayOutChat packet = new PacketPlayOutChat(component, (byte) 2);
+            
+            CraftPlayer craftPlayer = (CraftPlayer) player;
+            if (craftPlayer.getHandle() != null && craftPlayer.getHandle().playerConnection != null) {
+                craftPlayer.getHandle().playerConnection.sendPacket(packet);
+            }
+        } catch (Throwable ignored) {
+            // Silently ignore during disconnects
+        }
     }
 }

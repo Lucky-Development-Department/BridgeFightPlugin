@@ -1,16 +1,26 @@
 package me.molfordan.arenaAndFFAManager.object;
 
+import me.molfordan.arenaAndFFAManager.object.enums.PlatformType;
 import org.bukkit.Location;
 
 public class PlatformRegion {
     private Location pos1;
     private Location pos2;
     private Location spawn;
+    private PlatformType type;
 
     public PlatformRegion(Location pos1, Location pos2, Location spawn) {
         this.pos1 = pos1;
         this.pos2 = pos2;
         this.spawn = spawn;
+    }
+
+    public void setType(PlatformType type) {
+        this.type = type;
+    }
+
+    public PlatformType getType() {
+        return type;
     }
 
     public void setPos1(Location loc) { this.pos1 = loc; }

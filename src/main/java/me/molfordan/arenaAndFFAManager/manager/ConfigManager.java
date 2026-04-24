@@ -66,13 +66,8 @@ public class ConfigManager {
         config.addDefault("fireball.damage.teammates", 0.0);
 
         // ================= APPLY =================
-        config.addDefault("patchnotes", null);
         config.options().copyDefaults(true);
         saveConfig();
-    }
-
-    public List<String> getPatchNotes(){
-        return config.getStringList("patchnotes");
     }
 
     public double getFireballHorizontalKnockback() {

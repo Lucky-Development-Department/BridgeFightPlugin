@@ -4,9 +4,24 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e1e134a8-8b89-454a-95c4-6acdf11fcdee" name="Changes" comment="habis ngedit masalah ladder">
+    <list default="true" id="e1e134a8-8b89-454a-95c4-6acdf11fcdee" name="Changes" comment="kill message">
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/admin/ConfigReloadCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/admin/GivePotsCommand.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/ArenaAndFFAManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/ArenaAndFFAManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/world/BridgeFightCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/commands/world/BridgeFightCommand.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BlockEventListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/BlockEventListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/CombatLogListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/CombatLogListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/FireballListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/FireballListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/GlobalListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/GlobalListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/InvisPlayerListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/InvisPlayerListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/LobbyListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/listener/LobbyListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/ConfigManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/ConfigManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/DeathMessageManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/DeathMessageManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/PlatformManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/manager/PlatformManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/object/PlatformRegion.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/object/PlatformRegion.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/task/CombatTagDisplayTask.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/me/molfordan/arenaAndFFAManager/task/CombatTagDisplayTask.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/plugin.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/plugin.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -143,7 +158,10 @@
       <workItem from="1776744449020" duration="3522000" />
       <workItem from="1776763119823" duration="7462000" />
       <workItem from="1776828062842" duration="6076000" />
-      <workItem from="1776840500804" duration="3916000" />
+      <workItem from="1776840500804" duration="5495000" />
+      <workItem from="1776857229730" duration="797000" />
+      <workItem from="1776980388261" duration="28350000" />
+      <workItem from="1777045341960" duration="1412000" />
     </task>
     <task id="LOCAL-00001" summary="Init Commit">
       <option name="closed" value="true" />
@@ -313,7 +331,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776844344772</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="kill message">
+      <option name="closed" value="true" />
+      <created>1776845593022</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1776845593022</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -340,7 +366,8 @@
     <MESSAGE value="fixed Database connection, pearl and snowball, added potion removal after drinking, and nerfing strength" />
     <MESSAGE value="AHHH too many things have been added" />
     <MESSAGE value="habis ngedit masalah ladder" />
-    <option name="LAST_COMMIT_MESSAGE" value="habis ngedit masalah ladder" />
+    <MESSAGE value="kill message" />
+    <option name="LAST_COMMIT_MESSAGE" value="kill message" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

@@ -1,5 +1,6 @@
 package me.molfordan.arenaAndFFAManager.listener;
 
+import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import me.molfordan.arenaAndFFAManager.*;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.BlockHotbarSorter;
@@ -59,65 +60,144 @@ public class BlockEventListener implements Listener {
     }
 
     private void registerSoundListener() {
+        if (ProtocolLibrary.getProtocolManager() == null) return;
+        
         ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(plugin, 
             PacketType.Play.Server.NAMED_SOUND_EFFECT) {
             @Override
             public void onPacketSending(PacketEvent event) {
-                String soundName = event.getPacket().getStrings().read(0);
-                if (soundName.startsWith("dig.") || soundName.startsWith("step.")) {
-                    double x = event.getPacket().getIntegers().read(0) / 8.0;
-                    double y = event.getPacket().getIntegers().read(1) / 8.0;
-                    double z = event.getPacket().getIntegers().read(2) / 8.0;
+                if (event == null || event.getPacket() == null) return;
+                
+                // Defensive check for player to avoid ProtocolLib internal NPEs
+                try {
+                    if (event.getPlayer() == null) return;
+                } catch (Exception e) {
+                    return;
+                }
+                
+                try {
+                    if (event.getPacket().getStrings().size() == 0) return;
+                    String soundName = event.getPacket().getStrings().read(0);
+                    if (soundName == null) return;
                     
-                    String key = (int)x + "," + (int)y + "," + (int)z;
-                    Long time = cancelledPlacements.get(key);
-                    if (time != null && System.currentTimeMillis() - time < 200) {
-                        event.setCancelled(true);
+                    if (soundName.startsWith("dig.") || soundName.startsWith("step.")) {
+                        if (event.getPacket().getIntegers().size() < 3) return;
+                        
+                        Integer ix = event.getPacket().getIntegers().read(0);
+                        Integer iy = event.getPacket().getIntegers().read(1);
+                        Integer iz = event.getPacket().getIntegers().read(2);
+                        
+                        if (ix == null || iy == null || iz == null) return;
+                        
+                        double x = ix / 8.0;
+                        double y = iy / 8.0;
+                        double z = iz / 8.0;
+                        
+                        String key = (int)x + "," + (int)y + "," + (int)z;
+                        Long time = cancelledPlacements.get(key);
+                        if (time != null && System.currentTimeMillis() - time < 200) {
+                            event.setCancelled(true);
+                        }
                     }
+                } catch (Exception e) {
+                    // Silently ignore - common during disconnects
                 }
             }
         });
     }
 
     public void registerPacketListener() {
+        if (ProtocolLibrary.getProtocolManager() == null) return;
+        
         ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(
             plugin, PacketType.Play.Client.BLOCK_PLACE) {
             
             @Override
             public void onPacketReceiving(PacketEvent event) {
-                if (event.getPacketType() == PacketType.Play.Client.BLOCK_PLACE) {
+                if (event == null || event.getPacket() == null) return;
+                
+                // Defensive check for player to avoid ProtocolLib internal NPEs
+                try {
+                    if (event.getPlayer() == null) return;
+                } catch (Exception e) {
+                    return;
+                }
+                
+                try {
                     Player player = event.getPlayer();
                     if (manager.isBypassing(player.getUniqueId())) return;
                     
                     // Get block location from packet
+                    if (event.getPacket().getBlockPositionModifier().size() == 0) return;
                     BlockPosition pos = event.getPacket().getBlockPositionModifier().read(0);
-                    if (pos.getY() < 0) return; 
+                    if (pos == null || pos.getY() < 0) return; 
 
-                    Location loc = new Location(player.getWorld(), pos.getX(), pos.getY(), pos.getZ());
-                    Arena arena = manager.getArenaByLocation(loc);
+                    // In 1.8, Integers: 0 = direction
+                    if (event.getPacket().getIntegers().size() == 0) return;
+                    int direction = event.getPacket().getIntegers().read(0);
+                    if (direction == 255) return; // Interaction, not placement
+
+                    // Check if holding a custom item or non-block
+                    ItemStack itemInHand = player.getItemInHand();
+                    if (itemInHand != null && itemInHand.getType() != Material.AIR) {
+                        // If it's not a block material OR it has a custom name/lore,
+                        // we treat it as a potential interaction and let it pass to the server.
+                        // The actual placement (if it is a block) will still be blocked by onBlockPlace.
+                        if (!itemInHand.getType().isBlock() || 
+                            (itemInHand.hasItemMeta() && (itemInHand.getItemMeta().hasDisplayName() || itemInHand.getItemMeta().hasLore()))) {
+                            return;
+                        }
+                    }
+
+                    Location clickedLoc = new Location(player.getWorld(), pos.getX(), pos.getY(), pos.getZ());
+                    Location targetLoc = clickedLoc.clone();
+                    switch (direction) {
+                        case 0: targetLoc.add(0, -1, 0); break;
+                        case 1: targetLoc.add(0, 1, 0); break;
+                        case 2: targetLoc.add(0, 0, -1); break;
+                        case 3: targetLoc.add(0, 0, 1); break;
+                        case 4: targetLoc.add(-1, 0, 0); break;
+                        case 5: targetLoc.add(1, 0, 0); break;
+                    }
+
+                    Arena arena = manager.getArenaByLocation(targetLoc);
                     
                     boolean cancel = false;
                     if (arena == null) {
-                        Arena shellArena = findShellArena(loc, 2);
+                        Arena shellArena = findShellArena(targetLoc, 2);
                         if (shellArena != null) {
                             cancel = true;
                         }
                     } else if (arena.getType() == ArenaType.DUEL
                             || arena.getType() == ArenaType.TOPFIGHT
                             || arena.getType() == ArenaType.FFABUILD) {
-                        if (loc.getBlockY() >= arena.getBuildLimitY()) {
+                        if (targetLoc.getBlockY() > arena.getBuildLimitY()) {
                             cancel = true;
                         }
                     }
 
                     if (cancel) {
                         event.setCancelled(true);
-                        String key = loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
+                        String key = targetLoc.getBlockX() + "," + targetLoc.getBlockY() + "," + targetLoc.getBlockZ();
                         cancelledPlacements.put(key, System.currentTimeMillis());
                         
-                        player.sendBlockChange(loc, loc.getBlock().getType(), loc.getBlock().getData());
-                        Bukkit.getScheduler().runTask(plugin, player::updateInventory);
+                        // Force a sync to clear ghost block - Double Tap
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            if (player.isOnline()) {
+                                Block b = targetLoc.getBlock();
+                                player.sendBlockChange(targetLoc, b.getType(), b.getData());
+                                player.updateInventory();
+                            }
+                        }, 1L);
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            if (player.isOnline()) {
+                                Block b = targetLoc.getBlock();
+                                player.sendBlockChange(targetLoc, b.getType(), b.getData());
+                            }
+                        }, 3L);
                     }
+                } catch (Exception e) {
+                    // Silently ignore
                 }
             }
         });
@@ -135,6 +215,7 @@ public class BlockEventListener implements Listener {
 
         Block block = event.getBlock();
         Location loc = block.getLocation();
+        BlockState replacedState = event.getBlockReplacedState();
 
         // First: if inside an arena (original cuboid), proceed as before
         Arena arena = manager.getArenaByLocation(loc);
@@ -147,7 +228,7 @@ public class BlockEventListener implements Listener {
                 event.setCancelled(true);
                 player.sendMessage(ChatColor.RED + "You cannot place blocks in the arena border area.");
                 cancelledPlacements.put(loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ(), System.currentTimeMillis());
-                syncPlacement(player, loc);
+                syncPlacement(player, loc, replacedState.getType(), replacedState.getRawData());
                 return;
             }
             // Not inside any arena or shell -> not our concern
@@ -162,7 +243,7 @@ public class BlockEventListener implements Listener {
             if (loc.getBlockY() > arena.getBuildLimitY()) {
                 event.setCancelled(true);
                 cancelledPlacements.put(loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ(), System.currentTimeMillis());
-                syncPlacement(player, loc);
+                syncPlacement(player, loc, replacedState.getType(), replacedState.getRawData());
                 return;
             }
         }
@@ -412,6 +493,9 @@ public class BlockEventListener implements Listener {
     private void scheduleRestore(String mapKey, Location loc, Runnable action) {
         if (scheduledRestores.containsKey(mapKey)) return;
 
+        // Start block breaking animation
+        startBlockBreakingAnimation(loc, mapKey);
+
         BukkitRunnable task = new BukkitRunnable() {
             @Override
             public void run() {
@@ -419,6 +503,8 @@ public class BlockEventListener implements Listener {
                     action.run();
                 } finally {
                     scheduledRestores.remove(mapKey);
+                    // Stop the breaking animation
+                    stopBlockBreakingAnimation(mapKey);
                 }
             }
         };
@@ -434,6 +520,96 @@ public class BlockEventListener implements Listener {
                     && itemLoc.getBlockZ() == loc.getBlockZ()) {
                 item.remove();
             }
+        }
+    }
+
+    private final Map<String, BukkitRunnable> breakingAnimations = new ConcurrentHashMap<>();
+
+    private void startBlockBreakingAnimation(Location loc, String mapKey) {
+        final long startTime = System.currentTimeMillis();
+        final long duration = 30000L; // 30 seconds
+        
+        // Generate a unique-ish ID for this location to avoid flickering and collisions.
+        // We use a large negative offset because real entity IDs are positive.
+        final int animationId = -1000000 - (((loc.getBlockX() & 0xFFF) << 20) | ((loc.getBlockZ() & 0xFFF) << 8) | (loc.getBlockY() & 0xFF));
+
+        BukkitRunnable animationTask = new BukkitRunnable() {
+            private int lastStage = -1;
+            private int ticksSinceLastSend = 0;
+
+            @Override
+            public void run() {
+                if (loc == null || loc.getWorld() == null) {
+                    cancel();
+                    return;
+                }
+
+                long elapsed = System.currentTimeMillis() - startTime;
+                int stage = (int) ((elapsed * 10) / duration);
+                if (stage > 9) stage = 9;
+
+                // Optimization: Only send if stage changed OR every 2 seconds to catch new players
+                ticksSinceLastSend += 10;
+                if (stage == lastStage && ticksSinceLastSend < 40) {
+                    return;
+                }
+                
+                lastStage = stage;
+                ticksSinceLastSend = 0;
+
+                double radiusSq = 20 * 20;
+                for (Player player : loc.getWorld().getPlayers()) {
+                    if (player.isOnline() && player.getLocation().distanceSquared(loc) <= radiusSq) {
+                        sendBlockBreakAnimation(player, loc, stage, animationId);
+                    }
+                }
+            }
+
+            @Override
+            public synchronized void cancel() throws IllegalStateException {
+                super.cancel();
+                // Clear the animation for nearby players when the task is stopped
+                if (loc != null && loc.getWorld() != null) {
+                    for (Player player : loc.getWorld().getPlayers()) {
+                        if (player.isOnline() && player.getLocation().distanceSquared(loc) <= 400) {
+                            sendBlockBreakAnimation(player, loc, 10, animationId); // Stage 10 clears it
+                        }
+                    }
+                }
+            }
+        };
+        
+        breakingAnimations.put(mapKey, animationTask);
+        animationTask.runTaskTimer(plugin, 0L, 10L); // Update every 10 ticks (0.5s)
+    }
+
+    private void stopBlockBreakingAnimation(String mapKey) {
+        BukkitRunnable animationTask = breakingAnimations.remove(mapKey);
+        if (animationTask != null) {
+            animationTask.cancel();
+        }
+    }
+
+    private void sendBlockBreakAnimation(Player player, Location loc, int stage, int animationId) {
+        if (player == null || loc == null || !player.isOnline()) {
+            return;
+        }
+        
+        try {
+            org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer cp = (org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer) player;
+            net.minecraft.server.v1_8_R3.EntityPlayer ep = cp.getHandle();
+            
+            if (ep != null && ep.playerConnection != null) {
+                net.minecraft.server.v1_8_R3.BlockPosition nmsPos = 
+                    new net.minecraft.server.v1_8_R3.BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+                
+                net.minecraft.server.v1_8_R3.PacketPlayOutBlockBreakAnimation packet = 
+                    new net.minecraft.server.v1_8_R3.PacketPlayOutBlockBreakAnimation(animationId, nmsPos, stage);
+                
+                ep.playerConnection.sendPacket(packet);
+            }
+        } catch (Throwable ignored) {
+            // Fail silently
         }
     }
 
@@ -498,8 +674,15 @@ public class BlockEventListener implements Listener {
         return null;
     }
 
-    private void syncPlacement(Player player, Location loc) {
-        player.sendBlockChange(loc, loc.getBlock().getType(), loc.getBlock().getData());
-        player.updateInventory();
+    private void syncPlacement(Player player, Location loc, Material mat, byte data) {
+        player.sendBlockChange(loc, mat, data);
+        
+        // Double tap sync with a tiny delay to ensure client prediction is cleared
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline()) {
+                player.sendBlockChange(loc, mat, data);
+                player.updateInventory();
+            }
+        }, 2L);
     }
 }

@@ -6,6 +6,7 @@ import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
 import me.molfordan.arenaAndFFAManager.listener.PlayerKillEventListener;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
+import me.molfordan.arenaAndFFAManager.object.enums.PlatformType;
 import me.molfordan.arenaAndFFAManager.utils.WorldGuardUtils;
 import me.molfordan.arenaAndFFAManager.utils.CustomItem;
 import org.bukkit.*;
@@ -144,12 +145,21 @@ public class DeathMessageManager implements Listener {
         Player p1 = Bukkit.getPlayer(duel.p1);
         Player p2 = Bukkit.getPlayer(duel.p2);
 
+
+
         if (p1 != null && p1.isOnline()) {
             showAllFor(p1);
         }
         if (p2 != null && p2.isOnline()) {
             showAllFor(p2);
         }
+
+        assert p1 != null;
+        assert p2 != null;
+        p1.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + ChatColor.YELLOW + " You are no longer fighting " + p2.getName());
+        p2.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + ChatColor.YELLOW + " You are no longer fighting " + p1.getName());
+
+
 
         duels.remove(duel.p1);
         duels.remove(duel.p2);
@@ -164,9 +174,13 @@ public class DeathMessageManager implements Listener {
 
                     Player p1 = Bukkit.getPlayer(duel.p1);
                     Player p2 = Bukkit.getPlayer(duel.p2);
+                    if (p1 == null) return;
+                    if (p2 == null) return;
 
-                    if (p1 != null && p1.isOnline()) showAllFor(p1);
-                    if (p2 != null && p2.isOnline()) showAllFor(p2);
+                    if (p1.isOnline()) showAllFor(p1);
+                    if (p2.isOnline()) showAllFor(p2);
+                    p1.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + ChatColor.YELLOW + " You are no longer fighting " + p2.getName());
+                    p2.sendMessage(ChatColor.translateAlternateColorCodes('&', PREFIX) + ChatColor.YELLOW + " You are no longer fighting " + p1.getName());
 
                     duels.remove(duel.p1);
                     duels.remove(duel.p2);
@@ -219,16 +233,22 @@ public class DeathMessageManager implements Listener {
         // Get current streak before any increments
         int currentKillerStreak = 0;
         if (killerValid) {
+
             // Get the correct streak based on arena type BEFORE incrementing
             if (arena.getType() == ArenaType.FFABUILD) {
                 currentKillerStreak = statsManager.getStats(killer.getUniqueId()).getBuildStreak();
             } else {
                 currentKillerStreak = statsManager.getStats(killer.getUniqueId()).getBridgeStreak();
             }
+            
+            // Play noteblock sound and give redstone block breaking effect
+            killer.playSound(killer.getLocation(), Sound.NOTE_PIANO, 1.0f, 6.0f);
+
         }
 
         // Update totals and increment streaks
         addDeath(victim, arena);
+
 
         if (killerValid) {
             // Increment streak when adding the kill
@@ -244,6 +264,7 @@ public class DeathMessageManager implements Listener {
         } else if (isVoidDeath) {
             sendVoidDeathMessage(victim, killer, arena, currentKillerStreak + 1);
         } else {
+            victim.getWorld().playEffect(victim.getLocation(), org.bukkit.Effect.STEP_SOUND, Material.REDSTONE_BLOCK);
             sendPlayerKillMessage(victim, killer, arena, currentKillerStreak + 1);
         }
 
@@ -475,6 +496,8 @@ public class DeathMessageManager implements Listener {
         if (!isInDuel(player)) {
             return;
         }
+
+        if (plugin.getPlatformManager().isInPlatform(player, PlatformType.BIGPLAT)) return;
         
         Location from = event.getFrom();
         Location to = event.getTo();
@@ -769,7 +792,7 @@ public class DeathMessageManager implements Listener {
                 killer.getInventory().setLeggings(null);
                 killer.getInventory().setBoots(null);
                 killer.getInventory().setLeggings(createArmorPiece(Material.DIAMOND_LEGGINGS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
-                killer.getInventory().setBoots(createArmorPiece(Material.IRON_BOOTS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
+                killer.getInventory().setBoots(createArmorPiece(Material.DIAMOND_LEGGINGS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
                 break;
         }
     }
@@ -818,7 +841,7 @@ public class DeathMessageManager implements Listener {
 
      */
 
-    private void givePotion(Player player, PotionEffectType type, int durationSeconds, int amplifier, String name) {
+    public void givePotion(Player player, PotionEffectType type, int durationSeconds, int amplifier, String name) {
         ItemStack potion = new ItemStack(Material.POTION);
         PotionMeta meta = (PotionMeta) potion.getItemMeta();
         if (meta != null) {
@@ -944,7 +967,10 @@ public class DeathMessageManager implements Listener {
     }
 
     private void hideOthersFor(Player p, DuelSession duel) {
-        for (Player other : Bukkit.getWorld(bridgeFightWorldName).getPlayers()) {
+        World world = Bukkit.getWorld(bridgeFightWorldName);
+        if (world == null) return;
+        
+        for (Player other : world.getPlayers()) {
             if (other.getUniqueId().equals(p.getUniqueId())) continue;
             if (duel.contains(other.getUniqueId())) continue; // opponent stays visible
 
@@ -953,7 +979,10 @@ public class DeathMessageManager implements Listener {
     }
 
     private void showAllFor(Player p) {
-        for (Player other : Bukkit.getWorld(bridgeFightWorldName).getPlayers()) {
+        World world = Bukkit.getWorld(bridgeFightWorldName);
+        if (world == null) return;
+        
+        for (Player other : world.getPlayers()) {
             if (other.getUniqueId().equals(p.getUniqueId())) continue;
             p.showPlayer(other);
         }
@@ -1062,6 +1091,8 @@ public class DeathMessageManager implements Listener {
     public boolean handleDuelHit(Player damager, Player victim) {
         UUID d = damager.getUniqueId();
         UUID v = victim.getUniqueId();
+
+
 
         // Check if either player is in ANY WorldGuard region (prevent dueling in protected areas)
         if (WorldGuardUtils.isWorldGuardAvailable()) {

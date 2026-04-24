@@ -1,5 +1,10 @@
 package me.molfordan.arenaAndFFAManager.listener;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.events.PacketEvent;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import net.minecraft.server.v1_8_R3.PacketPlayOutEntityEquipment;
 import net.minecraft.server.v1_8_R3.PlayerConnection;
@@ -7,8 +12,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_8_R3.inventory.CraftItemStack;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
@@ -34,12 +41,10 @@ public class InvisPlayerListener implements Listener {
 
     private final ArenaAndFFAManager plugin;
 
-    private final boolean onlyOnGround = false;
-    private final boolean disableWhileSneaking = true;
-
     public InvisPlayerListener(ArenaAndFFAManager plugin) {
         this.plugin = plugin;
         Bukkit.getPluginManager().registerEvents(this, plugin);
+        registerPacketListener();
 
         new BukkitRunnable() {
             @Override
@@ -49,36 +54,107 @@ public class InvisPlayerListener implements Listener {
         }.runTaskTimer(plugin, 2L, 2L);
     }
 
-    private void sendArmorState(Player target, Player viewer, boolean hide) {
-        PlayerConnection conn = ((CraftPlayer) viewer).getHandle().playerConnection;
+    private void registerPacketListener() {
+        if (ProtocolLibrary.getProtocolManager() == null) return;
 
-        ItemStack[] armor = target.getInventory().getArmorContents();
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(plugin, PacketType.Play.Server.ENTITY_EQUIPMENT) {
+            
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                if (event == null || event.getPacket() == null) return;
 
-        ItemStack helmet = hide ? new ItemStack(Material.AIR) : armor[3];
-        ItemStack chest  = hide ? new ItemStack(Material.AIR) : armor[2];
-        ItemStack legs   = hide ? new ItemStack(Material.AIR) : armor[1];
-        ItemStack boots  = hide ? new ItemStack(Material.AIR) : armor[0];
+                try {
+                    if (event.getPlayer() == null) return;
+                } catch (Exception e) {
+                    return;
+                }
 
-        conn.sendPacket(new PacketPlayOutEntityEquipment(target.getEntityId(), 4, CraftItemStack.asNMSCopy(helmet)));
-        conn.sendPacket(new PacketPlayOutEntityEquipment(target.getEntityId(), 3, CraftItemStack.asNMSCopy(chest)));
-        conn.sendPacket(new PacketPlayOutEntityEquipment(target.getEntityId(), 2, CraftItemStack.asNMSCopy(legs)));
-        conn.sendPacket(new PacketPlayOutEntityEquipment(target.getEntityId(), 1, CraftItemStack.asNMSCopy(boots)));
+                try {
+                    PacketContainer packet = event.getPacket();
+                    if (packet.getIntegers().size() < 1) return;
+                    
+                    int entityId = packet.getIntegers().read(0);
+                    Player receiver = event.getPlayer();
+
+                    Player victim = null;
+                    for (Player p : receiver.getWorld().getPlayers()) {
+                        if (p.getEntityId() == entityId) {
+                            victim = p;
+                            break;
+                        }
+                    }
+
+                    if (victim != null && !victim.equals(receiver)) {
+                        if (invisiblePlayers.contains(victim.getUniqueId())) {
+                            if (packet.getIntegers().size() < 2) return;
+                            int slot = packet.getIntegers().read(1);
+                            
+                            // Slots 1-4 are armor slots in 1.8
+                            if (slot >= 1 && slot <= 4) {
+                                if (packet.getItemModifier().size() > 0) {
+                                    packet.getItemModifier().write(0, new ItemStack(Material.AIR));
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+        });
+    }
+
+    public void hideArmor(Player victim, Player receiver) {
+        if (victim.equals(receiver) || victim == null || receiver == null || !receiver.isOnline()) return;
+        try {
+            CraftPlayer craftReceiver = (CraftPlayer) receiver;
+            if (craftReceiver.getHandle() == null || craftReceiver.getHandle().playerConnection == null) return;
+            
+            PlayerConnection conn = craftReceiver.getHandle().playerConnection;
+            int id = victim.getEntityId();
+            
+            ItemStack air = new ItemStack(Material.AIR);
+            for (int slot = 1; slot <= 4; slot++) {
+                conn.sendPacket(new PacketPlayOutEntityEquipment(id, slot, CraftItemStack.asNMSCopy(air)));
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    public void showArmor(Player victim, Player receiver) {
+        if (victim.equals(receiver) || victim == null || receiver == null || !receiver.isOnline()) return;
+        try {
+            CraftPlayer craftReceiver = (CraftPlayer) receiver;
+            if (craftReceiver.getHandle() == null || craftReceiver.getHandle().playerConnection == null) return;
+            
+            PlayerConnection conn = craftReceiver.getHandle().playerConnection;
+            int id = victim.getEntityId();
+            ItemStack[] armor = victim.getInventory().getArmorContents();
+            
+            conn.sendPacket(new PacketPlayOutEntityEquipment(id, 4, CraftItemStack.asNMSCopy(armor[3])));
+            conn.sendPacket(new PacketPlayOutEntityEquipment(id, 3, CraftItemStack.asNMSCopy(armor[2])));
+            conn.sendPacket(new PacketPlayOutEntityEquipment(id, 2, CraftItemStack.asNMSCopy(armor[1])));
+            conn.sendPacket(new PacketPlayOutEntityEquipment(id, 1, CraftItemStack.asNMSCopy(armor[0])));
+        } catch (Throwable ignored) {}
     }
 
     private void updateArmorForEveryone(Player target, boolean hide) {
-        for (Player viewer : target.getWorld().getPlayers()) {
-            if (!viewer.equals(target)) {
-                sendArmorState(target, viewer, hide);
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            if (hide) {
+                hideArmor(target, viewer);
+            } else {
+                showArmor(target, viewer);
             }
         }
     }
 
     public void hideArmorFor(Player p) {
         invisiblePlayers.add(p.getUniqueId());
-        updateArmorForEveryone(p, true);
+        // Run multiple times to ensure visibility is overridden
+        Bukkit.getScheduler().runTaskLater(plugin, () -> updateArmorForEveryone(p, true), 1L);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> updateArmorForEveryone(p, true), 5L);
     }
 
     public void revealArmorFor(Player p) {
+        if (!invisiblePlayers.contains(p.getUniqueId())) return;
+        
         invisiblePlayers.remove(p.getUniqueId());
         lastLocations.remove(p.getUniqueId());
         updateArmorForEveryone(p, false);
@@ -87,19 +163,48 @@ public class InvisPlayerListener implements Listener {
         if (t != null) t.cancel();
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onDrinkPotion(final PlayerItemConsumeEvent event) {
         final Player p = event.getPlayer();
         final ItemStack item = event.getItem();
-        if (item == null) return;
-        if (item.getType() != Material.POTION) return;
+        if (item == null || item.getType() != Material.POTION) return;
 
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline()) {
+                ItemStack inHand = p.getItemInHand();
+                if (inHand != null && inHand.getType() == Material.GLASS_BOTTLE) {
+                    if (inHand.getAmount() > 1) {
+                        inHand.setAmount(inHand.getAmount() - 1);
+                    } else {
+                        p.setItemInHand(null);
+                    }
+                    p.updateInventory();
+                }
+            }
+        }, 1L);
+
+        boolean isInvis = false;
         try {
             Potion potion = Potion.fromItemStack(item);
-            if (potion.getType() != PotionType.INVISIBILITY) return;
-        } catch (Throwable ignored) {
-            return;
+            if (potion != null && potion.getType() == PotionType.INVISIBILITY) {
+                isInvis = true;
+            }
+        } catch (Throwable ignored) {}
+
+        if (!isInvis && item.hasItemMeta() && item.getItemMeta() instanceof org.bukkit.inventory.meta.PotionMeta) {
+            org.bukkit.inventory.meta.PotionMeta meta = (org.bukkit.inventory.meta.PotionMeta) item.getItemMeta();
+            for (PotionEffect effect : meta.getCustomEffects()) {
+                if (effect.getType().equals(PotionEffectType.INVISIBILITY)) {
+                    isInvis = true;
+                    break;
+                }
+            }
+            if (!isInvis && meta.hasDisplayName() && meta.getDisplayName().toLowerCase().contains("invisibility")) {
+                isInvis = true;
+            }
         }
+
+        if (!isInvis) return;
 
         hideArmorFor(p);
 
@@ -109,62 +214,64 @@ public class InvisPlayerListener implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                int duration = 0;
+                if (!p.isOnline()) return;
 
-                Collection<PotionEffect> effects = p.getActivePotionEffects();
-                for (PotionEffect eff : effects) {
+                int duration = 0;
+                for (PotionEffect eff : p.getActivePotionEffects()) {
                     if (eff.getType().equals(PotionEffectType.INVISIBILITY)) {
                         duration = eff.getDuration();
                         break;
                     }
                 }
 
-                if (duration <= 0) duration = 20 * 3;
+                if (duration <= 0) duration = 20 * 45; 
 
                 BukkitTask task = new BukkitRunnable() {
                     @Override
                     public void run() {
-                        revealArmorFor(p);
+                        if (p.isOnline() && !p.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
+                            revealArmorFor(p);
+                        }
                     }
-                }.runTaskLater(plugin, duration);
+                }.runTaskLater(plugin, duration + 5L);
 
                 revealTasks.put(p.getUniqueId(), task);
             }
-        }.runTaskLater(plugin, 1L);
+        }.runTaskLater(plugin, 2L);
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         Player viewer = e.getPlayer();
-
         new BukkitRunnable() {
             @Override
             public void run() {
+                if (!viewer.isOnline()) return;
                 for (UUID uid : invisiblePlayers) {
                     Player invis = Bukkit.getPlayer(uid);
                     if (invis != null && !invis.equals(viewer)) {
-                        sendArmorState(invis, viewer, true);
+                        hideArmor(invis, viewer);
                     }
                 }
             }
-        }.runTaskLater(plugin, 5L);
+        }.runTaskLater(plugin, 20L);
     }
 
     @EventHandler
     public void onWorldChange(PlayerChangedWorldEvent e) {
         Player viewer = e.getPlayer();
-
         new BukkitRunnable() {
             @Override
             public void run() {
+                if (!viewer.isOnline()) return;
                 for (UUID uid : invisiblePlayers) {
                     Player invis = Bukkit.getPlayer(uid);
                     if (invis != null && !invis.equals(viewer)) {
-                        sendArmorState(invis, viewer, true);
+                        hideArmor(invis, viewer);
                     }
                 }
             }
-        }.runTaskLater(plugin, 5L);
+        }.runTaskLater(plugin, 20L);
     }
 
     @EventHandler
@@ -173,9 +280,8 @@ public class InvisPlayerListener implements Listener {
         Player victim = (Player) e.getEntity();
 
         if (!invisiblePlayers.contains(victim.getUniqueId())) return;
-
+        
         revealArmorFor(victim);
-        lastLocations.remove(victim.getUniqueId());
         victim.removePotionEffect(PotionEffectType.INVISIBILITY);
     }
 
@@ -189,6 +295,8 @@ public class InvisPlayerListener implements Listener {
                 continue;
             }
 
+            boolean onlyOnGround = true;
+            boolean disableWhileSneaking = false;
             if (onlyOnGround && (!p.isOnGround() || p.getFallDistance() < 0.0F))
                 continue;
             if (disableWhileSneaking && p.isSneaking())

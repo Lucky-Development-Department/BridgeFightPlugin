@@ -1,10 +1,12 @@
 package me.molfordan.arenaAndFFAManager.manager;
 
 import me.molfordan.arenaAndFFAManager.object.PlatformRegion;
+import me.molfordan.arenaAndFFAManager.object.enums.PlatformType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,6 +15,17 @@ import java.util.Map;
 public class PlatformManager {
 
     private final Map<String, PlatformRegion> platforms = new HashMap<>();
+
+    public boolean isInPlatform(Player player) {
+        if (player == null) return false;
+        return fromLocation(player.getLocation()) != null;
+    }
+
+    public boolean isInPlatform(Player player, PlatformType platformType) {
+        if (player == null || platformType == null) return false;
+        PlatformRegion region = fromLocation(player.getLocation());
+        return region != null && platformType == region.getType();
+    }
 
     /**
      * Create or get platform (used only internally)
@@ -59,6 +72,14 @@ public class PlatformManager {
         for (String name : config.getConfigurationSection("platforms").getKeys(false)) {
 
             PlatformRegion region = getPlatform(name);
+            
+            // Auto-detect type from name
+            String lowerName = name.toLowerCase();
+            if (lowerName.startsWith("bigplat")) {
+                region.setType(PlatformType.BIGPLAT);
+            } else if (lowerName.startsWith("plat")) {
+                region.setType(PlatformType.PLAT);
+            }
 
             // Load spawn
             Location spawn = readLocation(config, "platforms." + name + ".spawn");

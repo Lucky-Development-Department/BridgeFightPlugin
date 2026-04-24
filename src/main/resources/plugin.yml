@@ -23,6 +23,10 @@ commands:
     usage: '/arenaconfig reload'
     description: 'Arena config reload'
     permission: arenamap.admin
+  configreload:
+    usage: '/configreload'
+    description: 'Reload the configuration file'
+    permission: arenamap.admin
   setlobby:
     usage: '/setlobby'
     description: 'sets a lobby'
@@ -129,6 +133,13 @@ commands:
   debugging:
     usage: '/debugging'
     description: 'debug command'
+  givepots:
+    usage: '/givepots <type> <amount>'
+    description: 'give potions command'
+    permission: arenamap.admin
+  patchnotes:
+    usage: '/patchnotes <all|reload|[page number]>'
+    description: 'View archived patch notes'
   togglebridgeegg:
     usage: '/togglebridgeegg'
     description: 'toggle bridge egg functionality'
