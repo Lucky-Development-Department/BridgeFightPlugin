@@ -23,7 +23,7 @@ ArenaFFAManager is a comprehensive Spigot plugin (v1.8.8) designed for managing 
 | `/arenamap` | See [Arena Subcommands](#arena-subcommands-arenamap) | Manage arenas | `arenamap.admin` |
 | `/arenaconfig` | `/arenaconfig reload` | Reload arena configuration | `arenamap.admin` |
 | `/configreload` | `/configreload` | Reload general configuration | `arenamap.admin` |
-| `/rc` | See [Region Subcommands](#region-subcommands) | Manage command regions | `arenamap.admin` |
+| `/rc` | See [Region Subcommands](#region-subcommands-rc) | Manage command regions | `arenamap.admin` |
 | `/setlobby` | `/setlobby` | Set the global lobby location | `arenamap.admin` |
 | `/build` | `/build` | Toggle Build Mode for admins | `arenamap.admin` |
 | `/setstats` | `/setstats <player> <mode> <stat> <value>` | Manually set player stats | `arenamap.admin` |
