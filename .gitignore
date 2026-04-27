@@ -1,0 +1,14 @@
+# Compiled output
+target/
+*.class
+
+# IntelliJ IDEA settings
+.idea/
+*.iml
+*.iws
+
+# Log files
+*.log
+
+# Mac system files
+.DS_Store
