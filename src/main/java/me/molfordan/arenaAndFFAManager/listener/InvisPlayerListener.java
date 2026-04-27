@@ -279,6 +279,26 @@ public class InvisPlayerListener implements Listener {
         if (!(e.getEntity() instanceof Player)) return;
         Player victim = (Player) e.getEntity();
 
+        // Check for self-damage (standard)
+        if (e.getDamager().equals(victim)) return;
+
+        // Check for self-damage from fireballs using our tracker
+        if (e.getDamager() instanceof org.bukkit.entity.Fireball) {
+            org.bukkit.entity.Fireball fb = (org.bukkit.entity.Fireball) e.getDamager();
+            Player shooter = plugin.getFireballTracker().getFireballOwner(fb);
+            if (victim.equals(shooter)) {
+                return; // Self-damage from own fireball
+            }
+        }
+
+        if (e.getDamager() instanceof org.bukkit.entity.TNTPrimed){
+            org.bukkit.entity.TNTPrimed tnt = (org.bukkit.entity.TNTPrimed) e.getDamager();
+            Player tntOwner = plugin.getTNTTracker().getTNTOwner(tnt);
+            if (victim.equals(tntOwner)) {
+                return; // Self-damage from own tnt
+            }
+        }
+
         if (!invisiblePlayers.contains(victim.getUniqueId())) return;
         
         revealArmorFor(victim);

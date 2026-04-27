@@ -159,6 +159,9 @@ public class HotbarManager {
             case FIREBALL:
                 return "fireball";
 
+            case TNT:
+                return "tnt";
+
             case WOOL:
             case STAINED_CLAY:
             case HARD_CLAY:

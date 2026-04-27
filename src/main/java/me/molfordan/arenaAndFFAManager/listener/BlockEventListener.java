@@ -21,6 +21,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPhysicsEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -140,11 +142,12 @@ public class BlockEventListener implements Listener {
                     // Check if holding a custom item or non-block
                     ItemStack itemInHand = player.getItemInHand();
                     if (itemInHand != null && itemInHand.getType() != Material.AIR) {
-                        // If it's not a block material OR it has a custom name/lore,
+                        // If it's not a block material OR it has a custom name/lore, OR it's TNT,
                         // we treat it as a potential interaction and let it pass to the server.
                         // The actual placement (if it is a block) will still be blocked by onBlockPlace.
                         if (!itemInHand.getType().isBlock() || 
-                            (itemInHand.hasItemMeta() && (itemInHand.getItemMeta().hasDisplayName() || itemInHand.getItemMeta().hasLore()))) {
+                            (itemInHand.hasItemMeta() && (itemInHand.getItemMeta().hasDisplayName() || itemInHand.getItemMeta().hasLore())) ||
+                            itemInHand.getType() == Material.TNT) {
                             return;
                         }
                     }
@@ -237,10 +240,14 @@ public class BlockEventListener implements Listener {
 
         // From here, 'arena' is guaranteed to be the arena whose original cuboid contains the loc.
         // === Build limit check ===
+
         if (arena.getType() == ArenaType.DUEL
                 || arena.getType() == ArenaType.TOPFIGHT
                 || arena.getType() == ArenaType.FFABUILD) {
             if (loc.getBlockY() > arena.getBuildLimitY()) {
+                if (event.getBlock().getType() == Material.TNT){
+                    return;
+                }
                 event.setCancelled(true);
                 cancelledPlacements.put(loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ(), System.currentTimeMillis());
                 syncPlacement(player, loc, replacedState.getType(), replacedState.getRawData());
@@ -684,5 +691,17 @@ public class BlockEventListener implements Listener {
                 player.updateInventory();
             }
         }, 2L);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onBlockPhysics(BlockPhysicsEvent event) {
+        Block block = event.getBlock();
+        Material type = block.getType();
+
+        // Prevent these blocks from breaking due to adjacent block changes (floating blocks)
+        if (type == Material.CACTUS || type == Material.SUGAR_CANE_BLOCK || 
+            type == Material.TRAP_DOOR || type == Material.IRON_TRAPDOOR) {
+            event.setCancelled(true);
+        }
     }
 }

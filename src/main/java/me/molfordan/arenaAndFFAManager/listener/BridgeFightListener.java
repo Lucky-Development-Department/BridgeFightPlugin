@@ -71,6 +71,7 @@ public class BridgeFightListener implements Listener {
             p.getInventory().clear();
             p.getInventory().setArmorContents(null);
             plugin.getKitManager().applyBridgeFightKit(p);
+            plugin.getEnderPearlListener().removeCooldown(p);
             return;
         }
 

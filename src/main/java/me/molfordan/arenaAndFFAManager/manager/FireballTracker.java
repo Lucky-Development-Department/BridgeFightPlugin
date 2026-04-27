@@ -30,15 +30,19 @@ public class FireballTracker {
     }
     
     public void markPlayerHitByFireball(Player player, Fireball fireball) {
+        markPlayerHitByExplosion(player);
+    }
+
+    public void markPlayerHitByExplosion(Player player) {
         recentlyHitByFireball.put(player.getUniqueId(), true);
-        
+
         // Remove the hit flag after 3 seconds
         new BukkitRunnable() {
             @Override
             public void run() {
                 recentlyHitByFireball.remove(player.getUniqueId());
             }
-        }.runTaskLater(player.getServer().getPluginManager().getPlugin("ArenaAndFFAManager"), 20L * 3L);
+        }.runTaskLater(Bukkit.getPluginManager().getPlugin("ArenaAndFFAManager"), 20L * 3L);
     }
     
     public boolean wasRecentlyHitByFireball(Player player) {

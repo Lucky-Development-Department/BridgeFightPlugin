@@ -57,6 +57,7 @@ public class PlayerKillEventListener implements Listener {
 
         deathMessageManager.handleDeath(victim, arena, false, false);
         EnderPearlListener.getCooldowns().remove(victim.getUniqueId());
+        //ArenaAndFFAManager.getPlugin().getEnderPearlListener().removeCooldown(victim);
     }
 
     /*

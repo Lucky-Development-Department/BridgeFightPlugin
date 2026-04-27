@@ -26,16 +26,21 @@ public class BlockHotbarSorter {
         String category = "blocks";
         if (item.getType() == Material.LADDER) {
             category = "ladder";
-            // Check if player actually has a ladder slot in their layout
-            boolean hasLadderSlot = false;
+        } else if (item.getType() == Material.TNT) {
+            category = "tnt";
+        }
+
+        // Check if player actually has a slot for this category in their layout
+        if (!"blocks".equals(category)) {
+            boolean hasSlot = false;
             for (String v : layout.values()) {
-                if ("ladder".equalsIgnoreCase(v)) {
-                    hasLadderSlot = true;
+                if (category.equalsIgnoreCase(v)) {
+                    hasSlot = true;
                     break;
                 }
             }
-            // If no ladder slot, fall back to blocks category
-            if (!hasLadderSlot) {
+            // If no specific slot, fall back to blocks category
+            if (!hasSlot) {
                 category = "blocks";
             }
         }

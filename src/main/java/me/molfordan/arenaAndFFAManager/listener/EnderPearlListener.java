@@ -17,6 +17,7 @@ import java.util.UUID;
 public class EnderPearlListener implements Listener {
 
     private static final Map<UUID, Long> cooldowns = new HashMap<>();
+    private final Map<UUID, org.bukkit.scheduler.BukkitTask> activeTasks = new HashMap<>();
     private static final long COOLDOWN_SECONDS = 5;
     private static final long COOLDOWN_MILLIS = COOLDOWN_SECONDS * 1000;
     private final ArenaAndFFAManager plugin;
@@ -55,8 +56,13 @@ public class EnderPearlListener implements Listener {
         // Register cooldown start
         cooldowns.put(id, now);
 
+        // Cancel previous task if somehow still running
+        if (activeTasks.containsKey(id)) {
+            activeTasks.get(id).cancel();
+        }
+
         // EXP Bar Countdown Task (100 ticks = 5 seconds)
-        new org.bukkit.scheduler.BukkitRunnable() {
+        org.bukkit.scheduler.BukkitTask task = new org.bukkit.scheduler.BukkitRunnable() {
             private int ticksLeft = 100;
 
             @Override
@@ -66,6 +72,7 @@ public class EnderPearlListener implements Listener {
                 // If player leaves, stop the task
                 if (p == null || !p.isOnline()) {
                     cooldowns.remove(id);
+                    activeTasks.remove(id);
                     this.cancel();
                     return;
                 }
@@ -76,6 +83,7 @@ public class EnderPearlListener implements Listener {
                     p.setLevel(0);
                     p.sendMessage("§aYou can now use your Ender Pearl again!");
                     cooldowns.remove(id);
+                    activeTasks.remove(id);
                     this.cancel();
                     return;
                 }
@@ -88,9 +96,57 @@ public class EnderPearlListener implements Listener {
                 ticksLeft--;
             }
         }.runTaskTimer(plugin, 0L, 1L);
+
+        activeTasks.put(id, task);
     }
 
     public static long getCooldownSeconds() { return COOLDOWN_SECONDS; }
     public static long getCooldownMillis() { return COOLDOWN_MILLIS; }
     public static Map<UUID, Long> getCooldowns() { return cooldowns; }
+
+    /**
+     * Destroys the EnderPearlListener by cleaning up all active cooldowns
+     * and resetting player EXP/levels for any active countdowns.
+     */
+    public void destroy() {
+        // Reset EXP and levels for all players with active cooldowns
+        for (UUID id : new HashMap<>(cooldowns).keySet()) {
+            Player player = Bukkit.getPlayer(id);
+            if (player != null && player.isOnline()) {
+                player.setExp(0.0f);
+                player.setLevel(0);
+            }
+        }
+        
+        // Cancel all tasks
+        for (org.bukkit.scheduler.BukkitTask task : activeTasks.values()) {
+            task.cancel();
+        }
+        activeTasks.clear();
+        
+        // Clear all cooldowns
+        cooldowns.clear();
+    }
+
+    /**
+     * Removes cooldown for a specific player and resets their EXP/level
+     * @param player The player to remove cooldown for
+     */
+    public void removeCooldown(Player player) {
+        if (player == null) return;
+        
+        UUID id = player.getUniqueId();
+        if (cooldowns.containsKey(id)) {
+            cooldowns.remove(id);
+            
+            // Cancel the display task immediately
+            if (activeTasks.containsKey(id)) {
+                activeTasks.get(id).cancel();
+                activeTasks.remove(id);
+            }
+
+            player.setExp(0.0f);
+            player.setLevel(0);
+        }
+    }
 }

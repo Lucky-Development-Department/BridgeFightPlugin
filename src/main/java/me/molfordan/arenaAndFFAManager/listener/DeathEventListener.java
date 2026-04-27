@@ -85,7 +85,7 @@ public class DeathEventListener implements Listener {
             );
             
             player.setHealth(0);
-            EnderPearlListener.getCooldowns().remove(id);
+            plugin.getEnderPearlListener().removeCooldown(player);
             return;
         }
 
@@ -103,6 +103,8 @@ public class DeathEventListener implements Listener {
         if (pearl != null && !pearl.isDead()) {
             pearl.remove(); // cancels pearl teleport
         }
+
+        plugin.getEnderPearlListener().removeCooldown(player);
 
         // your existing death code:
         Arena arena = arenaManager.getArenaByLocation(player.getLocation());

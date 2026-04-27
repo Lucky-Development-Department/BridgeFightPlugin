@@ -73,7 +73,7 @@ public class HotbarSession {
         putCategory(slot++, "jump");
 
         slot = 18;
-        //putCategory(slot++, "tnt");
+        putCategory(slot++, "tnt");
         //putCategory(slot++, "ladder");
         putCategory(slot++, "golden_apple");
         putCategory(slot++, "fireball");
@@ -305,6 +305,7 @@ public class HotbarSession {
         int fireballCount = 0;
         int eggCount = 0;
         int ladderCount = 0;
+        int tntCount = 0;
 
         for (String id : hotbarLayout.values()) {
             if (id == null) continue;
@@ -327,6 +328,11 @@ public class HotbarSession {
             if (id.equals("ladder")){
                 ladderCount++;
                 if (ladderCount > 1) return false;
+            }
+
+            if (id.equals("tnt")){
+                tntCount++;
+                if (tntCount > 1) return false;
             }
 
 

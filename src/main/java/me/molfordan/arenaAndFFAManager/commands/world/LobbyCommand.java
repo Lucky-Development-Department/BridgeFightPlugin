@@ -49,7 +49,7 @@ public class LobbyCommand implements CommandExecutor {
 
 
 
-        player.setGameMode(GameMode.ADVENTURE);
+
         player.sendMessage(ChatColor.translateAlternateColorCodes('&', prefix + " sending you to Spawn.... (Wait for 5 seconds)"));
         try {
 
@@ -70,6 +70,7 @@ public class LobbyCommand implements CommandExecutor {
 
                 // Teleport
                 player.teleport(lobbyWorld);
+                player.setGameMode(GameMode.ADVENTURE);
                 player.sendMessage(ChatColor.GREEN + "Teleported to Spawn!");
 
             }, 100);

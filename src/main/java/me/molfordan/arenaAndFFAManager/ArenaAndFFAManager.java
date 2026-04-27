@@ -99,6 +99,8 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private AutoRestartManager autoRestartManager;
     private PatchNotesManager patchNotesManager;
     private FireballTracker fireballTracker;
+    private TNTTracker tntTracker;
+    private EnderPearlListener enderPearlListener;
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
     private static final String BRIDGEFIGHT_PATH = "bridgefight";
@@ -135,6 +137,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.kitManager = new KitManager(hotbarDataManager);
         this.hotbarSessionManager = new HotbarSessionManager(this, hotbarDataManager, kitManager);
         this.fireballTracker = new FireballTracker();
+        this.tntTracker = new TNTTracker();
         this.deathMessageManager = new DeathMessageManager(this,combatManager, arenaManager, hotbarDataManager, statsManager, fireballTracker);
         this.hotbarSorter = new HotbarSorter(hotbarDataManager);
         this.bridgeFightBanManager = new BridgeFightBanManager(getDataFolder());
@@ -249,7 +252,8 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         saveConfig();
         getServer().getPluginManager().registerEvents(new ItemReceiveListener(buildFFAWorld, hotbarSorter), this);
         getServer().getPluginManager().registerEvents(new LeaderboardGUIListener(this), this);
-        getServer().getPluginManager().registerEvents(new EnderPearlListener(this), this);
+        this.enderPearlListener = new EnderPearlListener(this);
+        getServer().getPluginManager().registerEvents(this.enderPearlListener, this);
         getServer().getPluginManager().registerEvents(new PrivateWorldListener(this), this);
         getServer().getPluginManager().registerEvents(this.frozenManager, this);
         getServer().getPluginManager().registerEvents(new TeleportCancelListener(this.teleportPendingManager), this);
@@ -264,6 +268,8 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SelectKitListener(this), this);
         getServer().getPluginManager().registerEvents(new EditKitListener(this), this);
         getServer().getPluginManager().registerEvents(new FireballListener(this.configManager, fireballTracker), this);
+        getServer().getPluginManager().registerEvents(new TNTListener(fireballTracker, tntTracker), this);
+        getServer().getPluginManager().registerEvents(new PatchNotesListener(this), this);
         getServer().getPluginManager().registerEvents(new ArmorRemovalListener(this, arenaManager), this);
         getServer().getPluginManager().registerEvents(this.deathMessageManager, this);
 
@@ -331,6 +337,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
 
         if (fireballTracker != null) {
             fireballTracker.cleanup();
+        }
+
+        if (tntTracker != null) {
+            tntTracker.cleanup();
         }
 
         if (databaseManager != null) {
@@ -431,6 +441,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         return fireballTracker;
     }
 
+    public TNTTracker getTNTTracker() {
+        return tntTracker;
+    }
+
     public FrozenManager getFrozenManager(){
         return frozenManager;
     }
@@ -463,6 +477,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
 
     public EggBridgeManager getEggBridgeManager() {
         return eggBridgeManager;
+    }
+
+    public EnderPearlListener getEnderPearlListener() {
+        return enderPearlListener;
     }
 
     public PatchNotesManager getPatchNotesManager() {

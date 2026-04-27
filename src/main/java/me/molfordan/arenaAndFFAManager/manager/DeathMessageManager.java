@@ -102,18 +102,16 @@ public class DeathMessageManager implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> recentlyHandled.remove(victim.getUniqueId()), 2L);
         plugin.debug("sendVoidDeathMessage: Victim " + victim.getName() + " added to recentlyHandled.");
 
-        // Check if victim was recently hit by a fireball and find the fireball owner
-        Player fireballOwner = null;
+        // Check if victim was recently hit by a fireball/TNT and find the owner
+        Player explosionOwner = null;
         if (fireballTracker.wasRecentlyHitByFireball(victim)) {
-            // Try to find the most recent fireball owner from combat manager or other means
-            // For now, we'll use the existing attacker if available
-            fireballOwner = attacker;
+            explosionOwner = attacker;
         }
 
         String message;
-        if (fireballOwner != null && fireballOwner.isOnline() && !fireballOwner.equals(victim)) {
-            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by a fireball from "
-                    + ChatColor.GREEN + fireballOwner.getName() + ChatColor.GRAY + "[" + attackerStreak + "]";
+        if (explosionOwner != null && explosionOwner.isOnline() && !explosionOwner.equals(victim)) {
+            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by an explosion from "
+                    + ChatColor.GREEN + explosionOwner.getName() + ChatColor.GRAY + "[" + attackerStreak + "]";
         } else if (attacker != null && attacker.isOnline() && !attacker.equals(victim)) {
             message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by "
                     + ChatColor.GREEN + attacker.getName() + ChatColor.GRAY + "[" + attackerStreak + "]";
@@ -124,7 +122,7 @@ public class DeathMessageManager implements Listener {
         plugin.debug("sendVoidDeathMessage: Constructed message: " + message);
 
         // Rewards / effects should use the already computed streak
-        Player rewardPlayer = fireballOwner != null ? fireballOwner : attacker;
+        Player rewardPlayer = explosionOwner != null ? explosionOwner : attacker;
         if (rewardPlayer != null && rewardPlayer.isOnline()) {
             if (arena.getType() == ArenaType.FFABUILD) {
                 giveKillRewards(rewardPlayer, attackerStreak);
@@ -711,6 +709,13 @@ public class DeathMessageManager implements Listener {
 
     private void giveKillRewards(Player killer, int streak) {
         if (killer == null || !killer.isOnline()) return;
+        
+        // Check if inventory is full
+        if (killer.getInventory().firstEmpty() == -1) {
+            //killer.sendMessage(ChatColor.RED + "Your inventory is full! No rewards given.");
+            return;
+        }
+        
         killer.setHealth(killer.getMaxHealth());
         ensureItem(killer, Material.ENDER_PEARL, 1, 2, 2);
         ensureItem(killer, Material.SNOW_BALL, 1, CustomItem.getTeleportSnowball(), 2);
@@ -731,22 +736,56 @@ public class DeathMessageManager implements Listener {
             killer.getInventory().addItem(new ItemStack(Material.GOLDEN_APPLE, 2));
         }
 
+        if (streak > 0 && streak % 10 == 0) {
+            ensureItem(killer, Material.TNT, 1, new ItemStack(Material.TNT), 1);
+        }
+
+        if (streak > 0 && streak % 20 == 0){
+            givePotion(killer, PotionEffectType.INVISIBILITY, 45, 1, ChatColor.AQUA + "Invisibility II Potion (45s)");
+        }
+
+        // Give jump potion every 5 kills starting from 10
+        if (streak >= 10 && streak % 5 == 0){
+            givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
+        }
+        if (streak >= 15 && streak % 5 == 0){
+            givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
+        }
+
+        if (streak >= 30 && streak % 20 == 0){
+            givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
+        }
+
+        if (streak >= 35 && streak % 20 == 0){
+            givePotion(killer, PotionEffectType.DAMAGE_RESISTANCE, 45, 2, ChatColor.AQUA + "Resistance Potion (45s)");
+        }
+
+        if (streak > 0 && streak % 50 == 0){
+            giveMultiEffectPotion(killer, ChatColor.DARK_PURPLE + "Health Boost & Regeneration (45s)",
+                    new PotionEffect(PotionEffectType.HEALTH_BOOST, 45 * 20, 4),
+                    new PotionEffect(PotionEffectType.REGENERATION, 45 * 20, 1),
+                    new PotionEffect(PotionEffectType.ABSORPTION, 45 * 20, 1)
+            );
+        }
+
+        if (streak > 0 && streak % 100 == 0){
+            givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 120, 1, ChatColor.RED + "Strength Potion (120s)");
+        }
+
+
         switch (streak) {
             case 5:
                 break;
             case 10:
-                givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
                 break;
             case 15:
-                givePotion(killer, PotionEffectType.SPEED, 30, 1, ChatColor.RED + "Speed Potion (30s)");
-                givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
+                //givePotion(killer, PotionEffectType.SPEED, 30, 1, ChatColor.RED + "Speed Potion (30s)");
                 break;
             case 20:
-                givePotion(killer, PotionEffectType.INVISIBILITY, 45, 1, ChatColor.AQUA + "Invisibility II Potion (45s)");
+                //givePotion(killer, PotionEffectType.INVISIBILITY, 45, 1, ChatColor.AQUA + "Invisibility II Potion (45s)");
                 break;
             case 25:
-                givePotion(killer, PotionEffectType.SPEED, 30, 1, ChatColor.RED + "Speed Potion (30s)");
-                givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
+                //givePotion(killer, PotionEffectType.SPEED, 30, 1, ChatColor.RED + "Speed Potion (30s)");
                 killer.getInventory().setLeggings(null);
                 killer.getInventory().setBoots(null);
                 killer.getInventory().setLeggings(createArmorPiece(Material.IRON_LEGGINGS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
@@ -755,38 +794,40 @@ public class DeathMessageManager implements Listener {
             case 30:
                 killer.getInventory().remove(Material.STONE_SWORD);
                 killer.getInventory().setItem(0, createSword(Material.STONE_SWORD, Enchantment.DAMAGE_ALL, 1));
-                givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
+                //givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
                 break;
             case 35:
-                givePotion(killer, PotionEffectType.DAMAGE_RESISTANCE, 45, 2, ChatColor.AQUA + "Resistance Potion (45s)");
+                //givePotion(killer, PotionEffectType.DAMAGE_RESISTANCE, 45, 2, ChatColor.AQUA + "Resistance Potion (45s)");
                 break;
             case 40:
                 killer.getInventory().remove(Material.STONE_SWORD);
                 killer.getInventory().setItem(0, createSword(Material.STONE_SWORD, Enchantment.DAMAGE_ALL, 2));
                 break;
             case 45:
+                /*
                 giveMultiEffectPotion(killer, ChatColor.DARK_PURPLE + "Health Boost & Regeneration (45s)",
                         new PotionEffect(PotionEffectType.HEALTH_BOOST, 45 * 20, 4),
                         new PotionEffect(PotionEffectType.REGENERATION, 45 * 20, 1),
                         new PotionEffect(PotionEffectType.ABSORPTION, 45 * 20, 1)
                 );
+
+                 */
                 break;
             case 50:
-                givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
-                givePotion(killer, PotionEffectType.DAMAGE_RESISTANCE, 45, 2, ChatColor.AQUA + "Resistance Potion (45s)");
+                //givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
+                //givePotion(killer, PotionEffectType.DAMAGE_RESISTANCE, 45, 2, ChatColor.AQUA + "Resistance Potion (45s)");
                 break;
             case 55:
-                givePotion(killer, PotionEffectType.SPEED, 30, 1, ChatColor.RED + "Speed Potion (30s)");
-                givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
-                givePotion(killer, PotionEffectType.DAMAGE_RESISTANCE, 45, 2, ChatColor.AQUA + "Resistance Potion (45s)");
+                //givePotion(killer, PotionEffectType.SPEED, 30, 1, ChatColor.RED + "Speed Potion (30s)");
+                //givePotion(killer, PotionEffectType.DAMAGE_RESISTANCE, 45, 2, ChatColor.AQUA + "Resistance Potion (45s)");
                 break;
             case 60:
-                givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
+                //givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
                 killer.getInventory().remove(Material.STONE_SWORD);
                 killer.getInventory().setItem(0, createSword(Material.IRON_SWORD, Enchantment.DAMAGE_ALL, 1));
                 break;
             case 100:
-                givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 120, 1, ChatColor.RED + "Strength Potion (120s)");
+                //givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 120, 1, ChatColor.RED + "Strength Potion (120s)");
                 killer.getInventory().remove(Material.IRON_SWORD);
                 killer.getInventory().setItem(0, createSword(Material.DIAMOND_SWORD, Enchantment.DAMAGE_ALL, 2));
                 killer.getInventory().setLeggings(null);
@@ -842,6 +883,12 @@ public class DeathMessageManager implements Listener {
      */
 
     public void givePotion(Player player, PotionEffectType type, int durationSeconds, int amplifier, String name) {
+        // Check if inventory is full
+        if (player.getInventory().firstEmpty() == -1) {
+            player.sendMessage(ChatColor.RED + "Your inventory is full! Cannot give potion.");
+            return;
+        }
+        
         ItemStack potion = new ItemStack(Material.POTION);
         PotionMeta meta = (PotionMeta) potion.getItemMeta();
         if (meta != null) {
@@ -853,6 +900,12 @@ public class DeathMessageManager implements Listener {
     }
 
     private void giveMultiEffectPotion(Player player, String name, PotionEffect... effects) {
+        // Check if inventory is full
+        if (player.getInventory().firstEmpty() == -1) {
+            player.sendMessage(ChatColor.RED + "Your inventory is full! Cannot give potion.");
+            return;
+        }
+        
         ItemStack potion = new ItemStack(Material.POTION);
         PotionMeta meta = (PotionMeta) potion.getItemMeta();
         if (meta != null) {

@@ -47,7 +47,7 @@ public class BuildFFAKit {
         // CREATE ALL ITEMS AND STORE THEM IN CLASS FIELDS
         // ======================================================
         woolStack = new ItemStack(Material.WOOL, 64, woolColor);
-        ladder = new ItemStack(Material.LADDER, 16);
+        ladder = new ItemStack(Material.LADDER, 32);
         sword = createItem(Material.STONE_SWORD);
         pickaxe = createItem(Material.GOLD_PICKAXE, Enchantment.DIG_SPEED, 3);
         axe = createItem(Material.IRON_AXE, Enchantment.DIG_SPEED, 2);

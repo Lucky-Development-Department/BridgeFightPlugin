@@ -91,9 +91,12 @@ public class FireballListener implements Listener {
         fireballTracker.trackFireball(fb, p);
 
         final Vector direction = p.getEyeLocation().getDirection().normalize();
-        final double speed = 1.0; 
+        final double speed = 0.9;
 
         fb.setVelocity(direction.clone().multiply(speed));
+
+        // Use a wrapper to allow direction updates when punched
+        final Vector[] activeDir = new Vector[]{ direction.clone() };
 
         // Lock speed every tick
         new org.bukkit.scheduler.BukkitRunnable() {
@@ -103,7 +106,19 @@ public class FireballListener implements Listener {
                     cancel();
                     return;
                 }
-                fb.setVelocity(direction.clone().multiply(speed));
+                
+                // Check if someone punched it (vanilla changes velocity)
+                Vector currentVel = fb.getVelocity();
+                if (currentVel.lengthSquared() > 0.1) {
+                    Vector currentDir = currentVel.clone().normalize();
+                    // If the direction changed significantly from our locked direction, 
+                    // it means it was likely punched/deflected by vanilla logic or another plugin
+                    if (currentDir.distanceSquared(activeDir[0]) > 0.01) {
+                        activeDir[0] = currentDir;
+                    }
+                }
+
+                fb.setVelocity(activeDir[0].clone().multiply(speed));
             }
         }.runTaskTimer(ArenaAndFFAManager.getPlugin(), 1L, 1L);
 
@@ -115,6 +130,24 @@ public class FireballListener implements Listener {
         } else {
             p.getInventory().setItemInHand(null);
         }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onFireballPunch(EntityDamageByEntityEvent e) {
+        if (!(e.getEntity() instanceof Fireball)) return;
+        if (!(e.getDamager() instanceof Player)) return;
+
+        Fireball fb = (Fireball) e.getEntity();
+        Player puncher = (Player) e.getDamager();
+
+        // Update ownership when punched
+        fb.setShooter(puncher);
+        fireballTracker.trackFireball(fb, puncher);
+        
+        // Let vanilla handling or the runnable handle the velocity update
+        // We just ensure the damage event isn't cancelled for the fireball entity
+        e.setCancelled(false);
+        e.setDamage(0);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
