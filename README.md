@@ -20,7 +20,7 @@ ArenaFFAManager is a comprehensive Spigot plugin (v1.8.8) designed for managing 
 
 | Command | Usage | Description | Permission |
 |:---|:---|:---|:---|
-| `/arenamap` | See [Arena Subcommands](#arena-subcommands) | Manage arenas | `arenamap.admin` |
+| `/arenamap` | See [Arena Subcommands](#arena-subcommands-arenamap) | Manage arenas | `arenamap.admin` |
 | `/arenaconfig` | `/arenaconfig reload` | Reload arena configuration | `arenamap.admin` |
 | `/configreload` | `/configreload` | Reload general configuration | `arenamap.admin` |
 | `/rc` | See [Region Subcommands](#region-subcommands) | Manage command regions | `arenamap.admin` |
