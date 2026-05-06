@@ -278,33 +278,37 @@ public class BlockEventListener implements Listener {
                     UUID placerId = ffabuildPlacers.remove(mapKey);
                     if (placerId != null) {
                         Player placer = Bukkit.getPlayer(placerId);
-                        if (placer != null && placer.isOnline()
-                                && placer.getGameMode() == GameMode.SURVIVAL
-                                && arena.isInside(placer.getLocation(), true)) {
-                            
-                            short data = placedState.getRawData();
-                            if (placedState.getType() == Material.LADDER) {
-                                data = 0;
-                            }
-                            
-                            ItemStack refund = new ItemStack(placedState.getType(), 1, data);
-                            BlockHotbarSorter blockSorter = new BlockHotbarSorter(plugin.getHotbarDataManager());
-
-                            // Sort first, returns TRUE if handled (now handles ladders)
-                            boolean handled = blockSorter.sort(placer, refund);
-
-                            if (!handled) {
-                                ItemStack leftover = addToMainInventory(placer, refund);
-
-                                if (leftover != null) {
-                                    placer.getWorld().dropItemNaturally(placer.getLocation(), leftover);
-                                }
-                            }
-                        }
+                        refundBlock(placer, arena, placedState.getType(), placedState.getRawData());
                     }
                 }
                 persistentManager.removeRestore(arena.getName() + "|" + coordsKey);
             });
+        }
+    }
+
+    private void refundBlock(Player player, Arena arena, Material type, byte data) {
+        if (player == null || !player.isOnline()
+                || player.getGameMode() != GameMode.SURVIVAL
+                || !arena.isInside(player.getLocation(), true)) {
+            return;
+        }
+
+        short finalData = data;
+        if (type == Material.LADDER) {
+            finalData = 0;
+        }
+
+        ItemStack refund = new ItemStack(type, 1, finalData);
+        BlockHotbarSorter blockSorter = new BlockHotbarSorter(plugin.getHotbarDataManager());
+
+        // Sort first, returns TRUE if handled
+        boolean handled = blockSorter.sort(player, refund);
+
+        if (!handled) {
+            ItemStack leftover = addToMainInventory(player, refund);
+            if (leftover != null) {
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+            }
         }
     }
 
@@ -373,24 +377,45 @@ public class BlockEventListener implements Listener {
         }
 
         // Save block state BEFORE breaking
-        BlockState originalState = block.getState();
+        BlockState brokenState = block.getState();
         String coordsKey = getCoordsKey(loc);
         String mapKey = makeArenaKey(arena, loc);
 
         plugin.debug("Block broken by " + player.getName()
                 + " in arena=" + arena.getName() + " at " + coordsKey);
 
-        // Break the block manually (since event.setDropItems(false) doesn't exist)
+        // Handle refund IF it was a player-placed block
+        UUID placerId = ffabuildPlacers.remove(mapKey);
+        if (placerId != null) {
+            Player placer = Bukkit.getPlayer(placerId);
+            refundBlock(placer, arena, brokenState.getType(), brokenState.getRawData());
+            
+            // Cancel the automatic removal task since we just broke it
+            stopBlockBreakingAnimation(mapKey);
+            BukkitRunnable existingTask = scheduledRestores.remove(mapKey);
+            if (existingTask != null) {
+                existingTask.cancel();
+            }
+        }
+
+        // Break the block manually (since event.setDropItems(false) doesn't exist in 1.8)
         block.setType(Material.AIR);
-        //block.getWorld().playEffect(loc, Effect.STEP_SOUND, originalState.getType());
 
         // Prevent item drops (remove entities next tick)
         Bukkit.getScheduler().runTaskLater(plugin, () -> removeItemsAt(loc), 1L);
 
         // Retrieve saved original state from arena data
         SerializableBlockState saved = arena.getOriginalBlocksMap().get(coordsKey);
-        Material restoreType = saved != null ? saved.getType() : originalState.getType();
-        byte restoreData = saved != null ? saved.getData() : originalState.getRawData();
+        
+        // If it was a player-placed block (not in originalBlocks), it should restore to AIR
+        Material restoreType = saved != null ? saved.getType() : Material.AIR;
+        byte restoreData = saved != null ? saved.getData() : (byte) 0;
+
+        // If it's already AIR and no original block to restore, we don't need to schedule anything
+        if (restoreType == Material.AIR && block.getType() == Material.AIR) {
+             persistentManager.removeRestore(arena.getName() + "|" + coordsKey);
+             return;
+        }
 
         // Schedule restore after 30s
         PendingRestore pr = new PendingRestore(
@@ -587,7 +612,7 @@ public class BlockEventListener implements Listener {
         };
         
         breakingAnimations.put(mapKey, animationTask);
-        animationTask.runTaskTimer(plugin, 0L, 10L); // Update every 10 ticks (0.5s)
+        animationTask.runTaskTimer(plugin, 5L, 10L); // Update every 10 ticks (0.5s)
     }
 
     private void stopBlockBreakingAnimation(String mapKey) {
@@ -621,17 +646,35 @@ public class BlockEventListener implements Listener {
     }
 
     /* ==========================================================
-       LADDER DROP PREVENTION
+       ITEM SPAWN / DROP PREVENTION
     ========================================================== */
     @EventHandler
     public void onItemSpawn(ItemSpawnEvent event) {
-        if (event.getEntity().getItemStack().getType() == Material.LADDER) {
-            Location loc = event.getLocation();
-            Arena arena = manager.getArenaByLocation(loc);
-            if (arena != null && arena.getType() == ArenaType.FFABUILD) {
-                event.setCancelled(true);
+        ItemStack stack = event.getEntity().getItemStack();
+        if (stack == null) return;
+        
+        Location loc = event.getLocation();
+        Arena arena = manager.getArenaByLocation(loc);
+        if (arena == null || arena.getType() != ArenaType.FFABUILD) return;
+
+        // In FFABUILD, we generally don't want items dropping from blocks.
+        // If it was a player-placed block, refund it to the placer.
+        String mapKey = makeArenaKey(arena, loc);
+        UUID placerId = ffabuildPlacers.remove(mapKey);
+        if (placerId != null) {
+            Player placer = Bukkit.getPlayer(placerId);
+            refundBlock(placer, arena, stack.getType(), (byte) stack.getDurability());
+
+            // Cancel any scheduled auto-removal for this block
+            stopBlockBreakingAnimation(mapKey);
+            BukkitRunnable task = scheduledRestores.remove(mapKey);
+            if (task != null) {
+                task.cancel();
             }
         }
+
+        // Always cancel item spawns in FFABUILD to keep the arena clean
+        event.setCancelled(true);
     }
 
     /* ==========================================================

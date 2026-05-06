@@ -749,7 +749,7 @@ public class DeathMessageManager implements Listener {
             givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
         }
         if (streak >= 15 && streak % 5 == 0){
-            givePotion(killer, PotionEffectType.JUMP, 45, 4, ChatColor.LIGHT_PURPLE + "Jump Boost V (45s)");
+            givePotion(killer, PotionEffectType.SPEED, 30, 1, ChatColor.RED + "Speed Potion (30s)");
         }
 
         if (streak >= 30 && streak % 20 == 0){
@@ -792,8 +792,8 @@ public class DeathMessageManager implements Listener {
                 killer.getInventory().setBoots(createArmorPiece(Material.IRON_BOOTS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
                 break;
             case 30:
-                killer.getInventory().remove(Material.STONE_SWORD);
-                killer.getInventory().setItem(0, createSword(Material.STONE_SWORD, Enchantment.DAMAGE_ALL, 1));
+                killer.getInventory().remove(Material.WOOD_SWORD);
+                killer.getInventory().setItem(0, createSword(Material.STONE_SWORD));
                 //givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 30, 1, ChatColor.RED + "Strength Potion (30s)");
                 break;
             case 35:
@@ -801,7 +801,7 @@ public class DeathMessageManager implements Listener {
                 break;
             case 40:
                 killer.getInventory().remove(Material.STONE_SWORD);
-                killer.getInventory().setItem(0, createSword(Material.STONE_SWORD, Enchantment.DAMAGE_ALL, 2));
+                killer.getInventory().setItem(0, createSword(Material.STONE_SWORD, Enchantment.DAMAGE_ALL, 1));
                 break;
             case 45:
                 /*
@@ -829,7 +829,7 @@ public class DeathMessageManager implements Listener {
             case 100:
                 //givePotion(killer, PotionEffectType.INCREASE_DAMAGE, 120, 1, ChatColor.RED + "Strength Potion (120s)");
                 killer.getInventory().remove(Material.IRON_SWORD);
-                killer.getInventory().setItem(0, createSword(Material.DIAMOND_SWORD, Enchantment.DAMAGE_ALL, 2));
+                killer.getInventory().setItem(0, createSword(Material.DIAMOND_SWORD, Enchantment.DAMAGE_ALL, 1));
                 killer.getInventory().setLeggings(null);
                 killer.getInventory().setBoots(null);
                 killer.getInventory().setLeggings(createArmorPiece(Material.DIAMOND_LEGGINGS, Enchantment.PROTECTION_ENVIRONMENTAL, 4));
@@ -924,6 +924,18 @@ public class DeathMessageManager implements Listener {
 
         if (meta != null) {
             meta.addEnchant(enchantment, enchantmentlevel, true);
+            meta.spigot().setUnbreakable(true);
+            item.setItemMeta(meta);
+        }
+
+        return item;
+    }
+
+    private ItemStack createSword(Material material){
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
             meta.spigot().setUnbreakable(true);
             item.setItemMeta(meta);
         }

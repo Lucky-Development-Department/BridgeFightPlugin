@@ -7,6 +7,7 @@ import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
 import me.molfordan.arenaAndFFAManager.manager.ArenaManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
 import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
@@ -44,17 +45,32 @@ public class ArenaCommand implements CommandExecutor {
                 for (String worldName : new String[]{"BuildFFA", "Arenas_1", "Arenas_2"}) {
                     World world = Bukkit.getWorld(worldName);
                     if (world == null) continue;
-                    for (Map.Entry<String, SerializableBlockState> e : arena.getOriginalBlocksMap().entrySet()) {
-                        Location loc = stringToLocation(world, e.getKey());
-                        if (loc != null) {
-                            e.getValue().apply(loc.getBlock());
-                            restoredCount++;
+
+                    int minX = Math.min(arena.getPos1().getBlockX(), arena.getPos2().getBlockX());
+                    int maxX = Math.max(arena.getPos1().getBlockX(), arena.getPos2().getBlockX());
+                    int minY = Math.min(arena.getPos1().getBlockY(), arena.getPos2().getBlockY());
+                    int maxY = Math.max(arena.getPos1().getBlockY(), arena.getPos2().getBlockY());
+                    int minZ = Math.min(arena.getPos1().getBlockZ(), arena.getPos2().getBlockZ());
+                    int maxZ = Math.max(arena.getPos1().getBlockZ(), arena.getPos2().getBlockZ());
+
+                    for (int x = minX; x <= maxX; x++) {
+                        for (int y = minY; y <= maxY; y++) {
+                            for (int z = minZ; z <= maxZ; z++) {
+                                String locKey = x + "," + y + "," + z;
+                                Block block = world.getBlockAt(x, y, z);
+                                if (arena.getOriginalBlocksMap().containsKey(locKey)) {
+                                    arena.getOriginalBlocksMap().get(locKey).apply(block);
+                                } else {
+                                    block.setType(Material.AIR);
+                                }
+                                restoredCount++;
+                            }
                         }
                     }
                 }
 
                 sender.sendMessage(ChatColor.GREEN + "Restored " + restoredCount +
-                        " blocks for arena '" + arenaName + "' in all arena worlds.");
+                        " blocks for arena '" + arenaName + "' in all arena worlds (including clearing new blocks).");
                 return true;
             }
 
@@ -168,16 +184,30 @@ public class ArenaCommand implements CommandExecutor {
                 World world = Bukkit.getWorld(worldName);
 
                 if (world != null) {
-                    for (Map.Entry<String, SerializableBlockState> e : arena.getOriginalBlocksMap().entrySet()) {
-                        Location loc = stringToLocation(world, e.getKey());
-                        if (loc != null) {
-                            e.getValue().apply(loc.getBlock());
-                            restoredCount++;
+                    int minX = Math.min(arena.getPos1().getBlockX(), arena.getPos2().getBlockX());
+                    int maxX = Math.max(arena.getPos1().getBlockX(), arena.getPos2().getBlockX());
+                    int minY = Math.min(arena.getPos1().getBlockY(), arena.getPos2().getBlockY());
+                    int maxY = Math.max(arena.getPos1().getBlockY(), arena.getPos2().getBlockY());
+                    int minZ = Math.min(arena.getPos1().getBlockZ(), arena.getPos2().getBlockZ());
+                    int maxZ = Math.max(arena.getPos1().getBlockZ(), arena.getPos2().getBlockZ());
+
+                    for (int x = minX; x <= maxX; x++) {
+                        for (int y = minY; y <= maxY; y++) {
+                            for (int z = minZ; z <= maxZ; z++) {
+                                String locKey = x + "," + y + "," + z;
+                                Block block = world.getBlockAt(x, y, z);
+                                if (arena.getOriginalBlocksMap().containsKey(locKey)) {
+                                    arena.getOriginalBlocksMap().get(locKey).apply(block);
+                                } else {
+                                    block.setType(Material.AIR);
+                                }
+                                restoredCount++;
+                            }
                         }
                     }
                 }
                 player.sendMessage(ChatColor.GREEN + "Restored " + restoredCount +
-                        " blocks for arena '" + arena.getName() + "' in all arena worlds.");
+                        " blocks for arena '" + arena.getName() + "' (including clearing new blocks).");
                 return true;
             case "remove":
                 if (manager.removeArena(arenaName)) {

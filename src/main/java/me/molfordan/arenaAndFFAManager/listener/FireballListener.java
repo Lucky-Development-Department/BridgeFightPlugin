@@ -4,6 +4,7 @@ import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
 import me.molfordan.arenaAndFFAManager.manager.FireballTracker;
 import me.molfordan.arenaAndFFAManager.object.Arena;
+import me.molfordan.arenaAndFFAManager.utils.FireballUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -68,19 +69,59 @@ public class FireballListener implements Listener {
 
     @EventHandler
     public void onFireballInteract(PlayerInteractEvent e) {
+        final Player p = e.getPlayer();
+        UUID uuid = p.getUniqueId();
+        long now = System.currentTimeMillis();
+
+        // --- Left Click: Toss/Redirect Fireball ---
+        if (e.getAction() == Action.LEFT_CLICK_AIR || e.getAction() == Action.LEFT_CLICK_BLOCK) {
+            Fireball nearest = null;
+            double nearestDist = 3.5; // Slightly reduced reach
+
+            Vector playerLook = p.getEyeLocation().getDirection().normalize();
+
+            for (Entity entity : p.getNearbyEntities(nearestDist, nearestDist, nearestDist)) {
+                if (entity instanceof Fireball) {
+                    Location fbLoc = entity.getLocation();
+                    Vector toFireball = fbLoc.toVector().subtract(p.getEyeLocation().toVector()).normalize();
+                    
+                    // Sensitivity check: Player must be looking roughly towards the fireball (Dot product > 0.45)
+                    if (playerLook.dot(toFireball) > 0.45) {
+                        double dist = fbLoc.distance(p.getEyeLocation());
+                        if (dist < nearestDist) {
+                            nearest = (Fireball) entity;
+                            nearestDist = dist;
+                        }
+                    }
+                }
+            }
+
+            if (nearest != null) {
+                // Toss straight where the player is aiming
+                Vector targetDir = p.getEyeLocation().getDirection().normalize();
+
+                // Update ownership for damage credit
+                nearest.setShooter(p);
+                fireballTracker.trackFireball(nearest, p);
+                
+                // Set both direction and velocity for perfectly straight flight
+                // Fireballs in Bukkit use 'direction' (acceleration) to maintain their path
+                FireballUtil.setDirection(nearest, p.getEyeLocation().getDirection());
+                nearest.setVelocity(targetDir.multiply(0.9));
+            }
+            return;
+        }
+
+        // --- Right Click: Shoot Fireball ---
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK &&
                 e.getAction() != Action.RIGHT_CLICK_AIR) return;
 
         ItemStack inHand = e.getItem();
         if (inHand == null || inHand.getType() != Material.FIREBALL) return;
 
-        final Player p = e.getPlayer();
         e.setCancelled(true);
 
-        UUID uuid = p.getUniqueId();
-        long now = System.currentTimeMillis();
         long last = fireballCooldowns.getOrDefault(uuid, 0L);
-
         if (now - last < fireballCooldownSeconds * 1000L) return;
         fireballCooldowns.put(uuid, now);
 
@@ -91,11 +132,12 @@ public class FireballListener implements Listener {
         fireballTracker.trackFireball(fb, p);
 
         final Vector direction = p.getEyeLocation().getDirection().normalize();
-        final double speed = 0.9;
+        final double speed = 0.98;
+        FireballUtil.setDirection(fb, p.getEyeLocation().getDirection());
 
         fb.setVelocity(direction.clone().multiply(speed));
 
-        // Use a wrapper to allow direction updates when punched
+        // Use a wrapper to allow direction updates when punched/redirected
         final Vector[] activeDir = new Vector[]{ direction.clone() };
 
         // Lock speed every tick
@@ -107,13 +149,11 @@ public class FireballListener implements Listener {
                     return;
                 }
                 
-                // Check if someone punched it (vanilla changes velocity)
+                // Check if someone punched it or redirected it
                 Vector currentVel = fb.getVelocity();
                 if (currentVel.lengthSquared() > 0.1) {
                     Vector currentDir = currentVel.clone().normalize();
-                    // If the direction changed significantly from our locked direction, 
-                    // it means it was likely punched/deflected by vanilla logic or another plugin
-                    if (currentDir.distanceSquared(activeDir[0]) > 0.01) {
+                    if (currentDir.distanceSquared(activeDir[0]) > 0.001) {
                         activeDir[0] = currentDir;
                     }
                 }
@@ -143,6 +183,7 @@ public class FireballListener implements Listener {
         // Update ownership when punched
         fb.setShooter(puncher);
         fireballTracker.trackFireball(fb, puncher);
+        FireballUtil.setDirection(fb, puncher.getEyeLocation().getDirection());
         
         // Let vanilla handling or the runnable handle the velocity update
         // We just ensure the damage event isn't cancelled for the fireball entity
