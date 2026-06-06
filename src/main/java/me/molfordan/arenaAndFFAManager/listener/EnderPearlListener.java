@@ -14,6 +14,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.entity.EnderPearl;
+
 public class EnderPearlListener implements Listener {
 
     private static final Map<UUID, Long> cooldowns = new HashMap<>();
@@ -42,18 +45,34 @@ public class EnderPearlListener implements Listener {
 
             if (remaining > 0) {
                 event.setCancelled(true);
-
-                // Restore pearl if client consumed it early
-                //player.getInventory().addItem(new ItemStack(Material.ENDER_PEARL));
                 player.updateInventory();
 
                 double sec = remaining / 1000.0;
                 player.sendMessage("§cYou must wait §e" + String.format("%.1f", sec) + "s §cbefore using another Ender Pearl!");
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPearlLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof EnderPearl)) return;
+        EnderPearl pearl = (EnderPearl) event.getEntity();
+        if (!(pearl.getShooter() instanceof Player)) return;
+
+        Player player = (Player) pearl.getShooter();
+        UUID id = player.getUniqueId();
+        long now = System.currentTimeMillis();
+
+        // Check if they are already on cooldown (double check for safety)
+        if (cooldowns.containsKey(id)) {
+            long last = cooldowns.get(id);
+            if ((last + COOLDOWN_MILLIS) > now) {
+                event.setCancelled(true);
                 return;
             }
         }
 
-        // Register cooldown start
+        // Start cooldown
         cooldowns.put(id, now);
 
         // Cancel previous task if somehow still running
@@ -61,7 +80,7 @@ public class EnderPearlListener implements Listener {
             activeTasks.get(id).cancel();
         }
 
-        // EXP Bar Countdown Task (100 ticks = 5 seconds)
+        // EXP Bar Countdown Task
         org.bukkit.scheduler.BukkitTask task = new org.bukkit.scheduler.BukkitRunnable() {
             private int ticksLeft = 100;
 
@@ -69,7 +88,6 @@ public class EnderPearlListener implements Listener {
             public void run() {
                 Player p = Bukkit.getPlayer(id);
                 
-                // If player leaves, stop the task
                 if (p == null || !p.isOnline()) {
                     cooldowns.remove(id);
                     activeTasks.remove(id);
@@ -77,7 +95,6 @@ public class EnderPearlListener implements Listener {
                     return;
                 }
 
-                // Finish countdown
                 if (ticksLeft <= 0) {
                     p.setExp(0.0f);
                     p.setLevel(0);
@@ -88,7 +105,6 @@ public class EnderPearlListener implements Listener {
                     return;
                 }
 
-                // Update EXP bar (1.0 to 0.0) and Level (5 to 1)
                 float progress = (float) ticksLeft / 100.0f;
                 p.setExp(progress);
                 p.setLevel((int) Math.ceil(ticksLeft / 20.0));

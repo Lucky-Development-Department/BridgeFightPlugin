@@ -174,11 +174,9 @@ public class BridgeFightKitManager {
         }
 
         // leather color
-        if (mat.name().startsWith("LEATHER_") &&
-                sec.getBoolean("is-red-green-colored", false)) {
-
+        if (mat.name().startsWith("LEATHER_")) {
             LeatherArmorMeta lam = (LeatherArmorMeta) meta;
-            lam.setColor(Color.fromRGB(255, 0, 0)); // red → green logic optional
+            lam.setColor(Color.fromRGB(255, 0, 0));
         }
 
         item.setItemMeta(meta);
@@ -255,10 +253,7 @@ public class BridgeFightKitManager {
 
             // leather color
             if (meta instanceof LeatherArmorMeta) {
-                LeatherArmorMeta lam = (LeatherArmorMeta) meta;
-                Color c = lam.getColor();
-                if (c.equals(Color.fromRGB(255, 0, 0)))
-                    sec.set("is-red-green-colored", true);
+                sec.set("is-red-green-colored", true);
             }
         }
     }
@@ -312,10 +307,6 @@ public class BridgeFightKitManager {
 
         // Re-apply default section for "Default" kit if missing
         loadDefaults();
-
-        // Reload live kit objects
-        kits.clear();
-        loadKits();
     }
 
 

@@ -3,6 +3,9 @@ package me.molfordan.arenaAndFFAManager.manager;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.time.*;
@@ -150,6 +153,9 @@ public class AutoRestartManager {
     
     private void performRestart() {
         plugin.getLogger().info("Performing automatic server restart...");
+
+        // Perform block cleanup and map restoration
+        cleanupBlocksAndRestore();
         
         // Kick all players with restart message
         Bukkit.getOnlinePlayers().forEach(player -> {
@@ -167,6 +173,41 @@ public class AutoRestartManager {
                 System.exit(0); // This will trigger the server restart script
             }
         }.runTaskLater(plugin, 20L);
+    }
+
+    private void cleanupBlocksAndRestore() {
+        plugin.getLogger().info("Cleaning up player blocks and restoring maps...");
+
+        // 1. Remove blocks with player_blocks and egg_bridge_block metadata in all worlds
+        for (World world : Bukkit.getWorlds()) {
+            // This is computationally expensive, but acceptable during a server restart
+            // since players are about to be kicked and server is shutting down.
+            // We iterate through loaded chunks for efficiency.
+            for (org.bukkit.Chunk chunk : world.getLoadedChunks()) {
+                int minX = chunk.getX() << 4;
+                int minZ = chunk.getZ() << 4;
+                int maxX = minX + 15;
+                int maxZ = minZ + 15;
+
+                for (int x = minX; x <= maxX; x++) {
+                    for (int z = minZ; z <= maxZ; z++) {
+                        for (int y = 0; y < world.getMaxHeight(); y++) {
+                            Block block = world.getBlockAt(x, y, z);
+                            if (block.hasMetadata("player_blocks") || block.hasMetadata("egg_bridge_block")) {
+                                block.setType(Material.AIR);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Execute arenamap restore command if configured
+        String mapToRestore = configManager.getAutoRestoreMap();
+        if (mapToRestore != null && !mapToRestore.equalsIgnoreCase("none")) {
+            plugin.getLogger().info("Restoring map: " + mapToRestore);
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "arenamap " + mapToRestore + " restore");
+        }
     }
     
     public boolean isRestartInProgress() {

@@ -105,8 +105,13 @@ public class ConfigManager {
             config.set("autorestart.enabled", false);
             config.set("autorestart.time", "1AM");
             config.set("autorestart.timezone", "Jakarta");
+            config.set("autorestart.auto-restore-map", "none");
             saveConfig();
         }
+    }
+
+    public String getAutoRestoreMap() {
+        return config.getString("autorestart.auto-restore-map", "none");
     }
 
     public boolean isAutoRestartEnabled() {

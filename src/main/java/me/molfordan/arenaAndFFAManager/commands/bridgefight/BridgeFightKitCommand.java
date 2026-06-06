@@ -58,7 +58,7 @@ public class BridgeFightKitCommand implements CommandExecutor {
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("reloadall")) {
+        if (args[0].equalsIgnoreCase("reloadall") || args[0].equalsIgnoreCase("reload")) {
             if (!sender.hasPermission("arena.admin")) {
                 sender.sendMessage("§cNo permission.");
                 return true;

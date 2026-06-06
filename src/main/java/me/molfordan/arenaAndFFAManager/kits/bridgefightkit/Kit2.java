@@ -1,8 +1,12 @@
 package me.molfordan.arenaAndFFAManager.kits.bridgefightkit;
 
+import org.bukkit.Color;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.LeatherArmorMeta;
+
+import java.util.Random;
 
 public class Kit2 {
     private String name;
@@ -14,6 +18,8 @@ public class Kit2 {
     private ItemStack chest;
     private ItemStack legs;
     private ItemStack boots;
+
+    private final Random random = new Random();
 
     public Kit2(String name, String displayName, int requiredKills, ItemStack weapon, ItemStack helmet, ItemStack chest, ItemStack legs, ItemStack boots, int sort) {
         this.name = name;
@@ -34,19 +40,30 @@ public class Kit2 {
     public int getRequiredKills() { return requiredKills; }
 
     public void apply(Player p) {
+        Color teamColor = random.nextBoolean() ? Color.RED : Color.LIME;
+
         if (weapon != null) p.getInventory().setItem(0, weapon.clone());
-        if (helmet != null) p.getInventory().setHelmet(helmet.clone());
-        if (chest != null) p.getInventory().setChestplate(chest.clone());
-        if (legs != null) p.getInventory().setLeggings(legs.clone());
-        if (boots != null) p.getInventory().setBoots(boots.clone());
+        if (helmet != null) p.getInventory().setHelmet(applyColorIfLeather(helmet, teamColor));
+        if (chest != null) p.getInventory().setChestplate(applyColorIfLeather(chest, teamColor));
+        if (legs != null) p.getInventory().setLeggings(applyColorIfLeather(legs, teamColor));
+        if (boots != null) p.getInventory().setBoots(applyColorIfLeather(boots, teamColor));
     }
 
     public void applyToPlayer(Player p) {
-        if (weapon != null) p.getInventory().setItem(0, weapon.clone());
-        if (helmet != null) p.getInventory().setHelmet(helmet.clone());
-        if (chest != null) p.getInventory().setChestplate(chest.clone());
-        if (legs != null) p.getInventory().setLeggings(legs.clone());
-        if (boots != null) p.getInventory().setBoots(boots.clone());
+        apply(p);
+    }
+
+    private ItemStack applyColorIfLeather(ItemStack item, Color color) {
+        if (item == null) return null;
+        ItemStack copy = item.clone();
+        ItemMeta meta = copy.getItemMeta();
+
+        if (meta instanceof LeatherArmorMeta) {
+            LeatherArmorMeta lam = (LeatherArmorMeta) meta;
+            lam.setColor(color);
+            copy.setItemMeta(lam);
+        }
+        return copy;
     }
 
     public ItemStack getWeapon() { return weapon; }

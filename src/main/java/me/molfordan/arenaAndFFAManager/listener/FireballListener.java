@@ -9,6 +9,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.Player;
@@ -302,15 +303,9 @@ public class FireballListener implements Listener {
         }
 
         // Visuals only explosion (no block damage)
-        world.createExplosion(explosionLoc.getX(), explosionLoc.getY(), explosionLoc.getZ(), 0F, false, false);
+        world.createExplosion(explosionLoc.getX(), explosionLoc.getY(), explosionLoc.getZ(), 0F, false, true);
+        
         fireball.remove();
-    }
-
-    @EventHandler
-    public void onFireballExplode(EntityExplodeEvent event) {
-        if (event.getEntity() instanceof Fireball) {
-            event.blockList().clear();
-        }
     }
 
     @EventHandler

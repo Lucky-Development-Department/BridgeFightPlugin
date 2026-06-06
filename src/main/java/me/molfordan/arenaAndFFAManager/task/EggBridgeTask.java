@@ -104,6 +104,7 @@ public class EggBridgeTask implements Runnable {
             block.setType(Material.WOOL);
             block.setData(woolColor);
             block.setMetadata("egg_bridge_block", new FixedMetadataValue(plugin, true));
+            block.setMetadata("player_blocks", new FixedMetadataValue(plugin, true));
             placedBlocks.add(block);
         }
     }

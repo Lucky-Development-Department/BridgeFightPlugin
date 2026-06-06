@@ -268,6 +268,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SelectKitListener(this), this);
         getServer().getPluginManager().registerEvents(new EditKitListener(this), this);
         getServer().getPluginManager().registerEvents(new FireballListener(this.configManager, fireballTracker), this);
+        getServer().getPluginManager().registerEvents(new ExplosiveListener(), this);
         getServer().getPluginManager().registerEvents(new TNTListener(fireballTracker, tntTracker), this);
         getServer().getPluginManager().registerEvents(new PatchNotesListener(this), this);
         getServer().getPluginManager().registerEvents(new ArmorRemovalListener(this, arenaManager), this);

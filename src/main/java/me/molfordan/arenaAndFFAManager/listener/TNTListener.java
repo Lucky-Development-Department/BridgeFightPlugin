@@ -64,8 +64,6 @@ public class TNTListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onTNTExplode(EntityExplodeEvent e) {
         if (e.getEntityType() == EntityType.PRIMED_TNT) {
-            e.setCancelled(true);
-            
             Location explosionLoc = e.getLocation();
             Player shooter = tntTracker.getTNTOwner((TNTPrimed) e.getEntity());
             tntTracker.removeTNT(e.getEntity().getUniqueId());
@@ -75,8 +73,6 @@ public class TNTListener implements Listener {
             explosionLoc.getWorld().playSound(explosionLoc, org.bukkit.Sound.EXPLODE, 1.0F, 1.0F);
 
             applyKnockback(explosionLoc, shooter);
-
-            e.getEntity().remove();
         }
     }
 

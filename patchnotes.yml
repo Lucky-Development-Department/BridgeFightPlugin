@@ -1,0 +1,7 @@
+26/04/2026:
+- '&aImplemented custom TNT: Auto-ignites on place, custom knockback (Fireball style),
+  no block damage.'
+- '&eTNT is now a kill reward every 10 kills.'
+- '&bHotbar Manager: Added TNT category support and inventory limits (max 1).'
+- '&7Integrated TNTTracker for ownership and visibility tracking.'
+- '&6Added /patchnotes add <text> command with automatic date handling.'

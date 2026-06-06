@@ -50,7 +50,7 @@ public class BuildFFAKit {
         ladder = new ItemStack(Material.LADDER, 32);
         sword = createItem(Material.WOOD_SWORD);
         pickaxe = createItem(Material.GOLD_PICKAXE, Enchantment.DIG_SPEED, 3);
-        axe = createItem(Material.IRON_AXE, Enchantment.DIG_SPEED, 2);
+        axe = createItem(Material.STONE_AXE, Enchantment.DIG_SPEED, 2);
         shears = createItem(Material.SHEARS);
         kbStick = createItem(Material.STICK, Enchantment.KNOCKBACK, 1);
         pearl = new ItemStack(Material.ENDER_PEARL, 1);

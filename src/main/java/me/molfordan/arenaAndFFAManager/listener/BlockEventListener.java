@@ -27,6 +27,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketAdapter;
@@ -217,6 +218,7 @@ public class BlockEventListener implements Listener {
         if (manager.isBypassing(player.getUniqueId())) return;
 
         Block block = event.getBlock();
+        block.setMetadata("player_blocks", new FixedMetadataValue(plugin, true));
         Location loc = block.getLocation();
         BlockState replacedState = event.getBlockReplacedState();
 
