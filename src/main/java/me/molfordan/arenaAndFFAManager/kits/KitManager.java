@@ -24,6 +24,7 @@ public class KitManager {
 
     private final BridgeFightKit bridgeFightKit;
     private final BuildFFAKit buildFFAKit;
+    private final BedFightKit bedFightKit;
     private final HotbarDataManager hotbarDataManager;
 
     private final Map<UUID, String> selectedBridgeFightKit = new HashMap<>();
@@ -32,6 +33,16 @@ public class KitManager {
         this.hotbarDataManager = hotbarDataManager;
         this.bridgeFightKit = new BridgeFightKit();
         this.buildFFAKit = new BuildFFAKit();
+        this.bedFightKit = new BedFightKit();
+    }
+
+    public void applyBedFightKit(Player player, String team) {
+        clearInventory(player);
+        bedFightKit.apply(player, team);
+        Bukkit.getScheduler().runTaskLater(ArenaAndFFAManager.getPlugin(), () -> {
+            fixArmor(player);
+            sendArmorUpdate(player);
+        }, 5);
     }
 
     public void applyBridgeFightKit(Player player) {

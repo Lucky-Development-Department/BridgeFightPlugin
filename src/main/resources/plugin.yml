@@ -140,6 +140,25 @@ commands:
   patchnotes:
     usage: '/patchnotes <all|reload|[page number]>'
     description: 'View archived patch notes'
+  bedfight:
+    usage: '/bedfight start <arena> <player1> <player2>'
+    description: 'bedfight command'
+    permission: bedfight.admin
+  kiteditor:
+    usage: '/kiteditor'
+    description: 'Open the kit editor'
+  forfeit:
+    usage: '/forfeit'
+    description: 'Forfeit the current BedFight match'
+  leave:
+    usage: '/leave'
+    description: 'Leave the current BedFight match'
+  spec:
+    usage: '/spec <player>'
+    description: 'Spectate a BedFight match'
+  queue:
+    usage: '/queue'
+    description: 'Open the queue menu'
   togglebridgeegg:
     usage: '/togglebridgeegg'
     description: 'toggle bridge egg functionality'

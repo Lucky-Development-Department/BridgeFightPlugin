@@ -9,6 +9,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
@@ -27,8 +28,15 @@ public class ItemReceiveListener implements Listener {
         this.sorter = sorter;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPickup(PlayerPickupItemEvent e) {
+        // If it's a BedFight world, allow normal pickup behavior
+        if (e.getPlayer().getWorld().getName().startsWith("bf_")) {
+            Bukkit.getLogger().info("Debug Pickup: ItemReceiveListener ignored for BedFight world.");
+            return;
+        }
+
+        // Only sort if it's the BuildFFA world
         Player p = e.getPlayer();
         if (!p.getWorld().getName().equalsIgnoreCase(buildFFAWorld)) return;
 
@@ -37,6 +45,8 @@ public class ItemReceiveListener implements Listener {
         Bukkit.getScheduler().runTaskLater(ArenaAndFFAManager.getPlugin(), () ->
                 sorter.sortToHotbar(p, item), 1);
     }
+
+
 
     // catches ANY inventory updates after /give or reward
     @EventHandler

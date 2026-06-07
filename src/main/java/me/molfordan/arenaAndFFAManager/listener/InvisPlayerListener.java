@@ -12,6 +12,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_8_R3.inventory.CraftItemStack;
+import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -296,6 +297,14 @@ public class InvisPlayerListener implements Listener {
             Player tntOwner = plugin.getTNTTracker().getTNTOwner(tnt);
             if (victim.equals(tntOwner)) {
                 return; // Self-damage from own tnt
+            }
+        }
+
+        if (e.getDamager() instanceof EnderPearl){
+            org.bukkit.entity.EnderPearl pearl = (org.bukkit.entity.EnderPearl) e.getDamager();
+            Player pearlOwner = (Player) pearl.getShooter();
+            if (victim.equals(pearlOwner)) {
+                return; // Self-damage from own ender pearl
             }
         }
 

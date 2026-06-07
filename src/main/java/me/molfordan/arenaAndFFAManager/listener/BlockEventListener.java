@@ -214,6 +214,12 @@ public class BlockEventListener implements Listener {
     ========================================================== */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
+
+        String worldName = event.getPlayer().getWorld().getName();
+        if (!worldName.startsWith("bf_")) {
+            return;
+        }
+
         Player player = event.getPlayer();
         if (manager.isBypassing(player.getUniqueId())) return;
 
@@ -352,6 +358,12 @@ public class BlockEventListener implements Listener {
     ========================================================== */
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
+
+        String worldName = event.getPlayer().getWorld().getName();
+        if (!worldName.startsWith("bf_")) {
+            return;
+        }
+
         if (event.getBlock().hasMetadata("egg_bridge_block")) {
             return;
         }
@@ -547,11 +559,16 @@ public class BlockEventListener implements Listener {
     }
 
     private void removeItemsAt(Location loc) {
+        if (loc.getWorld().getName().startsWith("bf_")) {
+            plugin.getLogger().info("Debug ItemRemoval: Skipping removal in " + loc.getWorld().getName());
+            return;
+        }
         for (Item item : loc.getWorld().getEntitiesByClass(Item.class)) {
             Location itemLoc = item.getLocation();
             if (itemLoc.getBlockX() == loc.getBlockX()
                     && itemLoc.getBlockY() == loc.getBlockY()
                     && itemLoc.getBlockZ() == loc.getBlockZ()) {
+                plugin.getLogger().info("Debug ItemRemoval: Removing item " + item.getItemStack().getType() + " at " + itemLoc);
                 item.remove();
             }
         }
@@ -654,10 +671,19 @@ public class BlockEventListener implements Listener {
     public void onItemSpawn(ItemSpawnEvent event) {
         ItemStack stack = event.getEntity().getItemStack();
         if (stack == null) return;
+        System.out.println("Item spawn detected: " + stack.getType());
+
+        // Allow items to spawn in BedFight worlds (bf_)
+        if (event.getLocation().getWorld().getName().startsWith("bf_")) {
+            System.out.println("Allowing item spawn in BedFight world");
+            return;
+        }
         
         Location loc = event.getLocation();
         Arena arena = manager.getArenaByLocation(loc);
+        System.out.println("Item spawn detected in arena: " + arena);
         if (arena == null || arena.getType() != ArenaType.FFABUILD) return;
+        System.out.println("Item spawn detected in FFABUILD arena");
 
         // In FFABUILD, we generally don't want items dropping from blocks.
         // If it was a player-placed block, refund it to the placer.
@@ -672,11 +698,13 @@ public class BlockEventListener implements Listener {
             BukkitRunnable task = scheduledRestores.remove(mapKey);
             if (task != null) {
                 task.cancel();
+                System.out.println("Cancelled scheduled auto-removal for block");
             }
         }
 
         // Always cancel item spawns in FFABUILD to keep the arena clean
         event.setCancelled(true);
+        System.out.println("Item spawn cancelled in FFABUILD arena");
     }
 
     /* ==========================================================

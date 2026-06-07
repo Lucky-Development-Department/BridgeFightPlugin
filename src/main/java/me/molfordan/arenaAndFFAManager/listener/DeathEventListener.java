@@ -136,7 +136,8 @@ public class DeathEventListener implements Listener {
         Arena arena = arenaManager.getArenaByLocation(player.getLocation());
         if (arena == null) return;
 
-        if (arena.getType() == ArenaType.DUEL) return;
+        // Explicitly ignore BEDFIGHT to prevent interference
+        if (arena.getType() == ArenaType.BEDFIGHT || arena.getType() == ArenaType.DUEL) return;
 
         if (arena.getCenter() != null &&
                 (arena.getType() == ArenaType.FFA || arena.getType() == ArenaType.FFABUILD)) {

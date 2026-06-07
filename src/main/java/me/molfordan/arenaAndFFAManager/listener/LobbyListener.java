@@ -71,6 +71,15 @@ public class LobbyListener implements Listener {
         return true;
     }
 
+    private boolean isPlayerInBuildFFA(Player player){
+        Location buildFFALoc = configManager.getBuildFFALocation();
+
+        if (buildFFALoc == null || !player.getWorld().getName().equals(buildFFALoc.getWorld().getName())){
+            return false;
+        }
+        return true;
+    }
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event){
         Player player = event.getPlayer();
@@ -117,6 +126,12 @@ public class LobbyListener implements Listener {
 
     @EventHandler
     public void onMobSpawn(EntitySpawnEvent event){
+        // Allow item drops
+        if (event.getEntityType() == org.bukkit.entity.EntityType.DROPPED_ITEM) {
+            return;
+        }
+        
+        // Cancel all other entity spawns
         event.setCancelled(true);
     }
 
@@ -228,9 +243,11 @@ public class LobbyListener implements Listener {
         if (bridgeFightWorld == null) return;
 
         if (player.getWorld().equals(buildFFAWorld)){
-            player.setGameMode(GameMode.SURVIVAL);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                kitManager.applyBuildFFAKit(player);
+                if (isPlayerInBuildFFA(player)) {
+                    player.setGameMode(GameMode.SURVIVAL);
+                    kitManager.applyBuildFFAKit(player);
+                }
             }, 1);
 
             return;
@@ -238,17 +255,19 @@ public class LobbyListener implements Listener {
 
         if (player.getWorld().equals(lobbyWorld)){
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                plugin.getSpawnItem().giveSpawnItem(player);
-            }, 1);
-            player.setGameMode(GameMode.ADVENTURE);
-            if (player.hasPermission("luckyessentials.fly")){
+                if (isPlayerInLobby(player)) {
+                    plugin.getSpawnItem().giveSpawnItem(player);
+                    player.setGameMode(GameMode.ADVENTURE);
+                    if (player.hasPermission("luckyessentials.fly")){
 
-                player.setAllowFlight(true);
-                player.setFlying(true);
-                Location loc = player.getLocation();
-                double locY = loc.getY();
-                player.teleport(new Location(loc.getWorld(), loc.getX(), locY + 2, loc.getZ()));
-            }
+                        player.setAllowFlight(true);
+                        player.setFlying(true);
+                        Location loc = player.getLocation();
+                        double locY = loc.getY();
+                        player.teleport(new Location(loc.getWorld(), loc.getX(), locY + 2, loc.getZ()));
+                    }
+                }
+            }, 1);
             // Flight state will be handled by FlightManager through PlayerJoinEvent in GlobalListener
             return;
         }
@@ -256,23 +275,16 @@ public class LobbyListener implements Listener {
 
 
         if (player.getWorld().equals(bridgeFightWorld)){
-            boolean isBanned = plugin.getBridgeFightBanManager().isPlayerBanned(player.getUniqueId());
-            if (isBanned){
-                player.teleport(lobbyWorld.getSpawnLocation());
-                return;
-            }
-            player.setGameMode(GameMode.SURVIVAL);
-            /*
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                // Only give bridge fight spawn items if player used /bridgefight or /housing command
-                if (bridgeFightSpawnRecipients.contains(player.getUniqueId())) {
-                    plugin.getSpawnItem().giveBridgeFightSpawnItem(player);
-                    bridgeFightSpawnRecipients.remove(player.getUniqueId()); // Remove after giving items
+                if (isPlayerInBridgeFight(player)) {
+                    boolean isBanned = plugin.getBridgeFightBanManager().isPlayerBanned(player.getUniqueId());
+                    if (isBanned) {
+                        player.teleport(lobbyWorld.getSpawnLocation());
+                        return;
+                    }
+                    player.setGameMode(GameMode.SURVIVAL);
                 }
             }, 1);
-            return;
-
-             */
         }
 
 

@@ -127,6 +127,7 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
                     if (worldName.equals(configManager.getBuildFFAWorldName())) return "BuildFFA";
                     if (worldName.equals(configManager.getBridgeFightWorldName())) return "BridgeFight";
                     if (worldName.equals(configManager.getLobbyWorldName())) return "Spawn";
+                    if (worldName.startsWith("bf")) return "Bedfight";
                 }
                 return "None";
             case "daily":

@@ -7,6 +7,7 @@ public enum ArenaType {
     BUILD,
 
     TOPFIGHT,
+    BEDFIGHT,
     DUEL;
 
     public static ArenaType fromString(String input) {
@@ -18,6 +19,7 @@ public enum ArenaType {
             case "build": return BUILD;
             case "duel": return DUEL;
             case "topfight": return TOPFIGHT;
+            case "bedfight": return BEDFIGHT;
             default: return null;
         }
     }

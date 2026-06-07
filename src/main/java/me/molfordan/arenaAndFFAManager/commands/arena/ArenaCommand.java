@@ -165,6 +165,22 @@ public class ArenaCommand implements CommandExecutor {
                 player.teleport(arena.getCenter());
                 player.sendMessage(ChatColor.GREEN + "Teleported to arena center.");
                 return true;
+            case "redspawn":
+                arena.setRedSpawn(player.getLocation());
+                player.sendMessage(ChatColor.RED + "Set Red Spawn at your current location.");
+                break;
+            case "bluespawn":
+                arena.setBlueSpawn(player.getLocation());
+                player.sendMessage(ChatColor.BLUE + "Set Blue Spawn at your current location.");
+                break;
+            case "redbed":
+                arena.setRedBed(player.getLocation());
+                player.sendMessage(ChatColor.RED + "Set Red Bed at your current location.");
+                break;
+            case "bluebed":
+                arena.setBlueBed(player.getLocation());
+                player.sendMessage(ChatColor.BLUE + "Set Blue Bed at your current location.");
+                break;
             case "capture":
                 if (arena.getType() != ArenaType.FFABUILD) {
                     player.sendMessage(ChatColor.RED + "This arena is not of type FFABUILD.");
@@ -273,12 +289,12 @@ public class ArenaCommand implements CommandExecutor {
 
     private boolean setArenaType(Player player, Arena arena, String[] args) {
         if (args.length < 3) {
-            player.sendMessage(ChatColor.RED + "Usage: /arenamap <arena> type <ffa|ffabuild|duel>");
+            player.sendMessage(ChatColor.RED + "Usage: /arenamap <arena> type <ffa|ffabuild|duel|bedfight>");
             return false;
         }
         ArenaType type = ArenaType.fromString(args[2]);
         if (type == null) {
-            player.sendMessage(ChatColor.RED + "Invalid type. Use ffa, ffabuild, or duel.");
+            player.sendMessage(ChatColor.RED + "Invalid type. Use ffa, ffabuild, duel, or bedfight.");
             return false;
         }
         arena.setType(type);

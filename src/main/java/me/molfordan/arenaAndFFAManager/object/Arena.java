@@ -18,6 +18,7 @@ public class Arena implements ConfigurationSerializable {
     private String worldName;
     private ArenaType type;
     private Location pos1, pos2, center;
+    private Location redSpawn, blueSpawn, redBed, blueBed;
     private int buildLimitY = 256;
     private int voidLimitY = 0;
     private boolean finished = false;
@@ -45,6 +46,18 @@ public class Arena implements ConfigurationSerializable {
         Object centerObj = data.get("center");
         if (centerObj instanceof Location) this.center = (Location) centerObj;
 
+        Object redSpawnObj = data.get("redSpawn");
+        if (redSpawnObj instanceof Location) this.redSpawn = (Location) redSpawnObj;
+
+        Object blueSpawnObj = data.get("blueSpawn");
+        if (blueSpawnObj instanceof Location) this.blueSpawn = (Location) blueSpawnObj;
+
+        Object redBedObj = data.get("redBed");
+        if (redBedObj instanceof Location) this.redBed = (Location) redBedObj;
+
+        Object blueBedObj = data.get("blueBed");
+        if (blueBedObj instanceof Location) this.blueBed = (Location) blueBedObj;
+
         this.buildLimitY = (int) data.getOrDefault("buildLimit", 256);
         this.voidLimitY = (int) data.getOrDefault("voidLimit", 0);
         this.finished = (boolean) data.getOrDefault("finished", false);
@@ -71,12 +84,16 @@ public class Arena implements ConfigurationSerializable {
         if (pos1 != null) map.put("pos1", pos1);
         if (pos2 != null) map.put("pos2", pos2);
         if (center != null) map.put("center", center);
+        if (redSpawn != null) map.put("redSpawn", redSpawn);
+        if (blueSpawn != null) map.put("blueSpawn", blueSpawn);
+        if (redBed != null) map.put("redBed", redBed);
+        if (blueBed != null) map.put("blueBed", blueBed);
         map.put("buildLimit", buildLimitY);
         map.put("voidLimit", voidLimitY);
         map.put("finished", finished);
         map.put("type", type != null ? type.name() : null);
 
-        if (type == ArenaType.FFABUILD && !originalBlocks.isEmpty()) {
+        if ((type == ArenaType.FFABUILD || type == ArenaType.BEDFIGHT) && !originalBlocks.isEmpty()) {
             Map<String, Object> blockMap = new HashMap<>();
             for (Map.Entry<String, SerializableBlockState> entry : originalBlocks.entrySet()) {
                 blockMap.put(entry.getKey(), entry.getValue().serialize());
@@ -88,7 +105,7 @@ public class Arena implements ConfigurationSerializable {
     }
 
     public void captureCurrentState() {
-        if (type != ArenaType.FFABUILD || pos1 == null || pos2 == null) return;
+        if ((type != ArenaType.FFABUILD && type != ArenaType.BEDFIGHT) || pos1 == null || pos2 == null) return;
 
         World world = Bukkit.getWorld(worldName);
         if (world == null) return;
@@ -193,6 +210,38 @@ public class Arena implements ConfigurationSerializable {
 
     public void setCenter(Location center) {
         this.center = center;
+    }
+
+    public Location getRedSpawn() {
+        return redSpawn;
+    }
+
+    public void setRedSpawn(Location redSpawn) {
+        this.redSpawn = redSpawn;
+    }
+
+    public Location getBlueSpawn() {
+        return blueSpawn;
+    }
+
+    public void setBlueSpawn(Location blueSpawn) {
+        this.blueSpawn = blueSpawn;
+    }
+
+    public Location getRedBed() {
+        return redBed;
+    }
+
+    public void setRedBed(Location redBed) {
+        this.redBed = redBed;
+    }
+
+    public Location getBlueBed() {
+        return blueBed;
+    }
+
+    public void setBlueBed(Location blueBed) {
+        this.blueBed = blueBed;
     }
 
     public int getBuildLimitY() {

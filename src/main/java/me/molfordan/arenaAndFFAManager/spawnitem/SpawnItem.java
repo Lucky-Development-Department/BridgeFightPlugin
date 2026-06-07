@@ -32,9 +32,6 @@ public class SpawnItem implements Listener {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
-    // ============================================================
-    //  PUBLIC METHOD TO GIVE SPAWN ITEMS
-    // ============================================================
     public void giveSpawnItem(Player player) {
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
@@ -42,6 +39,8 @@ public class SpawnItem implements Listener {
         player.getInventory().setItem(0, getCompass());
         player.getInventory().setItem(4, getStatsHead(player));
         player.getInventory().setItem(8, getKitEditorBook());
+        player.getInventory().setItem(1, getKitEditorPaper());
+        player.getInventory().setItem(2, getQueueSword());
     }
 
     public void giveSword(Player player) {
@@ -50,13 +49,10 @@ public class SpawnItem implements Listener {
         player.getInventory().setItem(0, getSword());
     }
 
-    // ============================================================
-    //  ITEM CREATION
-    // ============================================================
     private ItemStack getCompass() {
         ItemStack item = new ItemStack(Material.COMPASS);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("§eMode Selector");
+        meta.setDisplayName("§eMode Selector §7(Right Click)");
         item.setItemMeta(meta);
         return item;
     }
@@ -64,7 +60,7 @@ public class SpawnItem implements Listener {
     private ItemStack getBook(){
         ItemStack item = new ItemStack(Material.BOOK);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("§eSelect Kit");
+        meta.setDisplayName("§eSelect Kit §7(Right Click)");
         item.setItemMeta(meta);
         return item;
     }
@@ -81,7 +77,7 @@ public class SpawnItem implements Listener {
     private ItemStack getPlatformSelectorCompass() {
         ItemStack item = new ItemStack(Material.COMPASS);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("§ePlatform Selector");
+        meta.setDisplayName("§ePlatform Selector §7(Right Click)");
         item.setItemMeta(meta);
         return item;
     }
@@ -89,7 +85,7 @@ public class SpawnItem implements Listener {
     private ItemStack getSpawnRedstone() {
         ItemStack item = new ItemStack(Material.REDSTONE);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("§cBack to Spawn");
+        meta.setDisplayName("§cBack to Spawn §7(Right Click)");
         item.setItemMeta(meta);
         return item;
     }
@@ -114,14 +110,27 @@ public class SpawnItem implements Listener {
     private ItemStack getKitEditorBook() {
         ItemStack item = new ItemStack(Material.BOOK);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("§bHotbar Manager");
+        meta.setDisplayName("§bHotbar Manager §7(Right Click)");
         item.setItemMeta(meta);
         return item;
     }
 
-    // ============================================================
-    //  COMPASS GUI CREATOR
-    // ============================================================
+    private ItemStack getKitEditorPaper() {
+        ItemStack item = new ItemStack(Material.PAPER);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§bBedFight Kit Editor §7(Right Click)");
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack getQueueSword() {
+        ItemStack item = new ItemStack(Material.IRON_SWORD);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§aQueue §7(Right Click)");
+        item.setItemMeta(meta);
+        return item;
+    }
+
     private Inventory getCompassGUI() {
         Inventory inv = Bukkit.createInventory(null, 9, GUI_TITLE);
 
@@ -155,7 +164,6 @@ public class SpawnItem implements Listener {
     private Inventory getPlatGUI() {
         Inventory inv = Bukkit.createInventory(null, 27, PLATGUI_TITLE);
 
-        // BORDER
         ItemStack border = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 15);
         ItemMeta meta = border.getItemMeta();
         meta.setDisplayName(" ");
@@ -166,7 +174,6 @@ public class SpawnItem implements Listener {
         inv.setItem(9, border);
         inv.setItem(17, border);
 
-        // PLATFORMS
         Map<String, PlatformRegion> platforms = plugin.getPlatformManager().getAllPlatforms();
 
         java.util.List<String> sorted = new java.util.ArrayList<>(platforms.keySet());
@@ -199,9 +206,6 @@ public class SpawnItem implements Listener {
         return inv;
     }
 
-    // ============================================================
-    //  PLATFORM NAME FORMATTER (GUI)
-    // ============================================================
     private String formatPlatformName(String raw) {
         raw = raw.toUpperCase();
 
@@ -224,17 +228,13 @@ public class SpawnItem implements Listener {
         return raw;
     }
 
-    // ============================================================
-    //  UNFORMAT NAME (GUI → command)
-    // ============================================================
     private String unformatPlatformName(String formatted) {
-        formatted = formatted.replace("§e", "").trim(); // remove color
+        formatted = formatted.replace("§e", "").trim();
 
         String[] parts = formatted.split(" ");
         if (parts.length < 2) return null;
 
-        String base;
-        String number = parts[parts.length - 1]; // Get the last part (number)
+        String number = parts[parts.length - 1];
 
         if (formatted.startsWith("Big Platform")) {
             return "bigplat" + number;
@@ -247,9 +247,6 @@ public class SpawnItem implements Listener {
         return null;
     }
 
-    // ============================================================
-    //  LISTENERS
-    // ============================================================
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         if (!event.hasItem()) return;
@@ -271,6 +268,14 @@ public class SpawnItem implements Listener {
         else if (item.getType() == Material.BOOK && name.equals("§bHotbar Manager")) {
             event.setCancelled(true);
             player.performCommand("hotbarmanager");
+        }
+        else if (item.getType() == Material.PAPER && name.equals("§bBedFight Kit Editor §7(Right Click)")) {
+            event.setCancelled(true);
+            player.performCommand("kiteditor");
+        }
+        else if (item.getType() == Material.IRON_SWORD && name.equals("§aQueue §7(Right Click)")) {
+            event.setCancelled(true);
+            player.performCommand("queue");
         }
         else if (item.getType() == Material.COMPASS && name.equals("§ePlatform Selector")) {
             event.setCancelled(true);
@@ -295,7 +300,6 @@ public class SpawnItem implements Listener {
         String title = event.getView().getTitle();
         if (title == null) return;
 
-        // MODE SELECTOR GUI
         if (title.equals(GUI_TITLE)) {
             event.setCancelled(true);
 
@@ -316,7 +320,6 @@ public class SpawnItem implements Listener {
             return;
         }
 
-        // PLATFORM GUI
         if (title.equals(PLATGUI_TITLE)) {
             event.setCancelled(true);
 
@@ -334,14 +337,12 @@ public class SpawnItem implements Listener {
         }
     }
 
-    // ============================================================
-    //  PROTECT SPAWN ITEMS
-    // ============================================================
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
-        ItemStack item = event.getItemDrop().getItemStack();
+        if (player.getWorld().getName().startsWith("bf_")) return;
 
+        ItemStack item = event.getItemDrop().getItemStack();
         if (getLockedItemType(item, player) != null) {
             event.setCancelled(true);
             player.updateInventory();
@@ -380,24 +381,14 @@ public class SpawnItem implements Listener {
 
         Bukkit.getScheduler().runTask(plugin, () -> {
             switch (type) {
-                case MODE_SELECTOR:
-                    player.getInventory().setItem(0, getCompass());
-                    break;
-                case PLATFORM_SELECTOR:
-                    player.getInventory().setItem(0, getPlatformSelectorCompass());
-                    break;
-                case STATS_HEAD:
-                    player.getInventory().setItem(4, getStatsHead(player));
-                    break;
-                case HOTBAR_MANAGER:
-                    player.getInventory().setItem(8, getKitEditorBook());
-                    break;
-                case BACK_TO_SPAWN:
-                    player.getInventory().setItem(8, getSpawnRedstone());
-                    break;
-                case SELECT_KIT:
-                    player.getInventory().setItem(4, getBook());
-                    break;
+                case MODE_SELECTOR: player.getInventory().setItem(0, getCompass()); break;
+                case PLATFORM_SELECTOR: player.getInventory().setItem(0, getPlatformSelectorCompass()); break;
+                case STATS_HEAD: player.getInventory().setItem(4, getStatsHead(player)); break;
+                case HOTBAR_MANAGER: player.getInventory().setItem(8, getKitEditorBook()); break;
+                case KIT_EDITOR: player.getInventory().setItem(1, getKitEditorPaper()); break;
+                case QUEUE_ITEM: player.getInventory().setItem(2, getQueueSword()); break;
+                case BACK_TO_SPAWN: player.getInventory().setItem(8, getSpawnRedstone()); break;
+                case SELECT_KIT: player.getInventory().setItem(4, getBook()); break;
             }
             player.updateInventory();
         });
@@ -407,23 +398,14 @@ public class SpawnItem implements Listener {
         if (item == null || !item.hasItemMeta()) return null;
         String name = item.getItemMeta().getDisplayName();
 
-        if (item.getType() == Material.COMPASS && name.equals("§eMode Selector"))
-            return LockedItemType.MODE_SELECTOR;
-
-        if (item.getType() == Material.COMPASS && name.equals("§ePlatform Selector"))
-            return LockedItemType.PLATFORM_SELECTOR;
-
-        if (item.getType() == Material.SKULL_ITEM && name.equals("§a" + player.getName() + "'s Stats"))
-            return LockedItemType.STATS_HEAD;
-
-        if (item.getType() == Material.BOOK && name.equals("§bHotbar Manager"))
-            return LockedItemType.HOTBAR_MANAGER;
-
-        if (item.getType() == Material.REDSTONE && name.equals("§cBack to Spawn"))
-            return LockedItemType.BACK_TO_SPAWN;
-
-        if (item.getType() == Material.BOOK && name.equals("§eSelect Kit"))
-            return LockedItemType.SELECT_KIT;
+        if (item.getType() == Material.COMPASS && name.equals("§eMode Selector")) return LockedItemType.MODE_SELECTOR;
+        if (item.getType() == Material.COMPASS && name.equals("§ePlatform Selector")) return LockedItemType.PLATFORM_SELECTOR;
+        if (item.getType() == Material.SKULL_ITEM && name.equals("§a" + player.getName() + "'s Stats")) return LockedItemType.STATS_HEAD;
+        if (item.getType() == Material.BOOK && name.equals("§bHotbar Manager")) return LockedItemType.HOTBAR_MANAGER;
+        if (item.getType() == Material.PAPER && name.equals("§bBedFight Kit Editor §7(Right Click)")) return LockedItemType.KIT_EDITOR;
+        if (item.getType() == Material.IRON_SWORD && name.equals("§aQueue §7(Right Click)")) return LockedItemType.QUEUE_ITEM;
+        if (item.getType() == Material.REDSTONE && name.equals("§cBack to Spawn")) return LockedItemType.BACK_TO_SPAWN;
+        if (item.getType() == Material.BOOK && name.equals("§eSelect Kit")) return LockedItemType.SELECT_KIT;
 
         return null;
     }
@@ -433,6 +415,8 @@ public class SpawnItem implements Listener {
         PLATFORM_SELECTOR,
         STATS_HEAD,
         HOTBAR_MANAGER,
+        KIT_EDITOR,
+        QUEUE_ITEM,
         BACK_TO_SPAWN,
         SELECT_KIT
     }

@@ -126,8 +126,12 @@ public class ArenaManager {
         saveLocation(config, path + ".center", arena.getCenter());
         saveLocation(config, path + ".pos1", arena.getPos1());
         saveLocation(config, path + ".pos2", arena.getPos2());
+        saveLocation(config, path + ".redSpawn", arena.getRedSpawn());
+        saveLocation(config, path + ".blueSpawn", arena.getBlueSpawn());
+        saveLocation(config, path + ".redBed", arena.getRedBed());
+        saveLocation(config, path + ".blueBed", arena.getBlueBed());
 
-        if (arena.getType() == ArenaType.FFABUILD && arena.getOriginalBlocksMap() != null) {
+        if ((arena.getType() == ArenaType.FFABUILD || arena.getType() == ArenaType.BEDFIGHT) && arena.getOriginalBlocksMap() != null) {
             for (Map.Entry<String, SerializableBlockState> entry : arena.getOriginalBlocksMap().entrySet()) {
                 String key = path + ".blocks." + entry.getKey();
                 config.set(key + ".type", entry.getValue().getType().name());
@@ -176,8 +180,10 @@ public class ArenaManager {
                 arena.setCenter(getLocation(section.getConfigurationSection("center")));
                 arena.setPos1(getLocation(section.getConfigurationSection("pos1")));
                 arena.setPos2(getLocation(section.getConfigurationSection("pos2")));
-
-
+                arena.setRedSpawn(getLocation(section.getConfigurationSection("redSpawn")));
+                arena.setBlueSpawn(getLocation(section.getConfigurationSection("blueSpawn")));
+                arena.setRedBed(getLocation(section.getConfigurationSection("redBed")));
+                arena.setBlueBed(getLocation(section.getConfigurationSection("blueBed")));
 
                 ConfigurationSection blockSection = section.getConfigurationSection("blocks");
                 if (blockSection != null) {

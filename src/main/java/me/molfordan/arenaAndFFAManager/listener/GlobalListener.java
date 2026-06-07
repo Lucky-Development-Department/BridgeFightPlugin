@@ -4,6 +4,7 @@ import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import me.molfordan.arenaAndFFAManager.manager.StatsManager;
 //import me.molfordan.arenaAndFFAManager.utils.FlightManager;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -78,6 +79,30 @@ public class GlobalListener implements Listener {
         String cmd = event.getMessage().toLowerCase();
         if (cmd.startsWith("/weather")) {
             lastWeatherCommand = System.currentTimeMillis();
+        }
+
+        Player player = event.getPlayer();
+        me.molfordan.arenaAndFFAManager.bedfight.BedFightSession session = plugin.getBedFightManager().getSession(player);
+        
+        if (session != null) {
+            String[] parts = cmd.split(" ");
+            String command = parts[0];
+            
+            // Allow list for BedFight sessions
+            if (command.equals("/kiteditor") || command.equals("/forfeit") || command.equals("/leave") || command.equals("/queue")) {
+                // Special case: check if it's /queue leave
+                if (command.equals("/queue") && parts.length > 1 && parts[1].equalsIgnoreCase("leave")) {
+                    return;
+                }
+                // Allow kiteditor, forfeit, leave
+                if (!command.equals("/queue")) {
+                    return;
+                }
+            }
+            
+            // Block all other commands during a BedFight session
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "You cannot use that command during a BedFight match!");
         }
     }
     /*
@@ -184,9 +209,24 @@ public class GlobalListener implements Listener {
         event.setCancelled(true);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerDropItem(PlayerDropItemEvent event){
-        event.setCancelled(true);
+        Player player = event.getPlayer();
+        String worldName = player.getWorld().getName();
+        
+        // Always allow drops in BedFight match worlds
+        if (worldName.startsWith("bf_")) {
+            return;
+        }
+
+        // Block drops if in BuildFFA or BridgeFight
+        String buildFFAWorld = plugin.getConfigManager().getBuildFFAWorldName();
+        String bridgeFightWorld = plugin.getConfigManager().getBridgeFightWorldName();
+
+        if ((buildFFAWorld != null && worldName.equals(buildFFAWorld)) ||
+            (bridgeFightWorld != null && worldName.equals(bridgeFightWorld))) {
+            event.setCancelled(true);
+        }
     }
 
     /**

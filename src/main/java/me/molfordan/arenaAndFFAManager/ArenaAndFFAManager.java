@@ -1,5 +1,6 @@
 package me.molfordan.arenaAndFFAManager;
 
+import me.molfordan.arenaAndFFAManager.bedfight.*;
 import me.molfordan.arenaAndFFAManager.commands.admin.*;
 import me.molfordan.arenaAndFFAManager.commands.arena.ArenaBypassCommand;
 import me.molfordan.arenaAndFFAManager.commands.arena.ArenaCommand;
@@ -26,6 +27,7 @@ import me.molfordan.arenaAndFFAManager.database.DatabaseManager;
 import me.molfordan.arenaAndFFAManager.gui.GUILeaderboardBridgeFight;
 import me.molfordan.arenaAndFFAManager.gui.GUILeaderboardBuildFFA;
 import me.molfordan.arenaAndFFAManager.gui.GUILeaderboardMain;
+import me.molfordan.arenaAndFFAManager.hotbarmanager.BedFightHotbarListener;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarListener;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarSorter;
 import me.molfordan.arenaAndFFAManager.kits.KitManager;
@@ -39,6 +41,10 @@ import me.molfordan.arenaAndFFAManager.manager.*;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
 import me.molfordan.arenaAndFFAManager.placeholder.LeaderboardPlaceholderExpansion;
+import me.molfordan.arenaAndFFAManager.queue.QueueCommand;
+import me.molfordan.arenaAndFFAManager.queue.QueueGUI;
+import me.molfordan.arenaAndFFAManager.queue.QueueListener;
+import me.molfordan.arenaAndFFAManager.queue.QueueManager;
 import me.molfordan.arenaAndFFAManager.region.CommandRegionManager;
 import me.molfordan.arenaAndFFAManager.region.RegionFlagListener;
 import me.molfordan.arenaAndFFAManager.restore.DailyArenaRestorer;
@@ -97,6 +103,15 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private SpawnItem spawnItem;
     private BackupManager backupManager; // Add this line
     private AutoRestartManager autoRestartManager;
+    private BedFightManager bedFightManager;
+    private BedFightArenaManager bedFightArenaManager;
+    private BedFightScoreboard bedFightScoreboard;
+    private BedFightKitManager bedFightKitManager;
+    private BedFightHotbarDataManager bedFightHotbarDataManager;
+    private BedFightHotbarSessionManager bedFightHotbarSessionManager;
+    private BedFightListener bedFightListener;
+    private QueueGUI queueGUI;
+    private QueueManager queueManager;
     private PatchNotesManager patchNotesManager;
     private FireballTracker fireballTracker;
     private TNTTracker tntTracker;
@@ -148,6 +163,15 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.spawnItem = new SpawnItem(this);
         this.frozenManager = new FrozenManager(this);
         this.reportManager = new ReportManager(this, getDataFolder());
+        this.bedFightArenaManager = new BedFightArenaManager(this);
+        this.bedFightArenaManager.loadArenas();
+        this.bedFightManager = new BedFightManager(this);
+        this.bedFightScoreboard = new BedFightScoreboard(this, bedFightManager);
+        this.bedFightKitManager = new BedFightKitManager(this);
+        this.bedFightHotbarDataManager = new BedFightHotbarDataManager(this);
+        this.bedFightHotbarSessionManager = new BedFightHotbarSessionManager(this, bedFightHotbarDataManager, kitManager);
+        this.queueGUI = new QueueGUI(this);
+        this.queueManager = new QueueManager(this);
         this.teleportPendingManager = new TeleportPendingManager();
         this.eggBridgeManager = new EggBridgeManager();
         //this.flightManager = new FlightManager(configManager.getLobbyWorldName());
@@ -183,6 +207,12 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("setlobby").setExecutor(new SetLobbyCommand(configManager));
         getCommand("build").setExecutor(new BuildModeCommand(configManager));
         getCommand("buildffa").setExecutor(new BuildFFACommand(configManager));
+        getCommand("bedfight").setExecutor(new BedFightCommand(this));
+        getCommand("kiteditor").setExecutor(new KitEditorCommand());
+        getCommand("forfeit").setExecutor(new ForfeitCommand(this));
+        getCommand("leave").setExecutor(new LeaveCommand(this));
+        getCommand("spec").setExecutor(new SpecCommand(this));
+        getCommand("queue").setExecutor(new QueueCommand(this));
         
         // Create LobbyListener instance to be used by both event registration and BridgeFightCommand
         LobbyListener lobbyListener = new LobbyListener(configManager, this, kitManager);
@@ -241,11 +271,16 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerKillEventListener(combatManager, arenaManager, deathMessageManager, this), this);
         getServer().getPluginManager().registerEvents(new CombatLogListener(this,combatManager, arenaManager, deathMessageManager), this);
         getServer().getPluginManager().registerEvents(new TeleportSnowballListener(combatManager), this);
-        getServer().getPluginManager().registerEvents(new ItemDropBlockerListener(arenaManager), this);
+        getServer().getPluginManager().registerEvents(new ItemDropBlockerListener(arenaManager, this), this);
         getServer().getPluginManager().registerEvents(lobbyListener, this);
         getServer().getPluginManager().registerEvents(new GlobalListener(statsManager, this), this);
         getServer().getPluginManager().registerEvents(new BuildFFAListener(configManager, kitManager), this);
         getServer().getPluginManager().registerEvents(new BridgeFightListener(platformManager, configManager, this), this);
+        this.bedFightListener = new BedFightListener(this, bedFightManager);
+        getServer().getPluginManager().registerEvents(this.bedFightListener, this);
+        getServer().getPluginManager().registerEvents(new BedFightHotbarListener(this, bedFightHotbarSessionManager), this);
+        getServer().getPluginManager().registerEvents(new QueueListener(this), this);
+        getServer().getPluginManager().registerEvents(new BedfightKnockback(), this);
         getServer().getPluginManager().registerEvents(new HotbarListener(this, hotbarSessionManager, kitManager), this);
         getConfig().addDefault("debug", true);
         getConfig().options().copyDefaults(true);
@@ -265,6 +300,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RegionListener(regionManager), this);
         getServer().getPluginManager().registerEvents(new RegionFlagListener(regionManager), this);
         getServer().getPluginManager().registerEvents(new InvisPlayerListener(this), this);
+        getServer().getPluginManager().registerEvents(new MasterPickupDebugger(), this);
         getServer().getPluginManager().registerEvents(new SelectKitListener(this), this);
         getServer().getPluginManager().registerEvents(new EditKitListener(this), this);
         getServer().getPluginManager().registerEvents(new FireballListener(this.configManager, fireballTracker), this);
@@ -427,6 +463,43 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     public ReportManager getReportManager(){
         return reportManager;
     }
+
+    public BedFightManager getBedFightManager() {
+        return bedFightManager;
+    }
+
+    public BedFightScoreboard getBedFightScoreboard() {
+        return bedFightScoreboard;
+    }
+
+    public BedFightKitManager getBedFightKitManager() {
+        return bedFightKitManager;
+    }
+
+    public BedFightArenaManager getBedFightArenaManager() {
+        return bedFightArenaManager;
+    }
+
+    public BedFightListener getBedFightListener() {
+        return bedFightListener;
+    }
+
+    public BedFightHotbarDataManager getBedFightHotbarDataManager() {
+        return bedFightHotbarDataManager;
+    }
+
+    public BedFightHotbarSessionManager getBedFightHotbarSessionManager() {
+        return bedFightHotbarSessionManager;
+    }
+
+    public QueueGUI getQueueGUI() {
+        return queueGUI;
+    }
+
+    public QueueManager getQueueManager() {
+        return queueManager;
+    }
+
     public BridgeFightKitManager getBridgeFightKitManager(){
         return bridgeFightKitManager;
     }

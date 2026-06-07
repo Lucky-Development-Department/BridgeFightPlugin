@@ -176,8 +176,10 @@ public class HotbarManager {
     }
 
     public static void resortInventory(Player p, HotbarDataManager dataManager) {
+        resortInventory(p, dataManager.load(p.getUniqueId()));
+    }
 
-        Map<Integer, String> layout = dataManager.load(p.getUniqueId());
+    public static void resortInventory(Player p, Map<Integer, String> layout) {
         if (layout == null || layout.isEmpty()) return;
 
         ItemStack[] contents = p.getInventory().getContents();

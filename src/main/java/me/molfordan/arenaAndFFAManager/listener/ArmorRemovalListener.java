@@ -32,8 +32,15 @@ public class ArmorRemovalListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
+
+
+
+
         
         Player player = (Player) event.getWhoClicked();
+
+        String worldName = player.getWorld().getName();
+        if (!worldName.startsWith("bf")) return;
         
         // Only apply restriction in arenas
         if (!arenaManager.isInArenaIgnoreY(player)) return;

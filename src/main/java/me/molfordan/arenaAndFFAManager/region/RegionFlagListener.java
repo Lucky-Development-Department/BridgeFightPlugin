@@ -1,5 +1,6 @@
 package me.molfordan.arenaAndFFAManager.region;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -92,13 +93,20 @@ public class RegionFlagListener implements Listener {
             e.setCancelled(true);
         }
     }
-
+    /*
     @EventHandler
     public void onPickup(PlayerPickupItemEvent e) {
+        // Allow pickup in BedFight worlds
+        if (e.getPlayer().getWorld().getName().startsWith("bf_")) {
+            return;
+        }
         if (isDenied(e.getPlayer(), FlagType.ITEM_PICKUP)) {
             e.setCancelled(true);
+            Bukkit.getLogger().info("Item pickup canceled for " + e.getPlayer().getName());
         }
     }
+
+     */
 
     // -------------------------
     // ENTRY / EXIT (block movement)
