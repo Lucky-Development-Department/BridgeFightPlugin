@@ -7,10 +7,7 @@ import me.molfordan.arenaAndFFAManager.commands.arena.ArenaCommand;
 import me.molfordan.arenaAndFFAManager.commands.arena.ArenaConfigReloadCommand;
 import me.molfordan.arenaAndFFAManager.commands.bridgefight.BridgeBanCommand;
 import me.molfordan.arenaAndFFAManager.commands.bridgefight.PlatformCommand;
-import me.molfordan.arenaAndFFAManager.commands.common.HotbarManagerCommand;
-import me.molfordan.arenaAndFFAManager.commands.common.LeaderboardCommand;
-import me.molfordan.arenaAndFFAManager.commands.common.ReportCommand;
-import me.molfordan.arenaAndFFAManager.commands.common.StatsCommand;
+import me.molfordan.arenaAndFFAManager.commands.common.*;
 import me.molfordan.arenaAndFFAManager.commands.common.gui.GUICustomKit;
 import me.molfordan.arenaAndFFAManager.commands.utils.*;
 import me.molfordan.arenaAndFFAManager.commands.common.gui.GUILeaderboardCommand;
@@ -27,6 +24,7 @@ import me.molfordan.arenaAndFFAManager.database.DatabaseManager;
 import me.molfordan.arenaAndFFAManager.gui.GUILeaderboardBridgeFight;
 import me.molfordan.arenaAndFFAManager.gui.GUILeaderboardBuildFFA;
 import me.molfordan.arenaAndFFAManager.gui.GUILeaderboardMain;
+import me.molfordan.arenaAndFFAManager.gui.StatsGUI;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.BedFightHotbarListener;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarListener;
 import me.molfordan.arenaAndFFAManager.hotbarmanager.HotbarSorter;
@@ -41,10 +39,7 @@ import me.molfordan.arenaAndFFAManager.manager.*;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
 import me.molfordan.arenaAndFFAManager.placeholder.LeaderboardPlaceholderExpansion;
-import me.molfordan.arenaAndFFAManager.queue.QueueCommand;
-import me.molfordan.arenaAndFFAManager.queue.QueueGUI;
-import me.molfordan.arenaAndFFAManager.queue.QueueListener;
-import me.molfordan.arenaAndFFAManager.queue.QueueManager;
+import me.molfordan.arenaAndFFAManager.queue.*;
 import me.molfordan.arenaAndFFAManager.region.CommandRegionManager;
 import me.molfordan.arenaAndFFAManager.region.RegionFlagListener;
 import me.molfordan.arenaAndFFAManager.restore.DailyArenaRestorer;
@@ -111,7 +106,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private BedFightHotbarSessionManager bedFightHotbarSessionManager;
     private BedFightListener bedFightListener;
     private QueueGUI queueGUI;
-    private QueueManager queueManager;
+    private MatchmakingService matchmakingService;
+    private PartyManager partyManager;
+    private DuelManager duelManager;
+    private StatsGUI statsGUI;
     private PatchNotesManager patchNotesManager;
     private FireballTracker fireballTracker;
     private TNTTracker tntTracker;
@@ -171,7 +169,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         this.bedFightHotbarDataManager = new BedFightHotbarDataManager(this);
         this.bedFightHotbarSessionManager = new BedFightHotbarSessionManager(this, bedFightHotbarDataManager, kitManager);
         this.queueGUI = new QueueGUI(this);
-        this.queueManager = new QueueManager(this);
+        this.statsGUI = new StatsGUI(this);
+        this.matchmakingService = new MatchmakingService(this);
+        this.partyManager = new PartyManager();
+        this.duelManager = new DuelManager(this);
         this.teleportPendingManager = new TeleportPendingManager();
         this.eggBridgeManager = new EggBridgeManager();
         //this.flightManager = new FlightManager(configManager.getLobbyWorldName());
@@ -213,6 +214,10 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("leave").setExecutor(new LeaveCommand(this));
         getCommand("spec").setExecutor(new SpecCommand(this));
         getCommand("queue").setExecutor(new QueueCommand(this));
+        getCommand("stats").setExecutor(new StatsCommand(this));
+        getCommand("bfparty").setExecutor(new PartyCommand(this));
+        getCommand("bfparty").setTabCompleter(new PartyTabCompleter());
+        getCommand("duel").setExecutor(new DuelCommand(this));
         
         // Create LobbyListener instance to be used by both event registration and BridgeFightCommand
         LobbyListener lobbyListener = new LobbyListener(configManager, this, kitManager);
@@ -273,12 +278,17 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TeleportSnowballListener(combatManager), this);
         getServer().getPluginManager().registerEvents(new ItemDropBlockerListener(arenaManager, this), this);
         getServer().getPluginManager().registerEvents(lobbyListener, this);
-        getServer().getPluginManager().registerEvents(new GlobalListener(statsManager, this), this);
+        getServer().getPluginManager().registerEvents(new GlobalListener(statsManager, this, arenaManager), this);
         getServer().getPluginManager().registerEvents(new BuildFFAListener(configManager, kitManager), this);
         getServer().getPluginManager().registerEvents(new BridgeFightListener(platformManager, configManager, this), this);
         this.bedFightListener = new BedFightListener(this, bedFightManager);
         getServer().getPluginManager().registerEvents(this.bedFightListener, this);
         getServer().getPluginManager().registerEvents(new BedFightHotbarListener(this, bedFightHotbarSessionManager), this);
+        getServer().getPluginManager().registerEvents(new SpectatorListener(this), this);
+        getServer().getPluginManager().registerEvents(new PartyItemListener(this), this);
+        getServer().getPluginManager().registerEvents(new PartyQueueGUIListener(this), this);
+        getServer().getPluginManager().registerEvents(new PartyListGUIListener(this), this);
+        getServer().getPluginManager().registerEvents(new PartyListener(this), this);
         getServer().getPluginManager().registerEvents(new QueueListener(this), this);
         getServer().getPluginManager().registerEvents(new BedfightKnockback(), this);
         getServer().getPluginManager().registerEvents(new HotbarListener(this, hotbarSessionManager, kitManager), this);
@@ -496,8 +506,20 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         return queueGUI;
     }
 
-    public QueueManager getQueueManager() {
-        return queueManager;
+    public StatsGUI getStatsGUI() {
+        return statsGUI;
+    }
+
+    public MatchmakingService getMatchmakingService() {
+        return matchmakingService;
+    }
+
+    public PartyManager getPartyManager() {
+        return partyManager;
+    }
+
+    public DuelManager getDuelManager() {
+        return duelManager;
     }
 
     public BridgeFightKitManager getBridgeFightKitManager(){

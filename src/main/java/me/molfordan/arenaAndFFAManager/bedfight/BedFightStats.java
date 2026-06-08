@@ -7,4 +7,5 @@ public class BedFightStats {
     public int voidKills = 0;
     public int finalKills = 0;
     public int voidFinalKills = 0;
+    public int bedsBroken = 0;
 }

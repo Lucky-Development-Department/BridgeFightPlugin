@@ -216,7 +216,7 @@ public class BlockEventListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
 
         String worldName = event.getPlayer().getWorld().getName();
-        if (!worldName.startsWith("bf_")) {
+        if (worldName.startsWith("bf_")) {
             return;
         }
 
@@ -360,7 +360,7 @@ public class BlockEventListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
 
         String worldName = event.getPlayer().getWorld().getName();
-        if (!worldName.startsWith("bf_")) {
+        if (worldName.startsWith("bf_")) {
             return;
         }
 

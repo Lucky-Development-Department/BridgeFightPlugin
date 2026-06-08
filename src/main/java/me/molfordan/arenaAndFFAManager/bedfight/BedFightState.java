@@ -7,5 +7,6 @@ public enum BedFightState {
     RESPAWNED,
     BED_DESTROYED,
     ENDED,
-    SPECTATOR
+    SPECTATOR,
+    SPECTATOR_DUEL
 }

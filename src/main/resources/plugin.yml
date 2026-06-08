@@ -1,5 +1,5 @@
 name: ArenaAndFFAManager
-version: '0.0.1'
+version: '2.2.1'
 main: me.molfordan.arenaAndFFAManager.ArenaAndFFAManager
 api-version: '1.8'
 softdepend:
@@ -159,6 +159,13 @@ commands:
   queue:
     usage: '/queue'
     description: 'Open the queue menu'
+  duel:
+    usage: '/duel <player>'
+    description: 'Duel another player'
+  bfparty:
+    usage: '/bfparty <create|invite|disband|leave>'
+    description: 'BedFight party command'
+    aliases: [bfp]
   togglebridgeegg:
     usage: '/togglebridgeegg'
     description: 'toggle bridge egg functionality'

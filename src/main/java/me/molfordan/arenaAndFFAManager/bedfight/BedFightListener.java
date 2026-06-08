@@ -16,9 +16,7 @@ import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static me.molfordan.arenaAndFFAManager.ArenaAndFFAManager.plugin;
@@ -28,6 +26,7 @@ public class BedFightListener implements Listener {
     private final BedFightManager bedFightManager;
     private final Map<UUID, UUID> lastAttacker = new ConcurrentHashMap<>();
     private final Map<UUID, Long> hitTimestamp = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> killMessageTimestamp = new ConcurrentHashMap<>();
     private final Map<UUID, Location> deathLocations = new ConcurrentHashMap<>();
 
     public BedFightListener(ArenaAndFFAManager plugin, BedFightManager bedFightManager) {
@@ -64,6 +63,19 @@ public class BedFightListener implements Listener {
         if (session == null) return;
 
         if (session.getPlayerState(player.getUniqueId()) == BedFightState.PREPARE || session.getPlayerState(player.getUniqueId()) == BedFightState.SPECTATOR) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onInventoryClick(org.bukkit.event.inventory.InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        Player player = (Player) event.getWhoClicked();
+        BedFightSession session = bedFightManager.getSession(player);
+        if (session == null) return;
+
+        // Prevent armor removal
+        if (event.getSlotType() == org.bukkit.event.inventory.InventoryType.SlotType.ARMOR) {
             event.setCancelled(true);
         }
     }
@@ -235,6 +247,34 @@ public class BedFightListener implements Listener {
         return isSameLocation(otherHalf, registeredLoc);
     }
 
+    private void sendActionBar(Player player, String message) {
+        try {
+            String nmsVersion = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
+            Class<?> chatComponentText = Class.forName("net.minecraft.server." + nmsVersion + ".ChatComponentText");
+            Class<?> iChatBaseComponent = Class.forName("net.minecraft.server." + nmsVersion + ".IChatBaseComponent");
+            Class<?> packetPlayOutChat = Class.forName("net.minecraft.server." + nmsVersion + ".PacketPlayOutChat");
+            
+            Object component = chatComponentText.getConstructor(String.class).newInstance(message);
+            Object packet = packetPlayOutChat.getConstructor(iChatBaseComponent, byte.class).newInstance(component, (byte) 2);
+            
+            Object handle = player.getClass().getMethod("getHandle").invoke(player);
+            Object playerConnection = handle.getClass().getField("playerConnection").get(handle);
+            playerConnection.getClass().getMethod("sendPacket", Class.forName("net.minecraft.server." + nmsVersion + ".Packet")).invoke(playerConnection, packet);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @EventHandler
+    public void onBedPickup(PlayerPickupItemEvent event){
+        Player player = event.getPlayer();
+        BedFightSession session = bedFightManager.getSession(player);
+        if (session == null) return;
+        if (event.getItem().equals(Material.BED)){
+            event.setCancelled(true);
+        }
+    }
+
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
@@ -262,17 +302,19 @@ public class BedFightListener implements Listener {
 
         String team = session.getTeam(victim.getUniqueId());
         boolean bedAlive = (team.equals("RED")) ? session.isRedBedAlive() : session.isBlueBedAlive();
+        ChatColor victimColor = team.equalsIgnoreCase("RED") ? ChatColor.RED : ChatColor.BLUE;
 
         if (bedAlive) {
             session.setPlayerState(victim.getUniqueId(), BedFightState.DIED);
 
-            ChatColor victimColor = team.equalsIgnoreCase("RED") ? ChatColor.RED : ChatColor.BLUE;
             ChatColor killerColor = ChatColor.WHITE;
             if (killer != null) {
                 String killerTeam = session.getTeam(killer.getUniqueId());
                 killerColor = (killerTeam != null && killerTeam.equalsIgnoreCase("RED")) ? ChatColor.RED : ChatColor.BLUE;
                 session.getStats(killer.getUniqueId()).kills++;
                 killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+                killMessageTimestamp.put(killer.getUniqueId(), System.currentTimeMillis() + 2000);
+                sendActionBar(killer, ChatColor.RED + "" + ChatColor.BOLD + "KILL! " + victimColor + victim.getName());
             }
 
             String msg = (killer != null) ?
@@ -282,28 +324,68 @@ public class BedFightListener implements Listener {
 
             handleRespawnSequence(victim, session);
         } else {
-            session.setPlayerState(victim.getUniqueId(), BedFightState.ENDED);
-            session.setPlayerState(killer != null ? killer.getUniqueId() : null, BedFightState.ENDED);
-
-            ChatColor victimColor = team.equalsIgnoreCase("RED") ? ChatColor.RED : ChatColor.BLUE;
-            ChatColor killerColor = ChatColor.WHITE;
-            if (killer != null) {
-                String killerTeam = session.getTeam(killer.getUniqueId());
-                killerColor = (killerTeam != null && killerTeam.equalsIgnoreCase("RED")) ? ChatColor.RED : ChatColor.BLUE;
-                session.getStats(killer.getUniqueId()).finalKills++;
-                killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+            // Bed destroyed, set to ended (eliminated)
+            session.setPlayerState(victim.getUniqueId(), BedFightState.SPECTATOR_DUEL);
+            session.addSpectator(victim.getUniqueId());
+            
+            // Setup spectator visual/movement mode
+            victim.setGameMode(GameMode.ADVENTURE);
+            victim.setAllowFlight(true);
+            victim.setFlying(true);
+            
+            SpectatorListener.giveSpectatorItems(victim);
+            
+            // Hide from everyone else
+            for (UUID uuid : session.getAllPlayers()) {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p != null) p.hidePlayer(victim);
+            }
+            // Show to other spectators
+            for (UUID specId : session.getSpectators()) {
+                Player spec = Bukkit.getPlayer(specId);
+                if (spec != null) victim.showPlayer(spec);
             }
 
-            String msg = (killer != null) ?
-                    String.format(BedFightMessages.FINAL_KILL, victimColor + victim.getName(), killerColor + killer.getName()) :
-                    String.format(BedFightMessages.FINAL_DEATH, victimColor + victim.getName());
-            broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
+            if (killer != null) {
+                String killerTeam = session.getTeam(killer.getUniqueId());
+                ChatColor killerColor = (killerTeam != null && killerTeam.equalsIgnoreCase("RED")) ? ChatColor.RED : ChatColor.BLUE;
+                session.getStats(killer.getUniqueId()).finalKills++;
+                killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+                killMessageTimestamp.put(killer.getUniqueId(), System.currentTimeMillis() + 2000);
+                sendActionBar(killer, ChatColor.RED + "" + ChatColor.BOLD + "FINAL KILL! " + victimColor + victim.getName());
+                
+                String msg = String.format(BedFightMessages.FINAL_KILL, victimColor + victim.getName(), killerColor + killer.getName());
+                broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
+            } else {
+                String msg = String.format(BedFightMessages.FINAL_DEATH, victimColor + victim.getName());
+                broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
+            }
 
+            // Check for team elimination
+            checkTeamElimination(session, team);
+        }
+    }
+
+    private void checkTeamElimination(BedFightSession session, String team) {
+        boolean allEliminated = true;
+        for (UUID memberId : new ArrayList<>(session.getPlayersByTeam(team))) {
+            BedFightState state = session.getPlayerState(memberId);
+            if (state != BedFightState.ENDED && state != BedFightState.SPECTATOR_DUEL) {
+                allEliminated = false;
+                break;
+            }
+        }
+
+        if (allEliminated) {
             if (team.equals("RED")) session.setRedEliminated(true);
             else session.setBlueEliminated(true);
 
             updateScoreboard(session);
-            Player winner = team.equals("RED") ? Bukkit.getPlayer(session.getBluePlayer()) : Bukkit.getPlayer(session.getRedPlayer());
+            
+            String winnerTeam = team.equals("RED") ? "BLUE" : "RED";
+            Set<UUID> winnerTeamPlayers = session.getPlayersByTeam(winnerTeam);
+            Player winner = winnerTeamPlayers.isEmpty() ? null : Bukkit.getPlayer(winnerTeamPlayers.iterator().next());
+            
             bedFightManager.endMatch(session, winner);
         }
     }
@@ -314,18 +396,14 @@ public class BedFightListener implements Listener {
         BedFightSession session = bedFightManager.getSession(player);
         if (session == null) return;
         
+        // Use saved death location if it exists, otherwise fallback to team spawn
         Location deathLoc = deathLocations.remove(player.getUniqueId());
-        plugin.getLogger().info("DEBUG: Retrieving death location for " + player.getName() + ": " + deathLoc);
-
         if (deathLoc != null) {
             event.setRespawnLocation(deathLoc);
         } else {
-            String team = session.getTeam(player.getUniqueId());
-            if (team != null) {
-                boolean bedAlive = (team.equals("RED")) ? session.isRedBedAlive() : session.isBlueBedAlive();
-                if (bedAlive) {
-                    event.setRespawnLocation(session.getSpawn(player.getUniqueId()));
-                }
+            Location spawn = session.getSpawn(player.getUniqueId());
+            if (spawn != null) {
+                event.setRespawnLocation(spawn);
             }
         }
     }
@@ -352,10 +430,10 @@ public class BedFightListener implements Listener {
     }
 
     private void updateScoreboard(BedFightSession session) {
-        Player p1 = Bukkit.getPlayer(session.getRedPlayer());
-        Player p2 = Bukkit.getPlayer(session.getBluePlayer());
-        if (p1 != null) plugin.getBedFightScoreboard().updateScoreboard(p1);
-        if (p2 != null) plugin.getBedFightScoreboard().updateScoreboard(p2);
+        for (UUID uuid : session.getAllPlayers()) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null) plugin.getBedFightScoreboard().updateScoreboard(p);
+        }
     }
 
     private void handleVoidFall(Player player, BedFightSession session) {
@@ -373,41 +451,41 @@ public class BedFightListener implements Listener {
             killerColor = (killerTeam != null && killerTeam.equalsIgnoreCase("RED")) ? ChatColor.RED : ChatColor.BLUE;
         }
 
-        // Play sound for the opponent only
-        Player p1 = Bukkit.getPlayer(session.getRedPlayer());
-        Player p2 = Bukkit.getPlayer(session.getBluePlayer());
-        Player opponent = player.equals(p1) ? p2 : p1;
-
-        if (opponent != null) {
-            opponent.playSound(opponent.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+        // Play sound for the opponents
+        String opponentTeam = team.equals("RED") ? "BLUE" : "RED";
+        for (UUID uuid : session.getPlayersByTeam(opponentTeam)) {
+            Player opponent = Bukkit.getPlayer(uuid);
+            if (opponent != null) {
+                opponent.playSound(opponent.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+            }
         }
 
         if (!bedAlive) {
-            session.setPlayerState(player.getUniqueId(), BedFightState.BED_DESTROYED);
-            // ... (rest of method)
+            session.setPlayerState(player.getUniqueId(), BedFightState.ENDED);
             if (killer != null) {
                 session.getStats(killer.getUniqueId()).voidFinalKills++;
+                killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+                killMessageTimestamp.put(killer.getUniqueId(), System.currentTimeMillis() + 2000);
+                sendActionBar(killer, ChatColor.RED + "" + ChatColor.BOLD + "FINAL VOID KILL! " + victimColor + player.getName());
+                
+                String msg = String.format(BedFightMessages.FINAL_VOID_KILL, victimColor + player.getName(), killerColor + killer.getName());
+                broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
+            } else {
+                String msg = String.format(BedFightMessages.FINAL_VOID_DEATH, victimColor + player.getName());
+                broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
             }
 
-            String msg = (killer != null) ?
-                    String.format(BedFightMessages.FINAL_VOID_KILL, victimColor + player.getName(), killerColor + killer.getName()) :
-                    String.format(BedFightMessages.FINAL_VOID_DEATH, victimColor + player.getName());
-
-            broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
-
-            if (team.equals("RED")) session.setRedEliminated(true);
-            else session.setBlueEliminated(true);
-
-            updateScoreboard(session);
-            Player winner = team.equals("RED") ? Bukkit.getPlayer(session.getBluePlayer()) : Bukkit.getPlayer(session.getRedPlayer());
-            bedFightManager.endMatch(session, winner);
+            checkTeamElimination(session, team);
             return;
         }
 
         session.setPlayerState(player.getUniqueId(), BedFightState.DIED);
-        
+
         if (killer != null) {
             session.getStats(killer.getUniqueId()).voidKills++;
+            killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+            killMessageTimestamp.put(killer.getUniqueId(), System.currentTimeMillis() + 2000);
+            sendActionBar(killer, ChatColor.RED + "" + ChatColor.BOLD + "VOID KILL! " + victimColor + player.getName());
         }
 
         String msg = (killer != null) ?
@@ -436,11 +514,13 @@ public class BedFightListener implements Listener {
         Player victim = (Player) event.getEntity();
         Player attacker = (Player) event.getDamager();
 
+        if (!event.getEntity().getWorld().getName().startsWith("bf_")) return;
+
         BedFightSession victimSession = bedFightManager.getSession(victim);
         BedFightSession attackerSession = bedFightManager.getSession(attacker);
 
         if ((victimSession != null && (victimSession.getPlayerState(victim.getUniqueId()) == BedFightState.PREPARE || victimSession.getPlayerState(victim.getUniqueId()) == BedFightState.DIED || victimSession.getPlayerState(victim.getUniqueId()) == BedFightState.SPECTATOR || victimSession.getPlayerState(victim.getUniqueId()) == BedFightState.ENDED)) ||
-            (attackerSession != null && (attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.PREPARE || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.DIED || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.SPECTATOR || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.ENDED))) {
+                (attackerSession != null && (attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.PREPARE || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.DIED || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.SPECTATOR || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.ENDED))) {
             event.setCancelled(true);
             return;
         }
@@ -463,6 +543,31 @@ public class BedFightListener implements Listener {
 
         lastAttacker.put(victim.getUniqueId(), attacker.getUniqueId());
         hitTimestamp.put(victim.getUniqueId(), System.currentTimeMillis());
+
+        // Check if a kill message was recently sent
+        if (System.currentTimeMillis() < killMessageTimestamp.getOrDefault(attacker.getUniqueId(), 0L)) {
+            return; // Skip health bar update
+        }
+
+        // Enemy Health Bar
+        double health = Math.max(0, victim.getHealth() - event.getFinalDamage());
+        double maxHealth = victim.getMaxHealth();
+        int hearts = 10;
+        double healthPerHeart = maxHealth / hearts;
+        
+        StringBuilder bar = new StringBuilder();
+        for (int i = 0; i < hearts; i++) {
+            double heartHealth = (i + 1) * healthPerHeart;
+            if (health >= heartHealth) {
+                bar.append(ChatColor.DARK_RED).append("❤");
+            } else if (health > heartHealth - healthPerHeart) {
+                bar.append(ChatColor.RED).append("❤");
+            } else {
+                bar.append(ChatColor.GRAY).append("❤");
+            }
+        }
+        
+        sendActionBar(attacker, ChatColor.YELLOW + victim.getName() + " " + bar.toString());
     }
 
     private void handleRespawnSequence(Player player, BedFightSession session) {
@@ -474,9 +579,11 @@ public class BedFightListener implements Listener {
         player.setHealth(20.0);
         player.setFoodLevel(20);
 
-        Player opponent = Bukkit.getPlayer(session.getTeam(player.getUniqueId()).equals("RED") ? session.getBluePlayer() : session.getRedPlayer());
-        if (opponent != null) {
-            opponent.hidePlayer(player);
+        String team = session.getTeam(player.getUniqueId());
+        String opponentTeam = team.equals("RED") ? "BLUE" : "RED";
+        for (UUID uuid : session.getPlayersByTeam(opponentTeam)) {
+            Player opponent = Bukkit.getPlayer(uuid);
+            if (opponent != null) opponent.hidePlayer(player);
         }
 
         for (int i = 0; i < 3; i++) {
@@ -496,7 +603,7 @@ public class BedFightListener implements Listener {
                 spawn = session.getMatchWorld().getSpawnLocation();
             }
             Location safeSpawn = spawn.clone().add(0, 1, 0);
-            
+
             sendTitle(player, " ", "");
             safeSpawn.clone().add(0, 0, 0).getBlock().setType(Material.AIR);
             safeSpawn.clone().add(0, 1, 0).getBlock().setType(Material.AIR);
@@ -504,8 +611,9 @@ public class BedFightListener implements Listener {
 
             player.setFlying(false);
             player.setAllowFlight(false);
-            if (opponent != null) {
-                opponent.showPlayer(player);
+            for (UUID uuid : session.getPlayersByTeam(opponentTeam)) {
+                Player opponent = Bukkit.getPlayer(uuid);
+                if (opponent != null) opponent.showPlayer(player);
             }
 
             session.setPlayerState(player.getUniqueId(), BedFightState.RESPAWNED);
@@ -522,17 +630,17 @@ public class BedFightListener implements Listener {
             updateScoreboard(session);
         }, 5 * 20L);
     }
-public void broadcastMessage(BedFightSession session, String message) {
-    for (UUID uuid : session.getAllPlayers()) {
-        Player p = Bukkit.getPlayer(uuid);
-        if (p != null) p.sendMessage(message);
+    public void broadcastMessage(BedFightSession session, String message) {
+        for (UUID uuid : session.getAllPlayers()) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null) p.sendMessage(message);
+        }
+        for (UUID uuid : session.getSpectators()) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null) p.sendMessage(message);
+        }
+        plugin.getLogger().info("BedFight Msg: " + ChatColor.stripColor(message));
     }
-    for (UUID uuid : session.getSpectators()) {
-        Player p = Bukkit.getPlayer(uuid);
-        if (p != null) p.sendMessage(message);
-    }
-    plugin.getLogger().info("BedFight Msg: " + ChatColor.stripColor(message));
-}
 
     private void sendTitle(Player player, String title, String subtitle) {
         player.sendTitle(title, subtitle);
@@ -549,6 +657,9 @@ public void broadcastMessage(BedFightSession session, String message) {
     private void broadcastBedBreak(BedFightSession session, String color, Player breaker) {
         ChatColor bedTeamColor = color.equalsIgnoreCase("RED") ? ChatColor.RED : ChatColor.BLUE;
 
+        // Increment bed break stat
+        session.getStats(breaker.getUniqueId()).bedsBroken++;
+
         String breakerTeam = session.getTeam(breaker.getUniqueId());
         ChatColor breakerColor = (breakerTeam != null && breakerTeam.equalsIgnoreCase("RED")) ? ChatColor.RED : ChatColor.BLUE;
 
@@ -556,7 +667,7 @@ public void broadcastMessage(BedFightSession session, String message) {
                 bedTeamColor + color + " Bed" + ChatColor.YELLOW + " was destroyed by " + breakerColor + breaker.getName() + ChatColor.YELLOW + "!";
 
         broadcastMessage(session, msg);
-        
+
         // Send title to the team whose bed was destroyed
         for (UUID uuid : session.getPlayersByTeam(color)) {
             Player p = Bukkit.getPlayer(uuid);
@@ -564,10 +675,10 @@ public void broadcastMessage(BedFightSession session, String message) {
                 sendTitle(p, ChatColor.RED + "" + ChatColor.BOLD + "BED DESTROYED", ChatColor.WHITE + "you will no longer respawn");
             }
         }
-        
+
         // Play sounds
         breaker.playSound(breaker.getLocation(), Sound.ENDERDRAGON_GROWL, 1f, 1f);
-        
+
         for (UUID uuid : session.getPlayersByTeam(color)) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) p.playSound(p.getLocation(), Sound.WITHER_DEATH, 1f, 1f);
@@ -598,12 +709,11 @@ public void broadcastMessage(BedFightSession session, String message) {
             return;
         }
 
-        UUID opponentUUID = session.getRedPlayer().equals(player.getUniqueId()) ? session.getBluePlayer() : session.getRedPlayer();
-        Player opponent = Bukkit.getPlayer(opponentUUID);
-
+        String team = session.getTeam(player.getUniqueId());
         String msg = String.format(BedFightMessages.DISCONNECT, player.getName());
         broadcastMessage(session, ChatColor.RED + msg);
 
-        bedFightManager.endMatch(session, opponent);
+        session.setPlayerState(player.getUniqueId(), BedFightState.ENDED);
+        checkTeamElimination(session, team);
     }
 }

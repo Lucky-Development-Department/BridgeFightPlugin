@@ -3,6 +3,7 @@ package me.molfordan.arenaAndFFAManager.bedfight;
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
+import me.molfordan.arenaAndFFAManager.queue.enums.QueueType;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -10,6 +11,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.io.File;
+import java.util.UUID;
 
 public class BedFightCommand implements CommandExecutor {
     private final ArenaAndFFAManager plugin;
@@ -189,7 +191,10 @@ public class BedFightCommand implements CommandExecutor {
             return true;
         }
 
-        plugin.getBedFightManager().startMatch(arena, p1, p2);
+        java.util.Set<UUID> redTeam = new java.util.HashSet<>(java.util.Collections.singletonList(p1.getUniqueId()));
+        java.util.Set<UUID> blueTeam = new java.util.HashSet<>(java.util.Collections.singletonList(p2.getUniqueId()));
+
+        plugin.getBedFightManager().startMatch(arena, QueueType.DUEL, redTeam, blueTeam);
         return true;
     }
 

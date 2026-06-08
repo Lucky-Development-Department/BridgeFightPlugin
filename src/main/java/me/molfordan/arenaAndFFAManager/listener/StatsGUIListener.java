@@ -19,7 +19,7 @@ public class StatsGUIListener implements Listener {
         if (event.getClickedInventory() == null) return;
 
         // Check by inventory title (Java 8 compatible)
-        if (event.getView().getTitle().startsWith("§6Stats: §e")) {
+        if (event.getView().getTitle().equals("§9Your Statistics") || event.getView().getTitle().startsWith("§6Stats: §e")) {
             event.setCancelled(true); // ⛔ block taking items
         }
     }

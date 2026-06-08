@@ -1,6 +1,7 @@
 package me.molfordan.arenaAndFFAManager.listener;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
+import me.molfordan.arenaAndFFAManager.manager.ArenaManager;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import me.molfordan.arenaAndFFAManager.manager.StatsManager;
 //import me.molfordan.arenaAndFFAManager.utils.FlightManager;
@@ -29,10 +30,13 @@ public class GlobalListener implements Listener {
     private long lastWeatherCommand = 0;
 
     private final ArenaAndFFAManager plugin;
+    private final ArenaManager arenaManager;
 
-    public GlobalListener(StatsManager statsManager, ArenaAndFFAManager plugin) {
+    public GlobalListener(StatsManager statsManager, ArenaAndFFAManager plugin, ArenaManager arenaManager) {
         this.statsManager = statsManager;
         this.plugin = plugin;
+
+        this.arenaManager = arenaManager;
     }
 
     @EventHandler
@@ -61,6 +65,12 @@ public class GlobalListener implements Listener {
         Player player = event.getPlayer();
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
+        
+        if (plugin.getPartyManager().isInParty(player)) {
+            plugin.getPartyManager().givePartyItems(player);
+        } else {
+            plugin.getSpawnItem().giveSpawnItem(player);
+        }
     }
 
     @EventHandler
@@ -76,31 +86,21 @@ public class GlobalListener implements Listener {
 
     @EventHandler
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
-        String cmd = event.getMessage().toLowerCase();
-        if (cmd.startsWith("/weather")) {
-            lastWeatherCommand = System.currentTimeMillis();
-        }
-
         Player player = event.getPlayer();
+        if (player.isOp()) return; // Admins are always exempt
+
         me.molfordan.arenaAndFFAManager.bedfight.BedFightSession session = plugin.getBedFightManager().getSession(player);
-        
-        if (session != null) {
-            String[] parts = cmd.split(" ");
-            String command = parts[0];
-            
-            // Allow list for BedFight sessions
-            if (command.equals("/kiteditor") || command.equals("/forfeit") || command.equals("/leave") || command.equals("/queue")) {
-                // Special case: check if it's /queue leave
-                if (command.equals("/queue") && parts.length > 1 && parts[1].equalsIgnoreCase("leave")) {
-                    return;
-                }
-                // Allow kiteditor, forfeit, leave
-                if (!command.equals("/queue")) {
-                    return;
-                }
-            }
-            
-            // Block all other commands during a BedFight session
+        if (session == null) return;
+
+        String cmd = event.getMessage().toLowerCase();
+        String command = cmd.split(" ")[0];
+
+        // Whitelist: commands allowed during a match
+        Set<String> allowed = new HashSet<>(Arrays.asList(
+            "/kiteditor", "/forfeit", "/leave", "/duel", "/bfparty", "/bfp", "/queue"
+        ));
+
+        if (!allowed.contains(command) || !player.isOp()) {
             event.setCancelled(true);
             player.sendMessage(ChatColor.RED + "You cannot use that command during a BedFight match!");
         }
@@ -173,10 +173,17 @@ public class GlobalListener implements Listener {
     public void onQuit(PlayerQuitEvent e) {
         Player player = e.getPlayer();
         UUID uuid = e.getPlayer().getUniqueId();
+        
+        // Remove from queue
+        plugin.getMatchmakingService().removeFromQueue(player);
+        
         PlayerStats stats = statsManager.getStats(uuid);
-        stats.resetBuildStreak();
-        stats.resetBridgeStreak();
-        statsManager.savePlayerAsync(statsManager.getStats(uuid));
+        if (stats != null) {
+            stats.resetBuildStreak();
+            stats.resetBridgeStreak();
+            statsManager.savePlayerAsync(stats);
+        }
+        
         e.setQuitMessage(null);
         for (PotionEffect effect : player.getActivePotionEffects()) {
             player.removePotionEffect(effect.getType());

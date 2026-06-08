@@ -20,7 +20,9 @@ public class QueueCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         if (args.length > 0 && args[0].equalsIgnoreCase("leave")) {
-            plugin.getQueueManager().leaveQueue(player);
+            plugin.getMatchmakingService().removeFromQueue(player);
+            player.sendMessage(ChatColor.RED + "You left the queue!");
+            plugin.getSpawnItem().giveSpawnItem(player);
         } else {
             plugin.getQueueGUI().openMain(player);
         }

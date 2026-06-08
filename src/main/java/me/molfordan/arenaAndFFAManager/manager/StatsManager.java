@@ -1,9 +1,10 @@
 package me.molfordan.arenaAndFFAManager.manager;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
+import me.molfordan.arenaAndFFAManager.database.DatabaseManager;
+import me.molfordan.arenaAndFFAManager.utils.EloCalculator;
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
 import me.molfordan.arenaAndFFAManager.database.DatabaseConnector;
-import me.molfordan.arenaAndFFAManager.database.DatabaseManager;
 import me.molfordan.arenaAndFFAManager.database.MongoDatabaseConnector;
 import me.molfordan.arenaAndFFAManager.database.SQLDatabaseConnector;
 import me.molfordan.arenaAndFFAManager.database.connectors.MongoDBConnector;
@@ -81,15 +82,31 @@ public class StatsManager {
     
     private void addMissingColumns(Connection conn) {
         try (Statement st = conn.createStatement()) {
-            // Check and add last_selected_bridge_kit if missing
-            try {
-                st.executeQuery("SELECT last_selected_bridge_kit FROM player_stats LIMIT 1");
-            } catch (SQLException e) {
-                //plugin.debug("[Stats] Adding missing last_selected_bridge_kit column");
-                st.executeUpdate("ALTER TABLE player_stats ADD COLUMN last_selected_bridge_kit VARCHAR(64) DEFAULT 'Default'");
+            String[] columns = {
+                "last_selected_bridge_kit VARCHAR(64) DEFAULT 'Default'",
+                "ranked_elo INT DEFAULT 1000",
+                "peak_elo INT DEFAULT 1000",
+                "ranked_wins INT DEFAULT 0",
+                "ranked_losses INT DEFAULT 0",
+                "ranked_kills INT DEFAULT 0",
+                "ranked_deaths INT DEFAULT 0",
+                "ranked_beds INT DEFAULT 0",
+                "unranked_wins INT DEFAULT 0",
+                "unranked_losses INT DEFAULT 0",
+                "unranked_kills INT DEFAULT 0",
+                "unranked_deaths INT DEFAULT 0",
+                "unranked_beds INT DEFAULT 0",
+                "best_unranked_streak INT DEFAULT 0"
+            };
+
+            for (String col : columns) {
+                String colName = col.split(" ")[0];
+                try {
+                    st.executeQuery("SELECT " + colName + " FROM player_stats LIMIT 1");
+                } catch (SQLException e) {
+                    st.executeUpdate("ALTER TABLE player_stats ADD COLUMN " + col);
+                }
             }
-            
-            //plugin.debug("[Stats] Column migration completed");
             
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "Failed to add missing columns to SQL table", e);
@@ -153,14 +170,25 @@ public class StatsManager {
 
                     stats.setBridgeKills(rs.getInt("bridge_kills"));
                     stats.setBridgeDeaths(rs.getInt("bridge_deaths"));
-                    stats.setBridgeStreak(rs.getInt("bridge_streak"));
-                    stats.setBridgeHighestStreak(rs.getInt("bridge_highest_streak"));
-
                     stats.setBuildKills(rs.getInt("build_kills"));
                     stats.setBuildDeaths(rs.getInt("build_deaths"));
-                    stats.setBuildStreak(rs.getInt("build_streak"));
-                    stats.setBuildHighestStreak(rs.getInt("build_highest_streak"));
                     stats.setLastSelectedBridgeKit(rs.getString("last_selected_bridge_kit"));
+
+                    // New Ranked/Unranked
+                    stats.setRankedElo(rs.getInt("ranked_elo"));
+                    stats.setPeakElo(rs.getInt("peak_elo"));
+                    stats.setRankedWins(rs.getInt("ranked_wins"));
+                    stats.setRankedLosses(rs.getInt("ranked_losses"));
+                    stats.setRankedKills(rs.getInt("ranked_kills"));
+                    stats.setRankedDeaths(rs.getInt("ranked_deaths"));
+                    stats.setRankedBeds(rs.getInt("ranked_beds"));
+                    
+                    stats.setUnrankedWins(rs.getInt("unranked_wins"));
+                    stats.setUnrankedLosses(rs.getInt("unranked_losses"));
+                    stats.setUnrankedKills(rs.getInt("unranked_kills"));
+                    stats.setUnrankedDeaths(rs.getInt("unranked_deaths"));
+                    stats.setUnrankedBeds(rs.getInt("unranked_beds"));
+                    stats.setBestUnrankedStreak(rs.getInt("best_unranked_streak"));
 
                     return stats;
                 }
@@ -263,17 +291,21 @@ public class StatsManager {
     private void saveToSQL(PlayerStats stats) {
         SQLDatabaseConnector sql = (SQLDatabaseConnector) db.getConnector();
 
-        try (Connection conn = sql.getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "INSERT INTO player_stats (uuid, username, bridge_kills, bridge_deaths, bridge_streak, bridge_highest_streak, " +
-                             "build_kills, build_deaths, build_streak, build_highest_streak, last_selected_bridge_kit) " +
-                             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-                             "ON DUPLICATE KEY UPDATE username=?, bridge_kills=?, bridge_deaths=?, bridge_streak=?, bridge_highest_streak=?, " +
-                             "build_kills=?, build_deaths=?, build_streak=?, build_highest_streak=?, last_selected_bridge_kit=?"
-             )) {
+        String query = "INSERT INTO player_stats (uuid, username, bridge_kills, bridge_deaths, bridge_streak, bridge_highest_streak, " +
+                "build_kills, build_deaths, build_streak, build_highest_streak, last_selected_bridge_kit, " +
+                "ranked_elo, peak_elo, ranked_wins, ranked_losses, ranked_kills, ranked_deaths, ranked_beds, " +
+                "unranked_wins, unranked_losses, unranked_kills, unranked_deaths, unranked_beds, best_unranked_streak) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE username=?, bridge_kills=?, bridge_deaths=?, bridge_streak=?, bridge_highest_streak=?, " +
+                "build_kills=?, build_deaths=?, build_streak=?, build_highest_streak=?, last_selected_bridge_kit=?, " +
+                "ranked_elo=?, peak_elo=?, ranked_wins=?, ranked_losses=?, ranked_kills=?, ranked_deaths=?, ranked_beds=?, " +
+                "unranked_wins=?, unranked_losses=?, unranked_kills=?, unranked_deaths=?, unranked_beds=?, best_unranked_streak=?";
 
-            String uuid = stats.getUuid().toString();
-            ps.setString(1, uuid);
+        try (Connection conn = sql.getConnection();
+             PreparedStatement ps = conn.prepareStatement(query)) {
+
+            // INSERT
+            ps.setString(1, stats.getUuid().toString());
             ps.setString(2, stats.getUsername());
             ps.setInt(3, stats.getBridgeKills());
             ps.setInt(4, stats.getBridgeDeaths());
@@ -284,17 +316,44 @@ public class StatsManager {
             ps.setInt(9, stats.getBuildStreak());
             ps.setInt(10, stats.getBuildHighestStreak());
             ps.setString(11, stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
+            ps.setInt(12, stats.getRankedElo());
+            ps.setInt(13, stats.getPeakElo());
+            ps.setInt(14, stats.getRankedWins());
+            ps.setInt(15, stats.getRankedLosses());
+            ps.setInt(16, stats.getRankedKills());
+            ps.setInt(17, stats.getRankedDeaths());
+            ps.setInt(18, stats.getRankedBeds());
+            ps.setInt(19, stats.getUnrankedWins());
+            ps.setInt(20, stats.getUnrankedLosses());
+            ps.setInt(21, stats.getUnrankedKills());
+            ps.setInt(22, stats.getUnrankedDeaths());
+            ps.setInt(23, stats.getUnrankedBeds());
+            ps.setInt(24, stats.getBestUnrankedStreak());
 
-            ps.setString(12, stats.getUsername());
-            ps.setInt(13, stats.getBridgeKills());
-            ps.setInt(14, stats.getBridgeDeaths());
-            ps.setInt(15, stats.getBridgeStreak());
-            ps.setInt(16, stats.getBridgeHighestStreak());
-            ps.setInt(17, stats.getBuildKills());
-            ps.setInt(18, stats.getBuildDeaths());
-            ps.setInt(19, stats.getBuildStreak());
-            ps.setInt(20, stats.getBuildHighestStreak());
-            ps.setString(21, stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
+            // UPDATE
+            ps.setString(25, stats.getUsername());
+            ps.setInt(26, stats.getBridgeKills());
+            ps.setInt(27, stats.getBridgeDeaths());
+            ps.setInt(28, stats.getBridgeStreak());
+            ps.setInt(29, stats.getBridgeHighestStreak());
+            ps.setInt(30, stats.getBuildKills());
+            ps.setInt(31, stats.getBuildDeaths());
+            ps.setInt(32, stats.getBuildStreak());
+            ps.setInt(33, stats.getBuildHighestStreak());
+            ps.setString(34, stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
+            ps.setInt(35, stats.getRankedElo());
+            ps.setInt(36, stats.getPeakElo());
+            ps.setInt(37, stats.getRankedWins());
+            ps.setInt(38, stats.getRankedLosses());
+            ps.setInt(39, stats.getRankedKills());
+            ps.setInt(40, stats.getRankedDeaths());
+            ps.setInt(41, stats.getRankedBeds());
+            ps.setInt(42, stats.getUnrankedWins());
+            ps.setInt(43, stats.getUnrankedLosses());
+            ps.setInt(44, stats.getUnrankedKills());
+            ps.setInt(45, stats.getUnrankedDeaths());
+            ps.setInt(46, stats.getUnrankedBeds());
+            ps.setInt(47, stats.getBestUnrankedStreak());
 
             ps.executeUpdate();
 
@@ -358,6 +417,32 @@ public class StatsManager {
     }
 
     // --------------------------------------------------------------------------------------
+    // ELO MANAGEMENT
+    // --------------------------------------------------------------------------------------
+    public void updateRankedElo(UUID winnerUUID, UUID loserUUID) {
+        PlayerStats winnerStats = loadPlayer(winnerUUID, null);
+        PlayerStats loserStats = loadPlayer(loserUUID, null);
+
+        int oldWinnerElo = winnerStats.getRankedElo();
+        int oldLoserElo = loserStats.getRankedElo();
+
+        int newWinnerElo = EloCalculator.calculateNewRating(oldWinnerElo, oldLoserElo, 1.0);
+        int newLoserElo = EloCalculator.calculateNewRating(oldLoserElo, oldWinnerElo, 0.0);
+
+        winnerStats.setRankedElo(newWinnerElo);
+        if (newWinnerElo > winnerStats.getPeakElo()) {
+            winnerStats.setPeakElo(newWinnerElo);
+        }
+        winnerStats.setRankedWins(winnerStats.getRankedWins() + 1);
+
+        loserStats.setRankedElo(newLoserElo);
+        loserStats.setRankedLosses(loserStats.getRankedLosses() + 1);
+
+        savePlayer(winnerStats);
+        savePlayer(loserStats);
+    }
+
+    // --------------------------------------------------------------------------------------
     // STATS MANAGEMENT
     // --------------------------------------------------------------------------------------
     public void addKill(UUID uuid, ArenaType type) {
@@ -377,6 +462,7 @@ public class StatsManager {
         }
         savePlayer(stats);
     }
+
 
     public void addDeath(UUID uuid, ArenaType type) {
         PlayerStats stats = loadPlayer(uuid, null);

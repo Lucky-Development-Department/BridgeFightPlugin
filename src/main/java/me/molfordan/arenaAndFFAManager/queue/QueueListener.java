@@ -1,11 +1,15 @@
 package me.molfordan.arenaAndFFAManager.queue;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
+import me.molfordan.arenaAndFFAManager.queue.enums.QueueType;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 public class QueueListener implements Listener {
@@ -29,25 +33,38 @@ public class QueueListener implements Listener {
     }
 
     @EventHandler
-    public void onInventoryClick(org.bukkit.event.inventory.InventoryClickEvent event) {
+    public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
-        org.bukkit.inventory.Inventory inv = event.getClickedInventory();
+        Inventory inv = event.getClickedInventory();
         if (inv == null) return;
 
         String title = event.getView().getTitle();
 
-        if (title.equals(org.bukkit.ChatColor.BLUE + "Select Queue Type")) {
+        if (title.equals(ChatColor.BLUE + "Select Queue Type")) {
             event.setCancelled(true);
-            if (event.getRawSlot() == 3) {
-                plugin.getQueueGUI().openSoloType(player);
+            switch (event.getRawSlot()) {
+                case 2: plugin.getQueueGUI().openSoloType(player); break;
+                case 4: plugin.getQueueGUI().openDuoType(player); break;
+                case 6: plugin.getQueueGUI().openPartyType(player); break;
             }
-        } else if (title.equals(org.bukkit.ChatColor.BLUE + "Select Solo Mode")) {
+        } else if (title.equals(ChatColor.BLUE + "Select Solo Mode")) {
             event.setCancelled(true);
-            if (event.getRawSlot() == 3) {
-                player.closeInventory();
-                plugin.getQueueManager().addSoloUnranked(player);
-            }
+            if (event.getRawSlot() == 3) joinQueue(player, QueueType.SOLO_UNRANKED);
+            if (event.getRawSlot() == 5) joinQueue(player, QueueType.SOLO_RANKED);
+        } else if (title.equals(ChatColor.BLUE + "Select Duo Mode")) {
+            event.setCancelled(true);
+            if (event.getRawSlot() == 3) joinQueue(player, QueueType.DUO_UNRANKED);
+            if (event.getRawSlot() == 5) joinQueue(player, QueueType.DUO_RANKED);
+        } else if (title.equals(ChatColor.BLUE + "Select Party Mode")) {
+            event.setCancelled(true);
+            if (event.getRawSlot() == 3) joinQueue(player, QueueType.PARTY_FIGHT);
+            if (event.getRawSlot() == 5) joinQueue(player, QueueType.PARTY_SPLIT);
         }
+    }
+
+    private void joinQueue(Player player, QueueType type) {
+        player.closeInventory();
+        plugin.getMatchmakingService().addToQueue(player, type);
     }
 }

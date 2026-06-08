@@ -6,6 +6,10 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 public class BedFightScoreboard {
     private final ArenaAndFFAManager plugin;
     private final BedFightManager bedFightManager;
@@ -37,56 +41,90 @@ public class BedFightScoreboard {
             objective.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + "BEDFIGHT");
         }
 
-        Player p1 = Bukkit.getPlayer(session.getRedPlayer());
-        Player p2 = Bukkit.getPlayer(session.getBluePlayer());
-
-        // Status logic: ✔ if bed alive, player count if destroyed, X if eliminated
-        String redStatus = getTeamStatus(session.isRedBedAlive(), session.isRedEliminated(), 1);
-        String blueStatus = getTeamStatus(session.isBlueBedAlive(), session.isBlueEliminated(), 1);
+        int redAlive = 0;
+        int redPingTotal = 0;
+        int redCount = 0;
+        for (UUID uuid : session.getPlayersByTeam("RED")) {
+            redCount++;
+            if (session.getPlayerState(uuid) != BedFightState.ENDED) redAlive++;
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null) redPingTotal += getPing(p);
+        }
         
-        String redSuffix = player.equals(p1) ? ChatColor.GRAY + " YOU" : "";
-        String blueSuffix = player.equals(p2) ? ChatColor.GRAY + " YOU" : "";
-
-        int p1Ping = (p1 != null) ? getPing(p1) : 0;
-        int p2Ping = (p2 != null) ? getPing(p2) : 0;
-
-        int yourPing;
-        int enemyPing;
-
-        if (player.equals(p1)) {
-            yourPing = p1Ping;
-            enemyPing = p2Ping;
-        } else if (player.equals(p2)) {
-            yourPing = p2Ping;
-            enemyPing = p1Ping;
-        } else {
-            // Spectator
-            yourPing = getPing(player);
-            enemyPing = (p1Ping + p2Ping) / 2; // Average or something? 
+        int blueAlive = 0;
+        int bluePingTotal = 0;
+        int blueCount = 0;
+        for (UUID uuid : session.getPlayersByTeam("BLUE")) {
+            blueCount++;
+            if (session.getPlayerState(uuid) != BedFightState.ENDED) blueAlive++;
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null) bluePingTotal += getPing(p);
         }
 
-        // Calculate total kills
-        BedFightStats stats = session.getStats(player.getUniqueId());
-        int totalKills = (stats != null) ? (stats.kills + stats.voidKills + stats.finalKills + stats.voidFinalKills) : 0;
+        // Status logic using BedFightScoreboardState
+        if (session.isSpectator(player.getUniqueId())) {
+            // Spectator view
+            updateScore(board, objective, ChatColor.RED + "Red: " + getTeamFormatted(session, "RED"), 8);
+            updateScore(board, objective, ChatColor.BLUE + "Blue: " + getTeamFormatted(session, "BLUE"), 7);
+            updateScore(board, objective, " ", 6);
+            updateScore(board, objective, ChatColor.WHITE + "Status: " + ChatColor.YELLOW + "SPECTATING", 5);
+        } else {
+            // Participant view
+            BedFightScoreboardState redState = session.getTeamScoreboardState("RED");
+            BedFightScoreboardState blueState = session.getTeamScoreboardState("BLUE");
+            
+            String redStatus = redState.getIcon(redAlive);
+            String blueStatus = blueState.getIcon(blueAlive);
+            
+            String team = session.getTeam(player.getUniqueId());
+            String redSuffix = "RED".equals(team) ? ChatColor.GRAY + " YOU" : "";
+            String blueSuffix = "BLUE".equals(team) ? ChatColor.GRAY + " YOU" : "";
 
-        // Use teams for better score updating to prevent flickering
-        updateScore(board, objective, ChatColor.RED + "R " + ChatColor.WHITE + "Red: " + redStatus + redSuffix, 8);
-        updateScore(board, objective, ChatColor.BLUE + "B " + ChatColor.WHITE + "Blue: " + blueStatus + blueSuffix, 7);
-        updateScore(board, objective, " ", 6);
-        if (stats != null) {
-            updateScore(board, objective, ChatColor.WHITE + "Kills: " + ChatColor.YELLOW + totalKills, 5);
-        } else {
-            updateScore(board, objective, ChatColor.GRAY + "SPECTATING", 5);
-        }
-        updateScore(board, objective, "  ", 4);
-        updateScore(board, objective, ChatColor.WHITE + "Your ping: " + ChatColor.YELLOW + yourPing + "ms", 3);
-        if (stats != null) {
-            updateScore(board, objective, ChatColor.WHITE + "Their ping: " + ChatColor.YELLOW + enemyPing + "ms", 2);
-        } else {
-            updateScore(board, objective, ChatColor.WHITE + "Arena: " + ChatColor.YELLOW + session.getArena().getName(), 2);
+            int yourPing = getPing(player);
+            int enemyPing;
+
+            if ("RED".equals(team)) {
+                enemyPing = blueCount > 0 ? bluePingTotal / blueCount : 0;
+            } else if ("BLUE".equals(team)) {
+                enemyPing = redCount > 0 ? redPingTotal / redCount : 0;
+            } else {
+                enemyPing = (redCount + blueCount) > 0 ? (redPingTotal + bluePingTotal) / (redCount + blueCount) : 0;
+            }
+
+            BedFightStats stats = session.getStats(player.getUniqueId());
+            int totalKills = (stats != null) ? (stats.kills + stats.voidKills + stats.finalKills + stats.voidFinalKills) : 0;
+
+            updateScore(board, objective, ChatColor.RED + "R " + ChatColor.WHITE + "Red: " + redStatus + redSuffix, 8);
+            updateScore(board, objective, ChatColor.BLUE + "B " + ChatColor.WHITE + "Blue: " + blueStatus + blueSuffix, 7);
+            updateScore(board, objective, " ", 6);
+            if (stats != null) {
+                updateScore(board, objective, ChatColor.WHITE + "Kills: " + ChatColor.YELLOW + totalKills, 5);
+            } else {
+                updateScore(board, objective, ChatColor.GRAY + "SPECTATING", 5);
+            }
+            updateScore(board, objective, "  ", 4);
+            updateScore(board, objective, ChatColor.WHITE + "Your ping: " + ChatColor.YELLOW + yourPing + "ms", 3);
+            if (stats != null) {
+                updateScore(board, objective, ChatColor.WHITE + "Enemy avg ping: " + ChatColor.YELLOW + enemyPing + "ms", 2);
+            } else {
+                updateScore(board, objective, ChatColor.WHITE + "Arena: " + ChatColor.YELLOW + session.getArena().getName(), 2);
+            }
         }
         updateScore(board, objective, "   ", 1);
         updateScore(board, objective, ChatColor.YELLOW + "luckynetwork.net", 0);
+    }
+
+    private String getTeamFormatted(BedFightSession session, String team) {
+        List<String> formatted = new ArrayList<>();
+        for (UUID uuid : session.getPlayersByTeam(team)) {
+            if (session.getPlayerState(uuid) == BedFightState.PLAYING || session.getPlayerState(uuid) == BedFightState.RESPAWNED) {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p != null) {
+                    formatted.add(p.getName() + "(" + getPing(p) + "ms)");
+                }
+            }
+        }
+        return formatted.isEmpty() ? ChatColor.RED + "ELIMINATED" : String.join(", ", formatted);
     }
 
     private void updateScore(Scoreboard board, Objective objective, String entry, int score) {
@@ -108,11 +146,5 @@ public class BedFightScoreboard {
         } catch (Exception e) {
             return 0;
         }
-    }
-
-    private String getTeamStatus(boolean bedAlive, boolean eliminated, int playerCount) {
-        if (bedAlive) return ChatColor.GREEN + "✔";
-        if (eliminated) return ChatColor.RED + "X";
-        return ChatColor.YELLOW + String.valueOf(playerCount);
     }
 }

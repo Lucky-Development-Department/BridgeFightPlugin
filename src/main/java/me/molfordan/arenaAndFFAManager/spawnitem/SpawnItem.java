@@ -257,31 +257,31 @@ public class SpawnItem implements Listener {
 
         String name = item.getItemMeta().getDisplayName();
 
-        if (item.getType() == Material.COMPASS && name.equals("§eMode Selector")) {
+        if (item.getType() == Material.COMPASS && name.startsWith("§eMode Selector")) {
             event.setCancelled(true);
             player.openInventory(getCompassGUI());
         }
-        else if (item.getType() == Material.SKULL_ITEM && name.equals("§a" + player.getName() + "'s Stats")) {
+        else if (item.getType() == Material.SKULL_ITEM && name.startsWith("§a" + player.getName() + "'s Stats")) {
             event.setCancelled(true);
             player.performCommand("guistats");
         }
-        else if (item.getType() == Material.BOOK && name.equals("§bHotbar Manager")) {
+        else if (item.getType() == Material.BOOK && name.startsWith("§bHotbar Manager")) {
             event.setCancelled(true);
             player.performCommand("hotbarmanager");
         }
-        else if (item.getType() == Material.PAPER && name.equals("§bBedFight Kit Editor §7(Right Click)")) {
+        else if (item.getType() == Material.PAPER && name.startsWith("§bBedFight Kit Editor §7(Right Click)")) {
             event.setCancelled(true);
             player.performCommand("kiteditor");
         }
-        else if (item.getType() == Material.IRON_SWORD && name.equals("§aQueue §7(Right Click)")) {
+        else if (item.getType() == Material.IRON_SWORD && name.startsWith("§aQueue §7(Right Click)")) {
             event.setCancelled(true);
             player.performCommand("queue");
         }
-        else if (item.getType() == Material.COMPASS && name.equals("§ePlatform Selector")) {
+        else if (item.getType() == Material.COMPASS && name.startsWith("§ePlatform Selector")) {
             event.setCancelled(true);
             player.openInventory(getPlatGUI());
         }
-        else if (item.getType() == Material.REDSTONE && name.equals("§cBack to Spawn")) {
+        else if (item.getType() == Material.REDSTONE && name.startsWith("§cBack to Spawn")) {
             event.setCancelled(true);
             player.performCommand("spawn");
         } else if (item.getType() == Material.BOOK &&
@@ -398,14 +398,14 @@ public class SpawnItem implements Listener {
         if (item == null || !item.hasItemMeta()) return null;
         String name = item.getItemMeta().getDisplayName();
 
-        if (item.getType() == Material.COMPASS && name.equals("§eMode Selector")) return LockedItemType.MODE_SELECTOR;
-        if (item.getType() == Material.COMPASS && name.equals("§ePlatform Selector")) return LockedItemType.PLATFORM_SELECTOR;
-        if (item.getType() == Material.SKULL_ITEM && name.equals("§a" + player.getName() + "'s Stats")) return LockedItemType.STATS_HEAD;
-        if (item.getType() == Material.BOOK && name.equals("§bHotbar Manager")) return LockedItemType.HOTBAR_MANAGER;
-        if (item.getType() == Material.PAPER && name.equals("§bBedFight Kit Editor §7(Right Click)")) return LockedItemType.KIT_EDITOR;
-        if (item.getType() == Material.IRON_SWORD && name.equals("§aQueue §7(Right Click)")) return LockedItemType.QUEUE_ITEM;
-        if (item.getType() == Material.REDSTONE && name.equals("§cBack to Spawn")) return LockedItemType.BACK_TO_SPAWN;
-        if (item.getType() == Material.BOOK && name.equals("§eSelect Kit")) return LockedItemType.SELECT_KIT;
+        if (item.getType() == Material.COMPASS &&  name.startsWith("§eMode Selector")) return LockedItemType.MODE_SELECTOR;
+        if (item.getType() == Material.COMPASS &&  name.startsWith("§ePlatform Selector")) return LockedItemType.PLATFORM_SELECTOR;
+        if (item.getType() == Material.SKULL_ITEM && name.startsWith("§a" + player.getName() + "'s Stats")) return LockedItemType.STATS_HEAD;
+        if (item.getType() == Material.BOOK &&  name.startsWith("§bHotbar Manager")) return LockedItemType.HOTBAR_MANAGER;
+        if (item.getType() == Material.PAPER &&  name.startsWith("§bBedFight Kit Editor §7(Right Click)")) return LockedItemType.KIT_EDITOR;
+        if (item.getType() == Material.IRON_SWORD && name.startsWith("§aQueue §7(Right Click)")) return LockedItemType.QUEUE_ITEM;
+        if (item.getType() == Material.REDSTONE && name.startsWith("§cBack to Spawn")) return LockedItemType.BACK_TO_SPAWN;
+        if (item.getType() == Material.BOOK && name.startsWith("§eSelect Kit")) return LockedItemType.SELECT_KIT;
 
         return null;
     }

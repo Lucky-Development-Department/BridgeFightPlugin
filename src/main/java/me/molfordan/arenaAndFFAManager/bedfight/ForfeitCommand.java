@@ -10,6 +10,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.Set;
 import java.util.UUID;
 
 public class ForfeitCommand implements CommandExecutor {
@@ -37,8 +38,15 @@ public class ForfeitCommand implements CommandExecutor {
         }
 
         // Active state forfeit logic
-        UUID opponentUUID = session.getRedPlayer().equals(player.getUniqueId()) ? session.getBluePlayer() : session.getRedPlayer();
-        Player opponent = Bukkit.getPlayer(opponentUUID);
+        String playerTeam = session.getTeam(player.getUniqueId());
+        String opponentTeam = playerTeam.equals("RED") ? "BLUE" : "RED";
+        Set<UUID> opponents = session.getPlayersByTeam(opponentTeam);
+        
+        Player opponent = null;
+        for (UUID oppId : opponents) {
+            opponent = Bukkit.getPlayer(oppId);
+            if (opponent != null) break;
+        }
 
         String msg = String.format(BedFightMessages.FORFEIT, player.getName());
         plugin.getBedFightListener().broadcastMessage(session, ChatColor.RED + msg);
@@ -59,8 +67,17 @@ public class ForfeitCommand implements CommandExecutor {
         player.setGameMode(GameMode.ADVENTURE);
         player.setFlying(false);
         player.setAllowFlight(false);
-        plugin.getSpawnItem().giveSpawnItem(player);
+        player.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+        
         plugin.getBedFightManager().removePlayerFromSession(player);
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (plugin.getPartyManager().isInParty(player.getUniqueId())) {
+                plugin.getPartyManager().givePartyItems(player);
+            } else {
+                plugin.getSpawnItem().giveSpawnItem(player);
+            }
+        }, 1L);
     }
 
 }
