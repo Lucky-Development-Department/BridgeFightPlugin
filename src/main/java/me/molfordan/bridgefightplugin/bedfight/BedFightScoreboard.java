@@ -41,8 +41,8 @@ public class BedFightScoreboard {
             objective.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + "BEDFIGHT");
         }
 
-        updateScore(board, objective, ChatColor.GRAY + "" + ChatColor.STRIKETHROUGH + "                                              ", 11);
-        updateScore(board, objective, "", 10);
+        updateScore(board, objective, ChatColor.GRAY + "" + ChatColor.STRIKETHROUGH + "                               ", 10);
+
 
         int redAlive = 0;
         int redPingTotal = 0;
@@ -115,7 +115,7 @@ public class BedFightScoreboard {
                 updateScore(board, objective, ChatColor.WHITE + "Arena: " + ChatColor.YELLOW + session.getArena().getName(), 3);
             }
         }
-        updateScore(board, objective, ChatColor.GRAY + "" + ChatColor.STRIKETHROUGH + "                                              ", 2);
+        updateScore(board, objective, ChatColor.GRAY + "" + ChatColor.STRIKETHROUGH + "                               ", 2);
         updateScore(board, objective, ChatColor.WHITE + "Version: "+ ChatColor.YELLOW+"0.5", 1);
         updateScore(board, objective, ChatColor.YELLOW + "luckynetwork.net", 0);
     }
