@@ -1,0 +1,136 @@
+package me.molfordan.bridgefightplugin.listener;
+
+import me.molfordan.bridgefightplugin.BridgeFightPlugin;
+import me.molfordan.bridgefightplugin.manager.*;
+import me.molfordan.bridgefightplugin.object.Arena;
+import me.molfordan.bridgefightplugin.object.enums.ArenaType;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.entity.EnderPearl;
+import org.bukkit.entity.Player;
+import org.bukkit.event.*;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+public class DeathEventListener implements Listener {
+
+    private final ArenaManager arenaManager;
+    private final BridgeFightPlugin plugin;
+    private final CombatManager combatManager;
+    private final DeathMessageManager deathMessageManager;
+    private final Map<UUID, EnderPearl> thrownPearls = new HashMap<>();
+
+    public DeathEventListener(ArenaManager arenaManager, BridgeFightPlugin plugin,
+                              CombatManager combatManager, DeathMessageManager deathMessageManager) {
+
+        this.arenaManager = arenaManager;
+        this.plugin = plugin;
+        this.combatManager = combatManager;
+        this.deathMessageManager = deathMessageManager;
+    }
+
+    /**
+     * UNIFIED VOID FALL DETECTION
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() == GameMode.SPECTATOR) return;
+
+        Location to = event.getTo();
+        if (to == null) return;
+
+        Arena arena = plugin.getArenaManager().getArenaByLocationIgnoreY(to);
+        if (arena == null) return;
+
+        // Only check Y position for void
+        if (to.getY() > arena.getVoidLimit()) return;
+
+        UUID id = player.getUniqueId();
+
+        // Prevent duplicate handling
+        if (DeathMessageManager.voidHandled.contains(id)) {
+            plugin.debug("Void death: " + player.getName() + " already handled.");
+            return;
+        }
+
+        // Mark as handled
+        DeathMessageManager.voidHandled.add(id);
+        plugin.debug("Void death: " + player.getName() + " detected. Arena: " + arena.getName());
+
+        // Clear the flag after a short delay (2 seconds should be enough)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            DeathMessageManager.voidHandled.remove(id);
+            plugin.debug("Void death: " + player.getName() + " voidHandled flag cleared.");
+        }, 40L); // 40 ticks = 2 seconds
+
+        // For BuildFFA, handling is now done in BuildFFAListener via teleportation
+        if (arena.getType() == ArenaType.FFABUILD) {
+            return;
+        }
+
+        // For other arena types, void handling is done elsewhere (e.g. BridgeFightListener)
+    }
+
+    /**
+     * BUILD FFA death
+     */
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+
+        EnderPearl pearl = thrownPearls.remove(player.getUniqueId());
+        if (pearl != null && !pearl.isDead()) {
+            pearl.remove(); // cancels pearl teleport
+        }
+
+        plugin.getEnderPearlListener().removeCooldown(player);
+
+        // your existing death code:
+        Arena arena = arenaManager.getArenaByLocation(player.getLocation());
+        if (arena == null) return;
+
+        event.setDeathMessage(null);
+
+        if (arena.getType() != ArenaType.FFABUILD) return;
+        if (player.getLocation().getY() <= arena.getVoidLimit()) return;
+
+        combatManager.clear(player);
+        deathMessageManager.clear(player.getUniqueId());
+    }
+
+    @EventHandler
+    public void onPearlLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof EnderPearl)) return;
+
+        EnderPearl pearl = (EnderPearl) event.getEntity();
+        if (!(pearl.getShooter() instanceof Player)) return;
+
+        Player player = (Player) pearl.getShooter();
+        thrownPearls.put(player.getUniqueId(), pearl);
+    }
+
+    @EventHandler
+    public void onRespawn(PlayerRespawnEvent event) {
+        Player player = event.getPlayer();
+        Arena arena = arenaManager.getArenaByLocation(player.getLocation());
+        if (arena == null) return;
+
+        // Explicitly ignore BEDFIGHT to prevent interference
+        if (arena.getType() == ArenaType.BEDFIGHT || arena.getType() == ArenaType.DUEL) return;
+
+        if (arena.getCenter() != null &&
+                (arena.getType() == ArenaType.FFA || arena.getType() == ArenaType.FFABUILD)) {
+
+            Location center = arena.getCenter().clone().add(0.5, 0, 0.5);
+            event.setRespawnLocation(center);
+        }
+    }
+}

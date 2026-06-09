@@ -1,6 +1,6 @@
-name: ArenaAndFFAManager
-version: '2.2.4'
-main: me.molfordan.arenaAndFFAManager.ArenaAndFFAManager
+name: BridgeFightPlugin
+version: '2.3.0'
+main: me.molfordan.bridgefightplugin.BridgeFightPlugin
 api-version: '1.8'
 softdepend:
   - PlaceholderAPI
