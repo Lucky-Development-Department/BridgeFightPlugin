@@ -62,8 +62,9 @@ public class BedFightScoreboard {
         }
 
         // Status logic using BedFightScoreboardState
-        if (session.isSpectator(player.getUniqueId())) {
-            // Spectator view
+        BedFightState playerState = session.getPlayerState(player.getUniqueId());
+        if (session.isSpectator(player.getUniqueId()) && playerState != BedFightState.SPECTATOR_DUEL) {
+            // Spectator view (for joining spectators)
             updateScore(board, objective, ChatColor.RED + "Red: " + getTeamFormatted(session, "RED"), 8);
             updateScore(board, objective, ChatColor.BLUE + "Blue: " + getTeamFormatted(session, "BLUE"), 7);
             updateScore(board, objective, " ", 6);
@@ -76,7 +77,7 @@ public class BedFightScoreboard {
             String redStatus = redState.getIcon(redAlive);
             String blueStatus = blueState.getIcon(blueAlive);
             
-            String team = session.getTeam(player.getUniqueId());
+            String team = session.getInitialTeam(player.getUniqueId());
             String redSuffix = "RED".equals(team) ? ChatColor.GRAY + " YOU" : "";
             String blueSuffix = "BLUE".equals(team) ? ChatColor.GRAY + " YOU" : "";
 
@@ -105,7 +106,7 @@ public class BedFightScoreboard {
             updateScore(board, objective, "  ", 4);
             updateScore(board, objective, ChatColor.WHITE + "Your ping: " + ChatColor.YELLOW + yourPing + "ms", 3);
             if (stats != null) {
-                updateScore(board, objective, ChatColor.WHITE + "Enemy avg ping: " + ChatColor.YELLOW + enemyPing + "ms", 2);
+                updateScore(board, objective, ChatColor.WHITE + "Enemy ping: " + ChatColor.YELLOW + enemyPing + "ms", 2);
             } else {
                 updateScore(board, objective, ChatColor.WHITE + "Arena: " + ChatColor.YELLOW + session.getArena().getName(), 2);
             }

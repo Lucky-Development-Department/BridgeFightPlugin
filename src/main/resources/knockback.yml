@@ -1,0 +1,29 @@
+build-bridge:
+  consistent: false
+  frictionHorizontal: 2.0
+  frictionVertical: 2.0
+  horizontal: 0.4
+  airVerticalResistance: 0.05
+  extraHorizontal: 0.5
+  extraAirVertical: 0.07
+  extraVertical: 0.07
+  vertical: 0.4
+  airVertical: 0.43925
+  straight: false
+  wTap: true
+  verticalLimit: 0.4
+  splitHitDetection: 65
+
+bedfight:
+  consistent: true
+  horizontal: 0.53
+  extraHorizontal: 0.327125
+  extraAirVertical: 0
+  extraVertical: 0
+  vertical: 0.361375
+  airVertical: 0.361375
+  airVerticalResistance: 0.13
+  straight: true
+  wTap: true
+  verticalLimit: 0.4
+  splitHitDetection: 25

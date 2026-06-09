@@ -1,6 +1,7 @@
 package me.molfordan.arenaAndFFAManager.bedfight;
 
 import me.molfordan.arenaAndFFAManager.ArenaAndFFAManager;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -22,15 +23,15 @@ public class SpectatorListener implements Listener {
     public void onInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         BedFightSession session = plugin.getBedFightManager().getSession(player);
-        if (session == null || session.getPlayerState(player.getUniqueId()) != BedFightState.ENDED) return;
+        // Relax: Allow interacting if player is in a session (participant or spectator)
+        if (session == null) return;
 
         ItemStack item = event.getItem();
         if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return;
 
         String name = item.getItemMeta().getDisplayName();
         if (name.contains("Teleport")) {
-            // Placeholder: Open inventory for teleport
-            player.sendMessage(ChatColor.YELLOW + "Teleport feature coming soon!");
+            me.molfordan.arenaAndFFAManager.gui.SpectatorTeleportGUI.open(player, session);
         } else if (name.contains("Leave")) {
             player.performCommand("leave");
         }
@@ -40,10 +41,25 @@ public class SpectatorListener implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
-        BedFightSession session = plugin.getBedFightManager().getSession(player);
-        if (session == null || session.getPlayerState(player.getUniqueId()) != BedFightState.ENDED) return;
         
-        event.setCancelled(true);
+        if (event.getView().getTitle().equals(ChatColor.DARK_GRAY + "Teleport to Player")) {
+            event.setCancelled(true);
+            if (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.AIR) return;
+            
+            String targetName = ChatColor.stripColor(event.getCurrentItem().getItemMeta().getDisplayName());
+            Player target = Bukkit.getPlayer(targetName);
+            if (target != null) {
+                player.teleport(target);
+                player.sendMessage(ChatColor.GREEN + "Teleported to " + target.getName());
+                player.closeInventory();
+            }
+            return;
+        }
+
+        BedFightSession session = plugin.getBedFightManager().getSession(player);
+        if (session != null && (session.getPlayerState(player.getUniqueId()) == BedFightState.ENDED || session.isSpectator(player.getUniqueId()))) {
+            event.setCancelled(true);
+        }
     }
 
     public static void giveSpectatorItems(Player player) {

@@ -63,6 +63,16 @@ public class GlobalListener implements Listener {
     @EventHandler
     public void onWorldChange(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
+        
+        // 1. Queue check must be first and exclusive to ensure it overrides everything
+        if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
+            player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
+            plugin.getMatchmakingService().giveLeaveItem(player);
+            return;
+        }
+
+        // 2. Otherwise restore party or spawn items
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
         
@@ -70,6 +80,22 @@ public class GlobalListener implements Listener {
             plugin.getPartyManager().givePartyItems(player);
         } else {
             plugin.getSpawnItem().giveSpawnItem(player);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerIsQueueing(EntityDamageEvent event){
+        Player player = (Player) event.getEntity();
+        if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerIsQueueing(EntityDamageByEntityEvent event){
+        Player player = (Player) event.getEntity();
+        if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
+            event.setCancelled(true);
         }
     }
 

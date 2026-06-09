@@ -47,55 +47,58 @@ public class BedfightKnockback implements Listener {
     }
 
     private void defaultKnockback(World world){
-
+        // This is tricky, I need to map the yaml to the Spaceframe config.
+        // Actually, just reading the YAML should be enough.
+        
         try{
             if (world instanceof SpaceframeWorld){
                 SpaceframeWorld spaceframeWorld = (SpaceframeWorld) world;
                 PandaSpigotWorldConfig config = spaceframeWorld.getPandaSpigotWorldConfig();
                 if (config != null) {
-                    config.knockback.consistent = false;
-                    config.knockback.frictionHorizontal = 2.0;
-                    config.knockback.frictionVertical = 2.0;
-                    config.knockback.horizontal = 0.4;
-                    config.knockback.extraHorizontal = 0.5;
-                    config.knockback.extraAirVertical = 0.07;
-                    config.knockback.extraVertical = 0.07;
-                    config.knockback.vertical = 0.4;
-                    config.knockback.airVertical = 0.43925;
-                    config.knockback.straight = false;
-                    config.knockback.wTap = true;
-                    config.knockback.verticalLimit = 0.4;
-                    config.knockback.splitHitDetection = 65;
+                    org.bukkit.configuration.ConfigurationSection c = ArenaAndFFAManager.plugin.getKnockbackConfig().getConfig().getConfigurationSection("build-bridge");
+                    config.knockback.consistent = c.getBoolean("consistent");
+                    config.knockback.frictionHorizontal = c.getDouble("frictionHorizontal");
+                    config.knockback.frictionVertical = c.getDouble("frictionVertical");
+                    config.knockback.horizontal = c.getDouble("horizontal");
+                    config.knockback.airVerticalResistance = c.getDouble("airVerticalResistance");
+                    config.knockback.extraHorizontal = c.getDouble("extraHorizontal");
+                    config.knockback.extraAirVertical = c.getDouble("extraAirVertical");
+                    config.knockback.extraVertical = c.getDouble("extraVertical");
+                    config.knockback.vertical = c.getDouble("vertical");
+                    config.knockback.airVertical = c.getDouble("airVertical");
+                    config.knockback.straight = c.getBoolean("straight");
+                    config.knockback.wTap = c.getBoolean("wTap");
+                    config.knockback.verticalLimit = c.getDouble("verticalLimit");
+                    config.knockback.splitHitDetection = c.getInt("splitHitDetection");
                 }
             }
         }catch (NoClassDefFoundError e){
-            // This happens if the Spaceframe API classes aren't available at runtime
             System.err.println("BedfightKnockback: Spaceframe API not fully available, skipping knockback application.");
         }
     }
 
     private void bedfightKnockback(World world) {
-
         try {
             if (world instanceof SpaceframeWorld){
                 SpaceframeWorld spaceframeWorld = (SpaceframeWorld) world;
                 PandaSpigotWorldConfig config = spaceframeWorld.getPandaSpigotWorldConfig();
                 if (config != null) {
-                    config.knockback.consistent = true;
-                    config.knockback.horizontal = 0.53;
-                    config.knockback.extraHorizontal = 0.327125;
-                    config.knockback.extraAirVertical = 0;
-                    config.knockback.extraVertical = 0;
-                    config.knockback.vertical = 0.361375;
-                    config.knockback.airVertical = 0.361375;
-                    config.knockback.straight = true;
-                    config.knockback.wTap = true;
-                    config.knockback.verticalLimit = 0.4;
-                    config.knockback.splitHitDetection = 25;
+                    org.bukkit.configuration.ConfigurationSection c = ArenaAndFFAManager.plugin.getKnockbackConfig().getConfig().getConfigurationSection("bedfight");
+                    config.knockback.consistent = c.getBoolean("consistent");
+                    config.knockback.horizontal = c.getDouble("horizontal");
+                    config.knockback.extraHorizontal = c.getDouble("extraHorizontal");
+                    config.knockback.extraAirVertical = c.getDouble("extraAirVertical");
+                    config.knockback.extraVertical = c.getDouble("extraVertical");
+                    config.knockback.vertical = c.getDouble("vertical");
+                    config.knockback.airVertical = c.getDouble("airVertical");
+                    config.knockback.airVerticalResistance = c.getDouble("airVerticalResistance");
+                    config.knockback.straight = c.getBoolean("straight");
+                    config.knockback.wTap = c.getBoolean("wTap");
+                    config.knockback.verticalLimit = c.getDouble("verticalLimit");
+                    config.knockback.splitHitDetection = c.getInt("splitHitDetection");
                 }
             }
         } catch (NoClassDefFoundError e) {
-            // This happens if the Spaceframe API classes aren't available at runtime
             System.err.println("BedfightKnockback: Spaceframe API not fully available, skipping knockback application.");
         }
     }

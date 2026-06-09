@@ -4,7 +4,7 @@
   <groupId>me.molfordan</groupId>
   <artifactId>ArenaFFAManager</artifactId>
   <name>ArenaFFAManager</name>
-  <version>2.1.1</version>
+  <version>2.2.1</version>
   <build>
     <defaultGoal>clean package</defaultGoal>
     <resources>
@@ -32,10 +32,25 @@
               <goal>shade</goal>
             </goals>
             <configuration>
+              <artifactSet>
+                <includes>
+                  <include>org.mongodb:*</include>
+                  <include>org.bson:*</include>
+                  <include>org.mariadb.jdbc:*</include>
+                </includes>
+              </artifactSet>
               <relocations>
                 <relocation>
                   <pattern>org.mariadb</pattern>
                   <shadedPattern>me.molfordan.libs.mariadb</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.mongodb</pattern>
+                  <shadedPattern>me.molfordan.libs.mongodb</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.bson</pattern>
+                  <shadedPattern>me.molfordan.libs.bson</shadedPattern>
                 </relocation>
               </relocations>
             </configuration>

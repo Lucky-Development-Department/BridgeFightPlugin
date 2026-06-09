@@ -18,9 +18,18 @@ public class BedFightManager {
     private final ArenaAndFFAManager plugin;
     private final Map<UUID, BedFightSession> playerSessionMap = new HashMap<>();
     private final Map<Arena, BedFightSession> activeSessions = new HashMap<>();
+    private final Map<UUID, Long> gameEndTimes = new HashMap<>();
 
     public BedFightManager(ArenaAndFFAManager plugin) {
         this.plugin = plugin;
+    }
+
+    public void setGameEndTime(UUID uuid, long time) {
+        gameEndTimes.put(uuid, time);
+    }
+
+    public long getGameEndTime(UUID uuid) {
+        return gameEndTimes.getOrDefault(uuid, 0L);
     }
 
     public void startMatch(Arena arena, QueueType queueType, Set<UUID> redTeam, Set<UUID> blueTeam) {
@@ -137,6 +146,7 @@ public class BedFightManager {
 
     public void addSpectator(BedFightSession session, Player spectator) {
         session.addSpectator(spectator.getUniqueId());
+        session.setPlayerState(spectator.getUniqueId(), BedFightState.SPECTATOR);
         playerSessionMap.put(spectator.getUniqueId(), session);
 
         Location specLoc = session.getArena().getCenter();
@@ -156,10 +166,18 @@ public class BedFightManager {
             if (p != null) p.hidePlayer(spectator);
         }
 
+        SpectatorListener.giveSpectatorItems(spectator);
         spectator.sendMessage(ChatColor.YELLOW + "You are now spectating the match.");
     }
 
     public void removePlayerFromSession(Player player) {
+        BedFightSession session = playerSessionMap.get(player.getUniqueId());
+        if (session != null) {
+            // Robustly remove from all team/spectator sets
+            session.getPlayersByTeam("RED").remove(player.getUniqueId());
+            session.getPlayersByTeam("BLUE").remove(player.getUniqueId());
+            session.getSpectators().remove(player.getUniqueId());
+        }
         playerSessionMap.remove(player.getUniqueId());
     }
 
@@ -215,15 +233,23 @@ public void endMatch(BedFightSession session, Player winner) {
 
     // Mark as ended
     session.setActive(false);
+    long now = System.currentTimeMillis();
     for (UUID uuid : session.getAllPlayers()) {
         session.setPlayerState(uuid, BedFightState.ENDED);
+        setGameEndTime(uuid, now);
     }
     for (UUID specId : session.getSpectators()) {
         session.setPlayerState(specId, BedFightState.ENDED);
+        setGameEndTime(specId, now);
     }
 
-    String winMsg = ChatColor.GOLD + (winner != null ? winner.getName() : "Nobody") + " won the BedFight!";
-    String winnerName = (winner != null ? winner.getName() : "Nobody");
+    ChatColor winnerColor = ChatColor.WHITE;
+    if (winningTeam != null) {
+        winnerColor = winningTeam.equalsIgnoreCase("RED") ? ChatColor.RED : ChatColor.BLUE;
+    }
+
+    String winMsg = (winner != null ? winnerColor + winner.getName() : ChatColor.WHITE + "Nobody") + ChatColor.YELLOW + " won the match!";
+    String winnerName = (winner != null ? winnerColor + winner.getName() : ChatColor.WHITE + "Nobody");
 
     // Ranked result message
     String rankedResultMsg = "";
@@ -275,16 +301,17 @@ public void endMatch(BedFightSession session, Player winner) {
     }
 
     // Broadcast to all participants and spectators
-    Set<UUID> allInitialPlayers = new HashSet<>(session.getInitialTeamPlayers("RED"));
-    allInitialPlayers.addAll(session.getInitialTeamPlayers("BLUE"));
+    Set<UUID> allUniquePlayers = new HashSet<>(session.getInitialTeamPlayers("RED"));
+    allUniquePlayers.addAll(session.getInitialTeamPlayers("BLUE"));
+    allUniquePlayers.addAll(session.getSpectators());
     
-    for (UUID uuid : allInitialPlayers) {
+    for (UUID uuid : allUniquePlayers) {
         Player p = Bukkit.getPlayer(uuid);
         if (p != null) {
             // Rematch logic for Duel
             if (session.getQueueType() == QueueType.DUEL && winner != null) {
                 Player opponent = null;
-                for (UUID pId : allInitialPlayers) {
+                for (UUID pId : allUniquePlayers) {
                     if (!pId.equals(p.getUniqueId())) {
                         opponent = Bukkit.getPlayer(pId);
                         break;
@@ -303,29 +330,34 @@ public void endMatch(BedFightSession session, Player winner) {
             }
             if (!rankedResultMsg.isEmpty()) p.sendMessage(rankedResultMsg);
 
-            if (p.equals(winner)) {
-                // If they won, show victory, otherwise defeat
-                p.sendTitle(ChatColor.GREEN + "" + ChatColor.BOLD + "VICTORY!", ChatColor.GREEN + winnerName + ChatColor.WHITE + " won the match!");
+            p.playSound(p.getLocation(), Sound.EXPLODE, 1f, 1f);
+            
+            if (session.isSpectator(uuid)) {
+                 p.sendTitle(ChatColor.RED + "" + ChatColor.BOLD + "DEFEAT!", winnerName + ChatColor.YELLOW + " won the match!");
+            } else if (p.equals(winner)) {
+                p.sendTitle(ChatColor.GREEN + "" + ChatColor.BOLD + "VICTORY!", winnerName + ChatColor.YELLOW + " won the match!");
             } else {
-                p.sendTitle(ChatColor.RED + "" + ChatColor.BOLD + "DEFEAT!", ChatColor.RED + winnerName + ChatColor.WHITE + " won the match!");
+                p.sendTitle(ChatColor.RED + "" + ChatColor.BOLD + "DEFEAT!", winnerName + ChatColor.YELLOW + " won the match!");
             }
         }
     }
-    for (UUID specId : new ArrayList<>(session.getSpectators())) {
-        Player spec = Bukkit.getPlayer(specId);
-        if (spec != null) {
-            spec.sendMessage(winMsg);
-            spec.sendTitle(ChatColor.RED + "" + ChatColor.BOLD + "DEFEAT!", ChatColor.GREEN + winnerName + ChatColor.WHITE + " won the match!");
-        }
-    }
 
-        // 1. Clear inventory and enable flight
+        // Apply state to all participants
         ItemStack leaveItem = new ItemStack(Material.BED);
         ItemMeta meta = leaveItem.getItemMeta();
         meta.setDisplayName(ChatColor.RED + "Leave (Right Click)");
         leaveItem.setItemMeta(meta);
 
-        // Apply state to all participants
+        // "Play Again" item
+        ItemStack playAgain = new ItemStack(Material.PAPER);
+        ItemMeta playAgainMeta = playAgain.getItemMeta();
+        playAgainMeta.setDisplayName(ChatColor.GREEN + "Play Again (Right Click)");
+        playAgain.setItemMeta(playAgainMeta);
+
+
+        boolean canRequeue = (type == QueueType.SOLO_UNRANKED || type == QueueType.SOLO_RANKED || 
+                             type == QueueType.DUO_UNRANKED || type == QueueType.DUO_RANKED);
+
         for (UUID uuid : new ArrayList<>(session.getAllPlayers())) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) {
@@ -334,11 +366,18 @@ public void endMatch(BedFightSession session, Player winner) {
                 p.setFoodLevel(20);
                 p.getInventory().setArmorContents(null);
                 p.getInventory().setItem(8, leaveItem);
+
+                if (canRequeue) {
+                    p.getInventory().setItem(4, playAgain);
+                    p.setMetadata("lastQueueType", new org.bukkit.metadata.FixedMetadataValue(plugin, type.name()));
+                }
+
                 p.setGameMode(GameMode.ADVENTURE);
                 p.setAllowFlight(true);
                 p.setFlying(true);
             }
         }
+
 
         // Handle spectators
         for (UUID specId : new ArrayList<>(session.getSpectators())) {
@@ -347,6 +386,12 @@ public void endMatch(BedFightSession session, Player winner) {
                 spec.getInventory().clear();
                 spec.getInventory().setArmorContents(null);
                 spec.getInventory().setItem(8, leaveItem);
+                
+                if (canRequeue) {
+                    spec.getInventory().setItem(4, playAgain);
+                    spec.setMetadata("lastQueueType", new org.bukkit.metadata.FixedMetadataValue(plugin, type.name()));
+                }
+                
                 spec.setGameMode(GameMode.ADVENTURE);
                 spec.setAllowFlight(true);
                 spec.setFlying(true);
@@ -354,66 +399,115 @@ public void endMatch(BedFightSession session, Player winner) {
         }
 
         // 2. Wait 10 seconds then teleport to lobby and disable flight
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Remove scoreboard 1 tick before teleport
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                for (UUID uuid : session.getAllPlayers()) {
-                    Player p = Bukkit.getPlayer(uuid);
-                    if (p != null) p.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
-                }
-                for (UUID specId : session.getSpectators()) {
-                    Player spec = Bukkit.getPlayer(specId);
-                    if (spec != null) spec.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
-                }
-            }, 1L);
+        new BukkitRunnable() {
+            int secondsLeft = 10;
 
-            Location lobby = plugin.getConfigManager().getLobbyLocation();
-            
-            // Cleanup participants and spectators
-            Collection<Player> toTeleport = new java.util.ArrayList<>();
+            @Override
+            public void run() {
+                // Check if this session is still the active one for this arena
+                if (activeSessions.get(session.getArena()) != session) {
+                    this.cancel();
+                    return;
+                }
+
+                if (secondsLeft <= 0) {
+                    cleanupSession(session);
+                    activeSessions.remove(session.getArena());
+                    this.cancel();
+                    return;
+                }
+                /*
+                if (secondsLeft <= 5 || secondsLeft == 10) {
+                    String msg = ChatColor.YELLOW + "Returning to lobby in " + ChatColor.RED + secondsLeft + ChatColor.YELLOW + " seconds...";
+                    for (UUID uuid : allUniquePlayers) {
+                        Player p = Bukkit.getPlayer(uuid);
+                        if (p != null && getSession(p) == session) {
+                            p.sendMessage(msg);
+                        }
+                    }
+
+
+                }
+                
+                 */
+
+                secondsLeft--;
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+    }
+
+    private void cleanupSession(BedFightSession session) {
+        plugin.getLogger().info("DEBUG: Cleanup task started for session: " + session.getArena().getName());
+
+        // Remove scoreboard 1 tick before teleport
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            plugin.getLogger().info("DEBUG: Scoreboard cleanup running");
             for (UUID uuid : session.getAllPlayers()) {
                 Player p = Bukkit.getPlayer(uuid);
-                if (p != null && p.getWorld().equals(session.getMatchWorld())) toTeleport.add(p);
+                if (p != null && getSession(p) == session) {
+                    plugin.getLogger().info("DEBUG: Clearing scoreboard for " + p.getName());
+                    p.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+                }
             }
-            
             for (UUID specId : session.getSpectators()) {
                 Player spec = Bukkit.getPlayer(specId);
-                if (spec != null && spec.getWorld().equals(session.getMatchWorld())) toTeleport.add(spec);
+                if (spec != null && getSession(spec) == session) {
+                    plugin.getLogger().info("DEBUG: Clearing scoreboard for spec " + spec.getName());
+                    spec.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+                }
             }
-            
-            for (Player p : toTeleport) {
-                p.teleport(lobby);
-                p.setFlying(false);
-                p.setAllowFlight(false);
-                p.getInventory().clear();
-                p.getInventory().setArmorContents(null);
-                
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    boolean isInParty = plugin.getPartyManager().isInParty(p.getUniqueId());
-                    plugin.getLogger().info("DEBUG: Post-match inventory restoration for " + p.getName() + ". In party: " + isInParty);
-                    
-                    if (isInParty) {
-                        plugin.getPartyManager().givePartyItems(p);
-                    } else {
-                        plugin.getSpawnItem().giveSpawnItem(p);
-                    }
-                }, 1L);
-            }
-            
-            for (UUID specId : session.getSpectators()) {
-                playerSessionMap.remove(specId);
-            }
+        }, 1L);
 
-            // Unload and delete world
-            plugin.getBedFightArenaManager().getSlimeAdapter().unloadWorld(session.getMatchWorld().getName());
+        Location lobby = plugin.getConfigManager().getLobbyLocation();
 
-            // Remove players from session map AFTER teleport/cleanup
-            for (UUID uuid : session.getAllPlayers()) {
-                playerSessionMap.remove(uuid);
-            }
-        }, 10 * 20L);
+        // Cleanup participants and spectators
+        Collection<Player> toTeleport = new java.util.ArrayList<>();
+        for (UUID uuid : session.getAllPlayers()) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.getWorld().equals(session.getMatchWorld()) && getSession(p) == session) toTeleport.add(p);
+        }
 
-        activeSessions.remove(session.getArena());
+        for (UUID specId : session.getSpectators()) {
+            Player spec = Bukkit.getPlayer(specId);
+            if (spec != null && spec.getWorld().equals(session.getMatchWorld()) && getSession(spec) == session) toTeleport.add(spec);
+        }
+
+        for (Player p : toTeleport) {
+            BedFightSession currentSession = getSession(p);
+            plugin.getLogger().info("DEBUG: Cleanup task running for " + p.getName() + ". Player session: " + currentSession + ", Ended session: " + session);
+
+            // Check if player is still in the match session that ended
+            if (currentSession != session) continue;
+
+            p.teleport(lobby);
+            p.setFlying(false);
+            p.setAllowFlight(false);
+            p.getInventory().clear();
+            p.getInventory().setArmorContents(null);
+
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (plugin.getBedFightManager().isInMatch(p)) return;
+
+                if (plugin.getMatchmakingService().isInWaitingQueue(p.getUniqueId())) {
+                    p.getInventory().clear();
+                    p.getInventory().setArmorContents(null);
+                    plugin.getMatchmakingService().giveLeaveItem(p);
+                    return;
+                }
+
+                boolean isInParty = plugin.getPartyManager().isInParty(p.getUniqueId());
+                plugin.getLogger().info("DEBUG: Post-match inventory restoration for " + p.getName() + ". In party: " + isInParty);
+
+                if (isInParty) {
+                    plugin.getPartyManager().givePartyItems(p);
+                } else {
+                    plugin.getSpawnItem().giveSpawnItem(p);
+                }
+            }, 1L);
+        }
+
+        // Unload and delete world
+        plugin.getBedFightArenaManager().getSlimeAdapter().unloadWorld(session.getMatchWorld().getName());
     }
 
     private int updateElo(BedFightSession session, String winningTeam) {

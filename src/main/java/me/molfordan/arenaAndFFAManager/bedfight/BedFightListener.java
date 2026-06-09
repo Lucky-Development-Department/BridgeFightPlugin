@@ -282,10 +282,6 @@ public class BedFightListener implements Listener {
         BedFightSession session = bedFightManager.getSession(victim);
         if (session == null) return;
 
-        // Save death location
-        deathLocations.put(victim.getUniqueId(), victim.getLocation());
-        plugin.getLogger().info("DEBUG: Saved death location for " + victim.getName() + " at " + victim.getLocation());
-
         event.setDeathMessage(null);
         event.getDrops().clear();
         event.setDroppedExp(0);
@@ -295,10 +291,25 @@ public class BedFightListener implements Listener {
         }
 
         victim.spigot().respawn();
+        processDeath(victim, killer, session, false);
+    }
+
+    private void processDeath(Player victim, Player killer, BedFightSession session, boolean isVoid) {
+        if (session.getPlayerState(victim.getUniqueId()) == BedFightState.DIED ||
+                session.getPlayerState(victim.getUniqueId()) == BedFightState.SPECTATOR_DUEL ||
+                session.getPlayerState(victim.getUniqueId()) == BedFightState.ENDED) {
+            return;
+        }
+
+        // Save death location
+        deathLocations.put(victim.getUniqueId(), victim.getLocation());
+
         victim.getInventory().clear();
         victim.getInventory().setArmorContents(null);
         victim.setHealth(20.0);
         victim.setFoodLevel(20);
+        victim.setFireTicks(0);
+        victim.setFallDistance(0);
 
         String team = session.getTeam(victim.getUniqueId());
         boolean bedAlive = (team.equals("RED")) ? session.isRedBedAlive() : session.isBlueBedAlive();
@@ -308,68 +319,90 @@ public class BedFightListener implements Listener {
             session.setPlayerState(victim.getUniqueId(), BedFightState.DIED);
 
             ChatColor killerColor = ChatColor.WHITE;
-            if (killer != null) {
+            if (killer != null && killer != victim) {
                 String killerTeam = session.getTeam(killer.getUniqueId());
                 killerColor = (killerTeam != null && killerTeam.equalsIgnoreCase("RED")) ? ChatColor.RED : ChatColor.BLUE;
-                session.getStats(killer.getUniqueId()).kills++;
+
+                BedFightStats killerStats = session.getStats(killer.getUniqueId());
+                if (isVoid) killerStats.voidKills++;
+                else killerStats.kills++;
+
                 killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
                 killMessageTimestamp.put(killer.getUniqueId(), System.currentTimeMillis() + 2000);
-                sendActionBar(killer, ChatColor.RED + "" + ChatColor.BOLD + "KILL! " + victimColor + victim.getName());
+
+                String actionText = isVoid ? ChatColor.RED + "" + ChatColor.BOLD + "VOID KILL! " : ChatColor.RED + "" + ChatColor.BOLD + "KILL! ";
+                sendActionBar(killer, actionText + victimColor + victim.getName());
             }
 
-            String msg = (killer != null) ?
-                    String.format(BedFightMessages.REGULAR_KILL, victimColor + victim.getName(), killerColor + killer.getName()) :
-                    String.format(BedFightMessages.REGULAR_DEATH, victimColor + victim.getName());
-            broadcastMessage(session, ChatColor.YELLOW + msg);
+            String msgFormat;
+            if (isVoid) {
+                msgFormat = (killer != null && killer != victim) ? BedFightMessages.VOID_KILL : BedFightMessages.VOID_DEATH;
+            } else {
+                msgFormat = (killer != null && killer != victim) ? BedFightMessages.REGULAR_KILL : BedFightMessages.REGULAR_DEATH;
+            }
 
+            String msg = (killer != null && killer != victim) ?
+                    String.format(msgFormat, victimColor + victim.getName(), killerColor + killer.getName()) :
+                    String.format(msgFormat, victimColor + victim.getName());
+
+            broadcastMessage(session, ChatColor.YELLOW + msg);
             handleRespawnSequence(victim, session);
         } else {
             // Bed destroyed, set to ended (eliminated)
-            session.setPlayerState(victim.getUniqueId(), BedFightState.SPECTATOR_DUEL);
             session.addSpectator(victim.getUniqueId());
-            
-            // Setup spectator visual/movement mode
+            session.setPlayerState(victim.getUniqueId(), BedFightState.SPECTATOR_DUEL);
+
             victim.setGameMode(GameMode.ADVENTURE);
             victim.setAllowFlight(true);
             victim.setFlying(true);
-            
+
             SpectatorListener.giveSpectatorItems(victim);
-            
-            // Hide from everyone else
+
             for (UUID uuid : session.getAllPlayers()) {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p != null) p.hidePlayer(victim);
             }
-            // Show to other spectators
             for (UUID specId : session.getSpectators()) {
                 Player spec = Bukkit.getPlayer(specId);
                 if (spec != null) victim.showPlayer(spec);
             }
 
-            if (killer != null) {
+            ChatColor killerColor = ChatColor.WHITE;
+            if (killer != null && killer != victim) {
                 String killerTeam = session.getTeam(killer.getUniqueId());
-                ChatColor killerColor = (killerTeam != null && killerTeam.equalsIgnoreCase("RED")) ? ChatColor.RED : ChatColor.BLUE;
-                session.getStats(killer.getUniqueId()).finalKills++;
+                killerColor = (killerTeam != null && killerTeam.equalsIgnoreCase("RED")) ? ChatColor.RED : ChatColor.BLUE;
+
+                BedFightStats killerStats = session.getStats(killer.getUniqueId());
+                if (isVoid) killerStats.voidFinalKills++;
+                else killerStats.finalKills++;
+
                 killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
                 killMessageTimestamp.put(killer.getUniqueId(), System.currentTimeMillis() + 2000);
-                sendActionBar(killer, ChatColor.RED + "" + ChatColor.BOLD + "FINAL KILL! " + victimColor + victim.getName());
-                
-                String msg = String.format(BedFightMessages.FINAL_KILL, victimColor + victim.getName(), killerColor + killer.getName());
+
+                String actionText = isVoid ? ChatColor.RED + "" + ChatColor.BOLD + "FINAL VOID KILL! " : ChatColor.RED + "" + ChatColor.BOLD + "FINAL KILL! ";
+                sendActionBar(killer, actionText + victimColor + victim.getName());
+
+                String msgFormat = isVoid ? BedFightMessages.FINAL_VOID_KILL : BedFightMessages.FINAL_KILL;
+                String msg = String.format(msgFormat, victimColor + victim.getName(), killerColor + killer.getName());
                 broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
             } else {
-                String msg = String.format(BedFightMessages.FINAL_DEATH, victimColor + victim.getName());
+                String msgFormat = isVoid ? BedFightMessages.FINAL_VOID_DEATH : BedFightMessages.FINAL_DEATH;
+                String msg = String.format(msgFormat, victimColor + victim.getName());
                 broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
             }
 
-            // Check for team elimination
             checkTeamElimination(session, team);
         }
+
+        updateScoreboard(session);
     }
 
     private void checkTeamElimination(BedFightSession session, String team) {
         boolean allEliminated = true;
+        plugin.getLogger().info("DEBUG: Checking elimination for team: " + team);
         for (UUID memberId : new ArrayList<>(session.getPlayersByTeam(team))) {
             BedFightState state = session.getPlayerState(memberId);
+            plugin.getLogger().info("DEBUG: Player " + memberId + " state: " + state);
             if (state != BedFightState.ENDED && state != BedFightState.SPECTATOR_DUEL) {
                 allEliminated = false;
                 break;
@@ -377,6 +410,7 @@ public class BedFightListener implements Listener {
         }
 
         if (allEliminated) {
+            plugin.getLogger().info("DEBUG: Team " + team + " eliminated!");
             if (team.equals("RED")) session.setRedEliminated(true);
             else session.setBlueEliminated(true);
 
@@ -387,6 +421,8 @@ public class BedFightListener implements Listener {
             Player winner = winnerTeamPlayers.isEmpty() ? null : Bukkit.getPlayer(winnerTeamPlayers.iterator().next());
             
             bedFightManager.endMatch(session, winner);
+        } else {
+            plugin.getLogger().info("DEBUG: Team " + team + " still has active players.");
         }
     }
 
@@ -430,85 +466,59 @@ public class BedFightListener implements Listener {
     }
 
     private void updateScoreboard(BedFightSession session) {
-        for (UUID uuid : session.getAllPlayers()) {
+        Set<UUID> allToUpdate = new HashSet<>(session.getAllPlayers());
+        allToUpdate.addAll(session.getSpectators());
+
+        for (UUID uuid : allToUpdate) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) plugin.getBedFightScoreboard().updateScoreboard(p);
         }
     }
 
     private void handleVoidFall(Player player, BedFightSession session) {
-        String team = session.getTeam(player.getUniqueId());
-        boolean bedAlive = team.equals("RED") ? session.isRedBedAlive() : session.isBlueBedAlive();
-
         UUID attackerUUID = lastAttacker.get(player.getUniqueId());
         Player killer = (attackerUUID != null && System.currentTimeMillis() - hitTimestamp.getOrDefault(player.getUniqueId(), 0L) < 5000)
                 ? Bukkit.getPlayer(attackerUUID) : null;
 
-        ChatColor victimColor = team.equalsIgnoreCase("RED") ? ChatColor.RED : ChatColor.BLUE;
-        ChatColor killerColor = ChatColor.WHITE;
-        if (killer != null) {
-            String killerTeam = session.getTeam(killer.getUniqueId());
-            killerColor = (killerTeam != null && killerTeam.equalsIgnoreCase("RED")) ? ChatColor.RED : ChatColor.BLUE;
-        }
-
-        // Play sound for the opponents
-        String opponentTeam = team.equals("RED") ? "BLUE" : "RED";
-        for (UUID uuid : session.getPlayersByTeam(opponentTeam)) {
-            Player opponent = Bukkit.getPlayer(uuid);
-            if (opponent != null) {
-                opponent.playSound(opponent.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
-            }
-        }
-
-        if (!bedAlive) {
-            session.setPlayerState(player.getUniqueId(), BedFightState.ENDED);
-            if (killer != null) {
-                session.getStats(killer.getUniqueId()).voidFinalKills++;
-                killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
-                killMessageTimestamp.put(killer.getUniqueId(), System.currentTimeMillis() + 2000);
-                sendActionBar(killer, ChatColor.RED + "" + ChatColor.BOLD + "FINAL VOID KILL! " + victimColor + player.getName());
-                
-                String msg = String.format(BedFightMessages.FINAL_VOID_KILL, victimColor + player.getName(), killerColor + killer.getName());
-                broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
-            } else {
-                String msg = String.format(BedFightMessages.FINAL_VOID_DEATH, victimColor + player.getName());
-                broadcastMessage(session, ChatColor.YELLOW + msg.replace("FINAL KILL", ChatColor.AQUA + "" + ChatColor.BOLD + "FINAL KILL" + ChatColor.YELLOW));
-            }
-
-            checkTeamElimination(session, team);
-            return;
-        }
-
-        session.setPlayerState(player.getUniqueId(), BedFightState.DIED);
-
-        if (killer != null) {
-            session.getStats(killer.getUniqueId()).voidKills++;
-            killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
-            killMessageTimestamp.put(killer.getUniqueId(), System.currentTimeMillis() + 2000);
-            sendActionBar(killer, ChatColor.RED + "" + ChatColor.BOLD + "VOID KILL! " + victimColor + player.getName());
-        }
-
-        String msg = (killer != null) ?
-                String.format(BedFightMessages.VOID_KILL, victimColor + player.getName(), killerColor + killer.getName()) :
-                String.format(BedFightMessages.VOID_DEATH, victimColor + player.getName());
-
-        broadcastMessage(session, ChatColor.YELLOW + msg);
-        handleRespawnSequence(player, session);
+        processDeath(player, killer, session, true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onDamage(org.bukkit.event.entity.EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
-        Player player = (Player) event.getEntity();
-        BedFightSession session = bedFightManager.getSession(player);
+        Player victim = (Player) event.getEntity();
+        BedFightSession session = bedFightManager.getSession(victim);
         if (session == null) return;
 
-        if (session.getPlayerState(player.getUniqueId()) == BedFightState.SPECTATOR) {
+        if (session.getPlayerState(victim.getUniqueId()) == BedFightState.SPECTATOR) {
             event.setCancelled(true);
+            return;
+        }
+
+        // Death detection: if health drops to 0.5 or below
+        if (victim.getHealth() - event.getFinalDamage() <= 0.5) {
+            event.setCancelled(true);
+
+            Player killer = null;
+            if (event instanceof EntityDamageByEntityEvent) {
+                EntityDamageByEntityEvent e = (EntityDamageByEntityEvent) event;
+                if (e.getDamager() instanceof Player) {
+                    killer = (Player) e.getDamager();
+                }
+            }
+
+            if (killer == null) {
+                UUID attackerUUID = lastAttacker.get(victim.getUniqueId());
+                if (attackerUUID != null && System.currentTimeMillis() - hitTimestamp.getOrDefault(victim.getUniqueId(), 0L) < 5000) {
+                    killer = Bukkit.getPlayer(attackerUUID);
+                }
+            }
+
+            processDeath(victim, killer, session, event.getCause() == org.bukkit.event.entity.EntityDamageEvent.DamageCause.VOID);
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.HIGH)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player) || !(event.getDamager() instanceof Player)) return;
         Player victim = (Player) event.getEntity();
@@ -544,17 +554,21 @@ public class BedFightListener implements Listener {
         lastAttacker.put(victim.getUniqueId(), attacker.getUniqueId());
         hitTimestamp.put(victim.getUniqueId(), System.currentTimeMillis());
 
+        updateHealthBar(attacker, victim, event.getFinalDamage());
+    }
+
+    private void updateHealthBar(Player attacker, Player victim, double finalDamage) {
         // Check if a kill message was recently sent
         if (System.currentTimeMillis() < killMessageTimestamp.getOrDefault(attacker.getUniqueId(), 0L)) {
             return; // Skip health bar update
         }
 
         // Enemy Health Bar
-        double health = Math.max(0, victim.getHealth() - event.getFinalDamage());
+        double health = Math.max(0, victim.getHealth() - finalDamage);
         double maxHealth = victim.getMaxHealth();
         int hearts = 10;
         double healthPerHeart = maxHealth / hearts;
-        
+
         StringBuilder bar = new StringBuilder();
         for (int i = 0; i < hearts; i++) {
             double heartHealth = (i + 1) * healthPerHeart;
@@ -566,7 +580,7 @@ public class BedFightListener implements Listener {
                 bar.append(ChatColor.GRAY).append("❤");
             }
         }
-        
+
         sendActionBar(attacker, ChatColor.YELLOW + victim.getName() + " " + bar.toString());
     }
 
@@ -631,11 +645,11 @@ public class BedFightListener implements Listener {
         }, 5 * 20L);
     }
     public void broadcastMessage(BedFightSession session, String message) {
-        for (UUID uuid : session.getAllPlayers()) {
-            Player p = Bukkit.getPlayer(uuid);
-            if (p != null) p.sendMessage(message);
-        }
-        for (UUID uuid : session.getSpectators()) {
+        // Use a set to store unique recipients to prevent duplicate messages
+        Set<UUID> recipients = new HashSet<>(session.getAllPlayers());
+        recipients.addAll(session.getSpectators());
+        
+        for (UUID uuid : recipients) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) p.sendMessage(message);
         }

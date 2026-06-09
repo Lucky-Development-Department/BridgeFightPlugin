@@ -15,17 +15,26 @@ public class QueueCommand implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!(sender instanceof Player)) return true;
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+            return true;
+        }
+
         Player player = (Player) sender;
 
         if (args.length > 0 && args[0].equalsIgnoreCase("leave")) {
-            plugin.getMatchmakingService().removeFromQueue(player);
-            player.sendMessage(ChatColor.RED + "You left the queue!");
-            plugin.getSpawnItem().giveSpawnItem(player);
-        } else {
-            plugin.getQueueGUI().openMain(player);
+            if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
+                plugin.getMatchmakingService().removeFromQueue(player);
+                player.sendMessage(ChatColor.RED + "You have left the queue.");
+            } else {
+                player.sendMessage(ChatColor.RED + "You are not in a queue.");
+            }
+            return true;
         }
+
+        // Default behavior: Open queue menu
+        plugin.getMatchmakingService().openQueueGUI(player);
         return true;
     }
 }

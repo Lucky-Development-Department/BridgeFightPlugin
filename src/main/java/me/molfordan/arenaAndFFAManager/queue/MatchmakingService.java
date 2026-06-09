@@ -28,6 +28,15 @@ public class MatchmakingService {
         startMatchmakingTask();
     }
 
+    public boolean isInWaitingQueue(UUID uuid) {
+        for (List<Set<UUID>> queueList : queues.values()) {
+            for (Set<UUID> entry : queueList) {
+                if (entry.contains(uuid)) return true;
+            }
+        }
+        return false;
+    }
+
     private void startMatchmakingTask() {
         new BukkitRunnable() {
             @Override
@@ -125,7 +134,7 @@ public class MatchmakingService {
         }
     }
     
-    private void giveLeaveItem(Player player) {
+    public void giveLeaveItem(Player player) {
         ItemStack leaveItem = new ItemStack(Material.BED);
         ItemMeta meta = leaveItem.getItemMeta();
         meta.setDisplayName(ChatColor.RED + "Leave Queue (Right Click)");
@@ -156,7 +165,20 @@ public class MatchmakingService {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p != null) {
                     p.sendMessage(ChatColor.RED + "Left the queue!");
-                    plugin.getSpawnItem().giveSpawnItem(p);
+                    String buildFFAWorld = plugin.getConfigManager().getBuildFFAWorldName();
+                    String bridgeFightWorld = plugin.getConfigManager().getBridgeFightWorldName();
+                    String lobbyWorld = plugin.getConfigManager().getLobbyWorldName();
+                    if (p.getWorld().getName().equals(buildFFAWorld)){
+                        plugin.getKitManager().applyBuildFFAKit(p);
+                        return;
+                    }
+                    if (p.getWorld().getName().equals(bridgeFightWorld)){
+                        plugin.getKitManager().applyBridgeFightKit(p);
+                        return;
+                    }
+                    if (p.getWorld().getName().equals(lobbyWorld)) {
+                        plugin.getSpawnItem().giveSpawnItem(p);
+                    }
                 }
             }
         }
@@ -396,4 +418,8 @@ public class MatchmakingService {
         if (arenas.isEmpty()) return null;
         return arenas.get(new Random().nextInt(arenas.size()));
     }
-}
+
+    public void openQueueGUI(Player player) {
+        new me.molfordan.arenaAndFFAManager.queue.QueueGUI(plugin).openMain(player);
+    }
+    }

@@ -1,5 +1,5 @@
 name: ArenaAndFFAManager
-version: '2.2.1'
+version: '2.2.2'
 main: me.molfordan.arenaAndFFAManager.ArenaAndFFAManager
 api-version: '1.8'
 softdepend:
@@ -157,8 +157,8 @@ commands:
     usage: '/spec <player>'
     description: 'Spectate a BedFight match'
   queue:
-    usage: '/queue'
-    description: 'Open the queue menu'
+    usage: '/queue [leave]'
+    description: 'Open the queue menu or leave queue'
   duel:
     usage: '/duel <player>'
     description: 'Duel another player'
@@ -166,6 +166,13 @@ commands:
     usage: '/bfparty <create|invite|disband|leave>'
     description: 'BedFight party command'
     aliases: [bfp]
+  bfknockback:
+    usage: '/bfknockback reload'
+    description: 'Reload knockback configuration'
+    permission: arenamap.admin
+  playagain:
+    usage: '/playagain'
+    description: 'Requeue for the last match type'
   togglebridgeegg:
     usage: '/togglebridgeegg'
     description: 'toggle bridge egg functionality'

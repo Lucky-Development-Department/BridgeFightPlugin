@@ -73,6 +73,15 @@ public class LeaveCommand implements CommandExecutor {
         plugin.getBedFightManager().removePlayerFromSession(player);
         
         org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (plugin.getBedFightManager().isInMatch(player)) return;
+
+            if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
+                player.getInventory().clear();
+                player.getInventory().setArmorContents(null);
+                plugin.getMatchmakingService().giveLeaveItem(player);
+                return;
+            }
+
             if (plugin.getPartyManager().isInParty(player.getUniqueId())) {
                 plugin.getPartyManager().givePartyItems(player);
             } else {

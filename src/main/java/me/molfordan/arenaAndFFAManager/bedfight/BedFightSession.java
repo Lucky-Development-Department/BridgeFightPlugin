@@ -59,6 +59,12 @@ public class BedFightSession {
         return team.equalsIgnoreCase("RED") ? redTeamInitial : blueTeamInitial;
     }
 
+    public String getInitialTeam(UUID uuid) {
+        if (redTeamInitial.contains(uuid)) return "RED";
+        if (blueTeamInitial.contains(uuid)) return "BLUE";
+        return null;
+    }
+
     private void initializeLocations() {
         this.redSpawnLoc = cloneToWorld(arena.getRedSpawn(), matchWorld);
         this.blueSpawnLoc = cloneToWorld(arena.getBlueSpawn(), matchWorld);

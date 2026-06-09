@@ -40,6 +40,7 @@ import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.SerializableBlockState;
 import me.molfordan.arenaAndFFAManager.placeholder.LeaderboardPlaceholderExpansion;
 import me.molfordan.arenaAndFFAManager.queue.*;
+import me.molfordan.arenaAndFFAManager.queue.QueueCommand;
 import me.molfordan.arenaAndFFAManager.region.CommandRegionManager;
 import me.molfordan.arenaAndFFAManager.region.RegionFlagListener;
 import me.molfordan.arenaAndFFAManager.restore.DailyArenaRestorer;
@@ -98,6 +99,11 @@ public final class ArenaAndFFAManager extends JavaPlugin {
     private SpawnItem spawnItem;
     private BackupManager backupManager; // Add this line
     private AutoRestartManager autoRestartManager;
+    private me.molfordan.arenaAndFFAManager.config.KnockbackConfig knockbackConfig;
+
+    public me.molfordan.arenaAndFFAManager.config.KnockbackConfig getKnockbackConfig() {
+        return knockbackConfig;
+    }
     private BedFightManager bedFightManager;
     private BedFightArenaManager bedFightArenaManager;
     private BedFightScoreboard bedFightScoreboard;
@@ -133,6 +139,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
 
 
         this.configManager = new ConfigManager(this);
+        this.knockbackConfig = new me.molfordan.arenaAndFFAManager.config.KnockbackConfig(this);
         this.databaseManager = new DatabaseManager(this);
         this.statsManager = new StatsManager(this);
         this.bridgeFightConfig = new BridgeFightConfig(this);
@@ -213,7 +220,7 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("forfeit").setExecutor(new ForfeitCommand(this));
         getCommand("leave").setExecutor(new LeaveCommand(this));
         getCommand("spec").setExecutor(new SpecCommand(this));
-        getCommand("queue").setExecutor(new QueueCommand(this));
+        getCommand("queue").setExecutor(new me.molfordan.arenaAndFFAManager.queue.QueueCommand(this));
         getCommand("stats").setExecutor(new StatsCommand(this));
         getCommand("bfparty").setExecutor(new PartyCommand(this));
         getCommand("bfparty").setTabCompleter(new PartyTabCompleter());
@@ -260,6 +267,9 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getCommand("hbmresetall").setExecutor(new HBMResetAllCommand(this));
         getCommand("privateworld").setExecutor(new PrivateWorldCommand(this));
         getCommand("setstats").setExecutor(new SetCommand(this));
+        getCommand("playagain").setExecutor(new me.molfordan.arenaAndFFAManager.commands.common.PlayAgainCommand(this));
+        getCommand("bfknockback").setExecutor(new BFKnockbackCommand(this));
+        getCommand("queue").setExecutor(new QueueCommand(this));
         getCommand("kit").setExecutor(new BridgeFightKitCommand(this));
         getCommand("debugging").setExecutor(new GUICustomKit(this));
         getCommand("givepots").setExecutor(new GivePotsCommand(this));
@@ -289,7 +299,9 @@ public final class ArenaAndFFAManager extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PartyQueueGUIListener(this), this);
         getServer().getPluginManager().registerEvents(new PartyListGUIListener(this), this);
         getServer().getPluginManager().registerEvents(new PartyListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayAgainListener(this), this);
         getServer().getPluginManager().registerEvents(new QueueListener(this), this);
+        getServer().getPluginManager().registerEvents(new me.molfordan.arenaAndFFAManager.listener.QueueQuitListener(this), this);
         getServer().getPluginManager().registerEvents(new BedfightKnockback(), this);
         getServer().getPluginManager().registerEvents(new HotbarListener(this, hotbarSessionManager, kitManager), this);
         getConfig().addDefault("debug", true);

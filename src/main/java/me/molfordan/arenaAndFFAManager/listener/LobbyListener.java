@@ -5,6 +5,7 @@ import me.molfordan.arenaAndFFAManager.kits.KitManager;
 import me.molfordan.arenaAndFFAManager.manager.ConfigManager;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
 import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
+import me.molfordan.arenaAndFFAManager.queue.MatchmakingService;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -100,7 +101,13 @@ public class LobbyListener implements Listener {
             player.removePotionEffect(effect.getType());
         }
 
-        plugin.getSpawnItem().giveSpawnItem(player);
+        if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())){
+            player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
+            plugin.getMatchmakingService().giveLeaveItem(player);
+        } else {
+            plugin.getSpawnItem().giveSpawnItem(player);
+        }
         ArenaAndFFAManager.getPlugin().getStatsManager().resetStreak(player.getUniqueId(), ArenaType.FFA);
         ArenaAndFFAManager.getPlugin().getStatsManager().resetStreak(player.getUniqueId(), ArenaType.FFABUILD);
         // Requirement: Set gamemode to Adventure
@@ -224,7 +231,13 @@ public class LobbyListener implements Listener {
         if (player.getLocation().getY() < VOID_Y_LEVEL) {
             // Teleport the player back to the set lobby location
             player.teleport(lobbyLoc);
-            plugin.getSpawnItem().giveSpawnItem(player);
+            if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())){
+                player.getInventory().clear();
+                player.getInventory().setArmorContents(null);
+                plugin.getMatchmakingService().giveLeaveItem(player);
+            } else {
+                plugin.getSpawnItem().giveSpawnItem(player);
+            }
 
         }
     }
@@ -245,6 +258,12 @@ public class LobbyListener implements Listener {
         if (player.getWorld().equals(buildFFAWorld)){
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (isPlayerInBuildFFA(player)) {
+                    if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())){
+                        player.getInventory().clear();
+                        player.getInventory().setArmorContents(null);
+                        plugin.getMatchmakingService().giveLeaveItem(player);
+                        return;
+                    }
                     player.setGameMode(GameMode.SURVIVAL);
                     kitManager.applyBuildFFAKit(player);
                 }
@@ -256,7 +275,13 @@ public class LobbyListener implements Listener {
         if (player.getWorld().equals(lobbyWorld)){
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (isPlayerInLobby(player)) {
-                    plugin.getSpawnItem().giveSpawnItem(player);
+                    if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())){
+                        player.getInventory().clear();
+                        player.getInventory().setArmorContents(null);
+                        plugin.getMatchmakingService().giveLeaveItem(player);
+                    } else {
+                        plugin.getSpawnItem().giveSpawnItem(player);
+                    }
                     player.setGameMode(GameMode.ADVENTURE);
                     if (player.hasPermission("luckyessentials.fly")){
 
@@ -277,6 +302,12 @@ public class LobbyListener implements Listener {
         if (player.getWorld().equals(bridgeFightWorld)){
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (isPlayerInBridgeFight(player)) {
+                    if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())){
+                        player.getInventory().clear();
+                        player.getInventory().setArmorContents(null);
+                        plugin.getMatchmakingService().giveLeaveItem(player);
+                        return;
+                    }
                     boolean isBanned = plugin.getBridgeFightBanManager().isPlayerBanned(player.getUniqueId());
                     if (isBanned) {
                         player.teleport(lobbyWorld.getSpawnLocation());
