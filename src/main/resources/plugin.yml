@@ -1,5 +1,5 @@
 name: ArenaAndFFAManager
-version: '2.2.3'
+version: '2.2.4'
 main: me.molfordan.arenaAndFFAManager.ArenaAndFFAManager
 api-version: '1.8'
 softdepend:

@@ -103,6 +103,7 @@ public class BuildFFAListener implements Listener {
         // Re-apply kit
         kitManager.applyBuildFFAKit(victim);
         
+        victim.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
         victim.sendMessage(ChatColor.RED + "You died!");
     }
 
