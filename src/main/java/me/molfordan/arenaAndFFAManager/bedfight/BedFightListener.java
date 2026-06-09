@@ -495,8 +495,9 @@ public class BedFightListener implements Listener {
             return;
         }
 
-        // Death detection: if health drops to 0.5 or below
-        if (victim.getHealth() - event.getFinalDamage() <= 0.5) {
+        // Death detection: if health drops to 0.5 or below (exclude fall damage)
+        if (event.getCause() != org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL && 
+            victim.getHealth() - event.getFinalDamage() <= 0.5) {
             event.setCancelled(true);
 
             Player killer = null;

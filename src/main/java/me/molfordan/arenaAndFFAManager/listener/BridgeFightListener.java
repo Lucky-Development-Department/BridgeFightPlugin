@@ -7,6 +7,7 @@ import me.molfordan.arenaAndFFAManager.manager.PlatformManager;
 import me.molfordan.arenaAndFFAManager.object.Arena;
 import me.molfordan.arenaAndFFAManager.object.PlatformRegion;
 import me.molfordan.arenaAndFFAManager.object.PlayerStats;
+import me.molfordan.arenaAndFFAManager.object.enums.ArenaType;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -39,46 +40,87 @@ public class BridgeFightListener implements Listener {
     }
 
     /**
-     * Teleport when falling below platform
+     * Teleport when falling below platform or into void
      */
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
         Player p = event.getPlayer();
-        String world = configManager.getBridgeFightWorldName();
-        if (world == null || !p.getWorld().getName().equals(world)) return;
+        String worldName = configManager.getBridgeFightWorldName();
+        if (worldName == null || !p.getWorld().getName().equals(worldName)) return;
 
         Location to = event.getTo();
         if (to == null) return;
+
+        // Special handling for Y=0 (Absolute Void)
+        if (to.getY() <= 0) {
+            handleBridgeVoidFall(p);
+            return;
+        }
 
         Arena arena = ArenaAndFFAManager.getPlugin().getArenaManager().getArenaByLocationIgnoreY(p.getLocation());
         if (arena == null || to.getY() > arena.getVoidLimit()) return;
 
         PlatformRegion region = platformManager.fromLocationIgnoreY(to);
-        PlayerStats stats = ArenaAndFFAManager.getPlugin().getStatsManager().getStats(p.getUniqueId());
-
         if (region != null && region.getSpawn() != null) {
-            p.teleport(region.getSpawn());
-            stats.resetBridgeStreak();
-            ArenaAndFFAManager.getPlugin().getStatsManager().savePlayerAsync(stats);
-
-            // Add death message handling
-            ArenaAndFFAManager.getPlugin().getDeathMessageManager().handleDeath(
-                    p,
-                    arena,
-                    true,  // isVoidDeath = true
-                    false  // isQuit = false
-            );
-            p.getInventory().clear();
-            p.getInventory().setArmorContents(null);
-            plugin.getKitManager().applyBridgeFightKit(p);
-            plugin.getEnderPearlListener().removeCooldown(p);
-            return;
+            handleBridgeVoidFall(p, region.getSpawn());
         }
-
-        //.setHealth(0);
     }
 
+    private void handleBridgeVoidFall(Player p) {
+        Location spawn = null;
+        for (Arena arena : ArenaAndFFAManager.getPlugin().getArenaManager().getArenas()) {
+            if (arena.getWorldName().equals(p.getWorld().getName()) && arena.getType() == ArenaType.FFA) {
+                if (arena.getCenter() != null) {
+                    spawn = arena.getCenter();
+                    break;
+                }
+            }
+        }
+        
+        if (spawn == null) {
+            spawn = configManager.getBridgeFightLocation();
+        }
+        
+        handleBridgeVoidFall(p, spawn);
+    }
 
+    private void handleBridgeVoidFall(Player p, Location spawn) {
+        PlayerStats stats = ArenaAndFFAManager.getPlugin().getStatsManager().getStats(p.getUniqueId());
+        
+        // Find attacker for message
+        Player attacker = plugin.getCombatManager().getAttacker(p);
+        String message;
+        if (attacker != null && attacker.isOnline() && !attacker.equals(p)) {
+            message = ChatColor.RED + p.getName() + ChatColor.GRAY + " was thrown into the void by " + ChatColor.RED + attacker.getName();
+        } else {
+            message = ChatColor.RED + p.getName() + ChatColor.GRAY + " fell into the void.";
+        }
+        
+        // Broadcast message to players in the same world
+        for (Player other : p.getWorld().getPlayers()) {
+            other.sendMessage(message);
+        }
+
+        if (spawn != null) {
+            p.teleport(spawn);
+        }
+        
+        stats.resetBridgeStreak();
+        ArenaAndFFAManager.getPlugin().getStatsManager().savePlayerAsync(stats);
+
+        // Notify DeathMessageManager for stats tracking (but it will send its own message, 
+        // we might want to suppress it or let it handle stats only)
+        // For now, let's just do the manual cleanup to match user request
+        p.getInventory().clear();
+        p.getInventory().setArmorContents(null);
+        p.setHealth(20.0);
+        p.setFireTicks(0);
+        p.setFallDistance(0);
+        
+        plugin.getKitManager().applyBridgeFightKit(p);
+        plugin.getEnderPearlListener().removeCooldown(p);
+        plugin.getCombatManager().clear(p);
+    }
 
     /**
      * Zero damage but allow knockback

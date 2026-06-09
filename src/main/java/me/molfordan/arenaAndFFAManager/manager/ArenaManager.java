@@ -284,6 +284,10 @@ public class ArenaManager {
         return getArenaByLocationIgnoreY(player.getLocation()) != null;
     }
 
+    public Collection<Arena> getArenas() {
+        return arenaMap.values();
+    }
+
     public boolean isBypassing(UUID uuid) {
         return bypassingPlayers.contains(uuid);
     }
