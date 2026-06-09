@@ -41,6 +41,9 @@ public class BedFightScoreboard {
             objective.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + "BEDFIGHT");
         }
 
+        updateScore(board, objective, ChatColor.GRAY + "" + ChatColor.STRIKETHROUGH + "                                              ", 11);
+        updateScore(board, objective, "", 10);
+
         int redAlive = 0;
         int redPingTotal = 0;
         int redCount = 0;
@@ -63,20 +66,21 @@ public class BedFightScoreboard {
 
         // Status logic using BedFightScoreboardState
         BedFightState playerState = session.getPlayerState(player.getUniqueId());
+        
+        BedFightScoreboardState redState = session.getTeamScoreboardState("RED");
+        BedFightScoreboardState blueState = session.getTeamScoreboardState("BLUE");
+        
+        String redStatus = redState.getIcon(redAlive);
+        String blueStatus = blueState.getIcon(blueAlive);
+
         if (session.isSpectator(player.getUniqueId()) && playerState != BedFightState.SPECTATOR_DUEL) {
-            // Spectator view (for joining spectators)
-            updateScore(board, objective, ChatColor.RED + "Red: " + getTeamFormatted(session, "RED"), 8);
-            updateScore(board, objective, ChatColor.BLUE + "Blue: " + getTeamFormatted(session, "BLUE"), 7);
-            updateScore(board, objective, " ", 6);
-            updateScore(board, objective, ChatColor.WHITE + "Status: " + ChatColor.YELLOW + "SPECTATING", 5);
+            // Pure Spectator view (for joining spectators)
+            updateScore(board, objective, ChatColor.RED + "R " + ChatColor.WHITE+ "Red: " + redStatus, 9);
+            updateScore(board, objective, ChatColor.BLUE + "B " + ChatColor.WHITE+ "Blue: " + blueStatus, 8);
+            updateScore(board, objective, " ", 7);
+            updateScore(board, objective, ChatColor.WHITE + "Status: " + ChatColor.YELLOW + "SPECTATING", 6);
         } else {
-            // Participant view
-            BedFightScoreboardState redState = session.getTeamScoreboardState("RED");
-            BedFightScoreboardState blueState = session.getTeamScoreboardState("BLUE");
-            
-            String redStatus = redState.getIcon(redAlive);
-            String blueStatus = blueState.getIcon(blueAlive);
-            
+            // Participant view (including those in SPECTATOR_DUEL)
             String team = session.getInitialTeam(player.getUniqueId());
             String redSuffix = "RED".equals(team) ? ChatColor.GRAY + " YOU" : "";
             String blueSuffix = "BLUE".equals(team) ? ChatColor.GRAY + " YOU" : "";
@@ -95,23 +99,24 @@ public class BedFightScoreboard {
             BedFightStats stats = session.getStats(player.getUniqueId());
             int totalKills = (stats != null) ? (stats.kills + stats.voidKills + stats.finalKills + stats.voidFinalKills) : 0;
 
-            updateScore(board, objective, ChatColor.RED + "R " + ChatColor.WHITE + "Red: " + redStatus + redSuffix, 8);
-            updateScore(board, objective, ChatColor.BLUE + "B " + ChatColor.WHITE + "Blue: " + blueStatus + blueSuffix, 7);
-            updateScore(board, objective, " ", 6);
+            updateScore(board, objective, ChatColor.RED + "R " + ChatColor.WHITE + "Red: " + redStatus + redSuffix, 9);
+            updateScore(board, objective, ChatColor.BLUE + "B " + ChatColor.WHITE + "Blue: " + blueStatus + blueSuffix, 8);
+            updateScore(board, objective, " ", 7);
             if (stats != null) {
-                updateScore(board, objective, ChatColor.WHITE + "Kills: " + ChatColor.YELLOW + totalKills, 5);
+                updateScore(board, objective, ChatColor.WHITE + "Kills: " + ChatColor.YELLOW + totalKills, 6);
             } else {
-                updateScore(board, objective, ChatColor.GRAY + "SPECTATING", 5);
+                updateScore(board, objective, ChatColor.GRAY + "SPECTATING", 6);
             }
-            updateScore(board, objective, "  ", 4);
-            updateScore(board, objective, ChatColor.WHITE + "Your ping: " + ChatColor.YELLOW + yourPing + "ms", 3);
+            updateScore(board, objective, "  ", 5);
+            updateScore(board, objective, ChatColor.WHITE + "Your ping: " + ChatColor.YELLOW + yourPing + "ms", 4);
             if (stats != null) {
-                updateScore(board, objective, ChatColor.WHITE + "Enemy ping: " + ChatColor.YELLOW + enemyPing + "ms", 2);
+                updateScore(board, objective, ChatColor.WHITE + "Enemy ping: " + ChatColor.YELLOW + enemyPing + "ms", 3);
             } else {
-                updateScore(board, objective, ChatColor.WHITE + "Arena: " + ChatColor.YELLOW + session.getArena().getName(), 2);
+                updateScore(board, objective, ChatColor.WHITE + "Arena: " + ChatColor.YELLOW + session.getArena().getName(), 3);
             }
         }
-        updateScore(board, objective, "   ", 1);
+        updateScore(board, objective, ChatColor.GRAY + "" + ChatColor.STRIKETHROUGH + "                                              ", 2);
+        updateScore(board, objective, ChatColor.WHITE + "Version: "+ ChatColor.YELLOW+"0.5", 1);
         updateScore(board, objective, ChatColor.YELLOW + "luckynetwork.net", 0);
     }
 

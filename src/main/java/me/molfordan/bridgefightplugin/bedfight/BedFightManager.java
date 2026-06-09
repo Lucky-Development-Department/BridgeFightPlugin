@@ -478,6 +478,12 @@ public void endMatch(BedFightSession session, Player winner) {
             // Check if player is still in the match session that ended
             if (currentSession != session) continue;
 
+            // FIX: Remove player from session map so they can use other commands
+            removePlayerFromSession(p);
+            
+            // FIX: Clear scoreboard
+            p.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+
             p.teleport(lobby);
             p.setFlying(false);
             p.setAllowFlight(false);

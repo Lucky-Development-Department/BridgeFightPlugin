@@ -18,10 +18,11 @@ public class MobSpawnListener implements Listener {
     @EventHandler
     public void onMobSpawn(CreatureSpawnEvent event) {
         Location spawnLoc = event.getLocation();
+        if (spawnLoc.getWorld() == null) return;
 
         for (Arena arena : arenaManager.getAllArenas()) {
             if (arena.getPos1() == null || arena.getPos2() == null) continue;
-            if (!arena.getPos1().getWorld().equals(spawnLoc.getWorld())) continue;
+            if (arena.getPos1().getWorld() == null || !arena.getPos1().getWorld().equals(spawnLoc.getWorld())) continue;
 
             int x = spawnLoc.getBlockX();
             int y = spawnLoc.getBlockY();

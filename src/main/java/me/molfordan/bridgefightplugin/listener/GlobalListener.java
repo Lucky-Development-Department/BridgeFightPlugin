@@ -176,7 +176,9 @@ public class GlobalListener implements Listener {
         Player p = event.getPlayer();
         String lobbyWorld = plugin.getConfigManager().getLobbyWorldName();
         if (event.getPlayer().getWorld().equals(lobbyWorld)){
+            p.sendTitle("", "");
             if (p.hasPermission("luckyessentials.fly")){
+
                 p.setAllowFlight(true);
                 p.setFlying(true);
                 Location loc = p.getLocation();

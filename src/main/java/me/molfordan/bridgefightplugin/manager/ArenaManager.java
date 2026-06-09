@@ -208,7 +208,6 @@ public class ArenaManager {
 
     private void saveLocation(YamlConfiguration config, String path, Location loc) {
         if (loc == null) return;
-        config.set(path + ".world", loc.getWorld().getName());
         config.set(path + ".x", loc.getX());
         config.set(path + ".y", loc.getY());
         config.set(path + ".z", loc.getZ());
@@ -219,26 +218,17 @@ public class ArenaManager {
     private Location getLocation(ConfigurationSection section) {
         if (section == null) return null;
         try {
-            // Try native Bukkit deserialization first
-            Object loc = section.get(".");
-            if (loc instanceof Location) {
-                Location l = (Location) loc;
-                if (l.getWorld() == null && section.isString("world")) {
-                    World world = Bukkit.getWorld(section.getString("world"));
-                    if (world != null) l.setWorld(world);
-                }
-                return l;
-            }
-
-            // Manual fallback
-            String worldName = section.getString("world");
-            World world = Bukkit.getWorld(worldName);
+            // Manual loading without world field
             double x = section.getDouble("x");
             double y = section.getDouble("y");
             double z = section.getDouble("z");
             float yaw = (float) section.getDouble("yaw", 0);
             float pitch = (float) section.getDouble("pitch", 0);
-            return new Location(world, x, y, z, yaw, pitch);
+            
+            // We need to set the world, but this method is called within a context where 
+            // the arena's world might not be directly available in the section itself.
+            // However, the caller sets it, so we can return null world or create with null.
+            return new Location(null, x, y, z, yaw, pitch); 
         } catch (Exception e) {
             Bukkit.getLogger().warning("Failed to deserialize location section: " + section.getName());
             return null;

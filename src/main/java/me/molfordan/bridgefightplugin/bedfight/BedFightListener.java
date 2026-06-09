@@ -1,5 +1,6 @@
 package me.molfordan.bridgefightplugin.bedfight;
 
+import com.sk89q.worldguard.WorldGuard;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import me.molfordan.bridgefightplugin.object.Arena;
 import org.bukkit.*;
@@ -13,9 +14,12 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,6 +35,48 @@ public class BedFightListener implements Listener {
         this.plugin = plugin;
         this.bedFightManager = bedFightManager;
     }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onWorldInit(WorldInitEvent event) {
+        // Pattern-based cleanup for all bf_ directories in WorldGuard
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            File wgWorldsDir = new File(plugin.getServer().getWorldContainer(), "plugins/WorldGuard/worlds/");
+            if (wgWorldsDir.exists() && wgWorldsDir.isDirectory()) {
+                File[] files = wgWorldsDir.listFiles((dir, name) -> name.startsWith("bf_"));
+                if (files != null) {
+                    for (File file : files) {
+                        if (file.isDirectory()) {
+                            deleteDirectory(file);
+                            plugin.getLogger().info("Removed WorldGuard config directory: " + file.getName());
+                        }
+                    }
+                }
+            }
+        }, 20L);
+    }
+
+    private boolean deleteDirectory(File dir) {
+        if (!dir.exists()) return true;
+        
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (!deleteDirectory(file)) {
+                    plugin.getLogger().warning("Failed to delete: " + file.getAbsolutePath());
+                    return false;
+                }
+            }
+        }
+        
+        try {
+            return java.nio.file.Files.deleteIfExists(dir.toPath());
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to delete directory: " + dir.getAbsolutePath() + " - " + e.getMessage());
+            return false;
+        }
+    }
+
+
 
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
@@ -171,9 +217,6 @@ public class BedFightListener implements Listener {
     }
 
     private boolean isProtectedBedBlock(Block block, BedFightSession session) {
-        Material type = block.getType();
-        if (type != Material.WOOD && type != Material.ENDER_STONE) return false;
-
         Location bLoc = block.getLocation();
         Location redBed = session.getRedBedLoc();
         Location blueBed = session.getBlueBedLoc();

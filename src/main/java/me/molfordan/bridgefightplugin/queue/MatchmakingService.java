@@ -128,7 +128,7 @@ public class MatchmakingService {
             queueJoinTimes.put(uuid, now);
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) {
-                p.sendMessage(ChatColor.GREEN + "Joined queue: " + type.name());
+                p.sendMessage(ChatColor.GREEN + "Joined queue: " + type.getDisplayName());
                 giveLeaveItem(p);
             }
         }

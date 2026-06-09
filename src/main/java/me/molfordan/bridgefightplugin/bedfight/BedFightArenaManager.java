@@ -58,10 +58,12 @@ public class BedFightArenaManager {
             if (section == null) continue;
 
             String name = section.getString("name");
-            String worldName = section.getString("world");
+            // Use the arena name as the world name
+            World world = Bukkit.getWorld(name);
             
-            Arena arena = new Arena(name, Bukkit.getWorlds().get(0));
-            arena.setWorldName(worldName);
+            // Arena constructor requires a world, use default if not loaded yet
+            Arena arena = new Arena(name, world != null ? world : Bukkit.getWorlds().get(0));
+            arena.setWorldName(name);
             loadArenaData(arena, section);
             
             bedFightArenas.put(name.toLowerCase(), arena);
@@ -83,22 +85,20 @@ public class BedFightArenaManager {
         arena.setBuildLimitY(section.getInt("buildLimit"));
         arena.setFinished(section.getBoolean("finished"));
         
-        arena.setPos1(getLocation(section.getConfigurationSection("pos1")));
-        arena.setPos2(getLocation(section.getConfigurationSection("pos2")));
-        arena.setCenter(getLocation(section.getConfigurationSection("center")));
-        arena.setRedSpawn(getLocation(section.getConfigurationSection("redSpawn")));
-        arena.setBlueSpawn(getLocation(section.getConfigurationSection("blueSpawn")));
-        arena.setRedBed(getLocation(section.getConfigurationSection("redBed")));
-        arena.setBlueBed(getLocation(section.getConfigurationSection("blueBed")));
+        // Use arena's world for location loading
+        World world = Bukkit.getWorld(arena.getWorldName());
+        
+        arena.setPos1(getLocation(section.getConfigurationSection("pos1"), world));
+        arena.setPos2(getLocation(section.getConfigurationSection("pos2"), world));
+        arena.setCenter(getLocation(section.getConfigurationSection("center"), world));
+        arena.setRedSpawn(getLocation(section.getConfigurationSection("redSpawn"), world));
+        arena.setBlueSpawn(getLocation(section.getConfigurationSection("blueSpawn"), world));
+        arena.setRedBed(getLocation(section.getConfigurationSection("redBed"), world));
+        arena.setBlueBed(getLocation(section.getConfigurationSection("blueBed"), world));
     }
 
-    private Location getLocation(ConfigurationSection section) {
+    private Location getLocation(ConfigurationSection section, World world) {
         if (section == null) return null;
-        String worldName = section.getString("world");
-        World world = Bukkit.getWorld(worldName);
-        if (world == null) {
-            plugin.getLogger().warning("Could not find world with name: " + worldName);
-        }
         double x = section.getDouble("x");
         double y = section.getDouble("y");
         double z = section.getDouble("z");
@@ -113,7 +113,6 @@ public class BedFightArenaManager {
         String path = "arena";
 
         config.set(path + ".name", arena.getName());
-        config.set(path + ".world", arena.getWorldName());
         config.set(path + ".type", arena.getType().name());
         config.set(path + ".voidLimit", arena.getVoidLimit());
         config.set(path + ".buildLimit", arena.getBuildLimitY());
@@ -136,7 +135,6 @@ public class BedFightArenaManager {
 
     private void saveLocation(YamlConfiguration config, String path, Location loc) {
         if (loc == null) return;
-        config.set(path + ".world", loc.getWorld() != null ? loc.getWorld().getName() : "world");
         config.set(path + ".x", loc.getX());
         config.set(path + ".y", loc.getY());
         config.set(path + ".z", loc.getZ());

@@ -57,6 +57,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -370,7 +372,21 @@ public final class BridgeFightPlugin extends JavaPlugin {
     }
     @Override
     public void onDisable() {
-        getLogger().info("ArenaAndFFAManager has been disabled.");
+        getLogger().info(plugin.getName() + " has been disabled.");
+
+        // Clean up WorldGuard configuration directories
+        File wgWorldsDir = new File(getServer().getWorldContainer(), "plugins/WorldGuard/worlds/");
+        if (wgWorldsDir.exists() && wgWorldsDir.isDirectory()) {
+            File[] files = wgWorldsDir.listFiles((dir, name) -> name.startsWith("bf_"));
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        deleteDirectory(file);
+                        getLogger().info("Removed WorldGuard config directory on disable: " + file.getName());
+                    }
+                }
+            }
+        }
 
         // Reset all daily streaks on server shutdown
         if (statsManager != null) {
@@ -403,6 +419,27 @@ public final class BridgeFightPlugin extends JavaPlugin {
 
         if (databaseManager != null) {
             databaseManager.shutdown();
+        }
+    }
+
+    private boolean deleteDirectory(File dir) {
+        if (!dir.exists()) return true;
+        
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (!deleteDirectory(file)) {
+                    getLogger().warning("Failed to delete: " + file.getAbsolutePath());
+                    return false;
+                }
+            }
+        }
+        
+        try {
+            return java.nio.file.Files.deleteIfExists(dir.toPath());
+        } catch (IOException e) {
+            getLogger().warning("Failed to delete directory: " + dir.getAbsolutePath() + " - " + e.getMessage());
+            return false;
         }
     }
 
