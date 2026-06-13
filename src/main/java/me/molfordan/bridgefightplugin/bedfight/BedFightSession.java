@@ -154,7 +154,11 @@ public class BedFightSession {
     }
     
     public BedFightPlayerState getPlayerState(UUID uuid) {
-        return playerStates.getOrDefault(uuid, BedFightPlayerState.PLAYING);
+        BedFightPlayerState state = playerStates.getOrDefault(uuid, BedFightPlayerState.PLAYING);
+        if ((sessionState == BedFightSessionState.ENDING || sessionState == BedFightSessionState.CLEANUP) && state == BedFightPlayerState.DIED) {
+            return BedFightPlayerState.DIED;
+        }
+        return state;
     }
 
     public void setPlayerState(UUID uuid, BedFightPlayerState state) {

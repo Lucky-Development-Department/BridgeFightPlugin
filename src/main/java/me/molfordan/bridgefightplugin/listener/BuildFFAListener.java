@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class BuildFFAListener implements Listener {
@@ -102,6 +103,9 @@ public class BuildFFAListener implements Listener {
         
         // Re-apply kit
         kitManager.applyBuildFFAKit(victim);
+
+        // Cancel any active pearls to prevent landing after death
+        BridgeFightPlugin.getPlugin().getEnderPearlListener().cancelPearls(victim);
         
         victim.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
         victim.sendMessage(ChatColor.RED + "You died!");

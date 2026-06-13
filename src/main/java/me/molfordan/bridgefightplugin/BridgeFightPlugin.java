@@ -253,9 +253,11 @@ public final class BridgeFightPlugin extends JavaPlugin {
             // plat commands
             CommandRegister.registerCommand(new PlatformCommand("plat" + i, this, kitManager, platformManager));
             CommandRegister.registerCommand(new PlatformCommand("bigplat" + i, this, kitManager, platformManager));
+            CommandRegister.registerCommand(new PlatformCommand("boxingplat" + i, this, kitManager, platformManager));
             // spawn setter commands
             CommandRegister.registerCommand(new PlatformCommand("setplat" + i, this, kitManager, platformManager));
             CommandRegister.registerCommand(new PlatformCommand("setbigplat" + i, this, kitManager, platformManager));
+            CommandRegister.registerCommand(new PlatformCommand("setboxingplat" + i, this, kitManager, platformManager));
         }
         getCommand("bridgeban").setExecutor(new BridgeBanCommand(bridgeFightBanManager, this));
         getCommand("bridgeunban").setExecutor(new BridgeUnbanCommand(bridgeFightBanManager));

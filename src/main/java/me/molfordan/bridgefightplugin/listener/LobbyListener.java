@@ -47,6 +47,14 @@ public class LobbyListener implements Listener {
         this.kitManager = kitManager;
     }
 
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        if (plugin.getDeathMessageManager().isInDuel(event.getPlayer())) {
+            plugin.getDeathMessageManager().clearDuel(event.getPlayer().getUniqueId());
+        }
+    }
+
+
     // Add player to bridge fight spawn recipients list
     public void addBridgeFightSpawnRecipient(UUID playerId) {
         bridgeFightSpawnRecipients.add(playerId);

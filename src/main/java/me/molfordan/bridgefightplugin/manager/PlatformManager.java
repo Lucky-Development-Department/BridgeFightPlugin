@@ -75,7 +75,9 @@ public class PlatformManager {
             
             // Auto-detect type from name
             String lowerName = name.toLowerCase();
-            if (lowerName.startsWith("bigplat")) {
+            if (lowerName.startsWith("boxingplat")) {
+                region.setType(PlatformType.BOXINGPLAT);
+            } else if (lowerName.startsWith("bigplat")) {
                 region.setType(PlatformType.BIGPLAT);
             } else if (lowerName.startsWith("plat")) {
                 region.setType(PlatformType.PLAT);

@@ -164,4 +164,20 @@ public class EnderPearlListener implements Listener {
             player.setLevel(0);
         }
     }
+
+    /**
+     * Removes all pearl entities shot by the player
+     */
+    public void cancelPearls(Player player) {
+        if (player == null) return;
+        for (org.bukkit.entity.Entity entity : player.getWorld().getEntitiesByClass(EnderPearl.class)) {
+            EnderPearl pearl = (EnderPearl) entity;
+            if (pearl.getShooter() instanceof Player) {
+                Player shooter = (Player) pearl.getShooter();
+                if (shooter.getUniqueId().equals(player.getUniqueId())) {
+                    pearl.remove();
+                }
+            }
+        }
+    }
 }

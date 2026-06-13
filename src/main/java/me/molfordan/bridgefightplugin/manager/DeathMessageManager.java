@@ -3,6 +3,7 @@ package me.molfordan.bridgefightplugin.manager;
 import me.molfordan.bridgefightplugin.hotbarmanager.HotbarManager;
 import me.molfordan.bridgefightplugin.object.Arena;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
+import me.molfordan.bridgefightplugin.object.PlatformRegion;
 import me.molfordan.bridgefightplugin.object.enums.ArenaType;
 import me.molfordan.bridgefightplugin.listener.PlayerKillEventListener;
 import me.molfordan.bridgefightplugin.object.PlayerStats;
@@ -26,6 +27,9 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
+import net.minecraft.server.v1_8_R3.IChatBaseComponent;
+import net.minecraft.server.v1_8_R3.PacketPlayOutChat;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,6 +70,33 @@ public class DeathMessageManager implements Listener {
         this.PREFIX = plugin.getConfigManager().getServerPrefix();
         this.bridgeFightWorldName = plugin.getConfigManager().getBridgeFightWorldName();
         startDuelCleaner();
+        startActionBarTask();
+    }
+
+    private void startActionBarTask() {
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            Set<DuelSession> processed = new HashSet<>();
+            for (DuelSession duel : duels.values()) {
+                if (!processed.add(duel)) continue;
+
+                Player p1 = Bukkit.getPlayer(duel.p1);
+                Player p2 = Bukkit.getPlayer(duel.p2);
+
+                if (p1 != null && p1.isOnline() && p2 != null && p2.isOnline()) {
+                    if (plugin.getPlatformManager().isInPlatform(p1, PlatformType.BOXINGPLAT) ||
+                            plugin.getPlatformManager().isInPlatform(p2, PlatformType.BOXINGPLAT)) {
+
+                        int h1 = duel.getHits(duel.p1);
+                        int h2 = duel.getHits(duel.p2);
+
+                        sendActionBar(p1, ChatColor.GREEN + "Hits: " + ChatColor.WHITE + h1 + "/50" +
+                                ChatColor.GRAY + " | " + ChatColor.RED + "Opponent: " + ChatColor.WHITE + h2 + "/50");
+                        sendActionBar(p2, ChatColor.GREEN + "Hits: " + ChatColor.WHITE + h2 + "/50" +
+                                ChatColor.GRAY + " | " + ChatColor.RED + "Opponent: " + ChatColor.WHITE + h1 + "/50");
+                    }
+                }
+            }
+        }, 20L, 20L);
     }
 
     public Set<UUID> getImmunePlayers() {
@@ -494,7 +525,8 @@ public class DeathMessageManager implements Listener {
             return;
         }
 
-        if (plugin.getPlatformManager().isInPlatform(player, PlatformType.BIGPLAT)) return;
+        if (plugin.getPlatformManager().isInPlatform(player, PlatformType.BIGPLAT) ||
+            plugin.getPlatformManager().isInPlatform(player, PlatformType.BOXINGPLAT)) return;
         
         Location from = event.getFrom();
         Location to = event.getTo();
@@ -998,6 +1030,8 @@ public class DeathMessageManager implements Listener {
         private final UUID p1;
         private final UUID p2;
         private long lastHit;
+        private int hitsP1 = 0;
+        private int hitsP2 = 0;
 
         DuelSession(UUID p1, UUID p2) {
             this.p1 = p1;
@@ -1014,6 +1048,15 @@ public class DeathMessageManager implements Listener {
 
         UUID getOpponent(UUID uuid) {
             return p1.equals(uuid) ? p2 : p1;
+        }
+
+        void addHit(UUID uuid) {
+            if (p1.equals(uuid)) hitsP1++;
+            else if (p2.equals(uuid)) hitsP2++;
+        }
+
+        int getHits(UUID uuid) {
+            return p1.equals(uuid) ? hitsP1 : hitsP2;
         }
 
         void refresh() {
@@ -1152,6 +1195,12 @@ public class DeathMessageManager implements Listener {
         return center;
     }
 
+    public void sendActionBar(Player player, String message) {
+        IChatBaseComponent component = IChatBaseComponent.ChatSerializer.a("{\"text\": \"" + message + "\"}");
+        PacketPlayOutChat packet = new PacketPlayOutChat(component, (byte) 2);
+        ((CraftPlayer) player).getHandle().playerConnection.sendPacket(packet);
+    }
+
     public boolean handleDuelHit(Player damager, Player victim) {
         UUID d = damager.getUniqueId();
         UUID v = victim.getUniqueId();
@@ -1207,6 +1256,37 @@ public class DeathMessageManager implements Listener {
         // Case 2: both are in the SAME duel → refresh timer
         if (duelD != null && duelD == duelV) {
             duelD.refresh();
+
+            // BOXING PLATFORM LOGIC
+            if (plugin.getPlatformManager().isInPlatform(damager, PlatformType.BOXINGPLAT)) {
+                duelD.addHit(d);
+                int damagerHits = duelD.getHits(d);
+                int victimHits = duelD.getHits(v);
+
+                sendActionBar(damager, ChatColor.GREEN + "Hits: " + ChatColor.WHITE +  damagerHits + "/50" +
+                        ChatColor.GRAY + " | " + ChatColor.RED + "Opponent: " + ChatColor.WHITE + victimHits + "/50");
+                sendActionBar(victim, ChatColor.GREEN + "Hits: " + ChatColor.WHITE + victimHits + "/50" +
+                        ChatColor.GRAY + " | " + ChatColor.RED + "Opponent: " + ChatColor.WHITE + damagerHits + "/50");
+
+                if (damagerHits >= 50) {
+                    combatManager.tag(victim, damager, arenaManager.getArenaByLocationIgnoreY(victim.getLocation()));
+                    handleDeath(victim, null, false, false);
+
+                    // Reset hits for the next round
+                    duelD.hitsP1 = 0;
+                    duelD.hitsP2 = 0;
+
+                    // Teleport only the victim back to the boxing platform spawn
+                    PlatformRegion boxingRegion = plugin.getPlatformManager().fromLocationIgnoreY(damager.getLocation());
+                    if (boxingRegion != null && boxingRegion.getSpawn() != null) {
+                        Location spawn = boxingRegion.getSpawn();
+                        victim.teleport(spawn);
+
+                        // Re-apply kits for both to reset health/items
+                        plugin.getKitManager().applyBridgeFightKit(victim);
+                    }
+                }
+            }
 
             // If one of them never got the message (edge case)
             if (duelD.notifyOnce(d)) {

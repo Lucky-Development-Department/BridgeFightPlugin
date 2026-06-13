@@ -223,6 +223,7 @@ public class SpawnItem implements Listener {
             case "PLAT": return "Platform " + number;
             case "BIGPLAT": return "Big Platform " + number;
             case "SMALLPLAT": return "Small Platform " + number;
+            case "BOXINGPLAT": return "Boxing Platform " + number;
         }
 
         return raw;
@@ -240,6 +241,8 @@ public class SpawnItem implements Listener {
             return "bigplat" + number;
         } else if (formatted.startsWith("Small Platform")) {
             return "smallplat" + number;
+        } else if (formatted.startsWith("Boxing Platform")) {
+            return "boxingplat" + number;
         } else if (formatted.startsWith("Platform")) {
             return "plat" + number;
         }

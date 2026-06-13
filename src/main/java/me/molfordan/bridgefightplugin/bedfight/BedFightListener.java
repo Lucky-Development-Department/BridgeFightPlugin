@@ -710,6 +710,10 @@ public class BedFightListener implements Listener {
     }
 
     private void handleRespawnSequence(Player player, BedFightSession session) {
+        if (session.getSessionState() == BedFightSessionState.ENDING || session.getSessionState() == BedFightSessionState.CLEANUP) {
+            return;
+        }
+
         player.setAllowFlight(true);
         player.setFlying(true);
         player.setMetadata("bedfight_invincible", new FixedMetadataValue(plugin, true));
@@ -728,6 +732,7 @@ public class BedFightListener implements Listener {
         for (int i = 0; i < 3; i++) {
             final int secondsLeft = 3 - i;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (session.getSessionState() == BedFightSessionState.ENDING || session.getSessionState() == BedFightSessionState.CLEANUP) return;
                 sendTitle(player, ChatColor.RED + "YOU DIED", ChatColor.YELLOW + "Respawning in " + secondsLeft);
                 player.sendMessage(ChatColor.YELLOW + ""+secondsLeft + "...");
                 player.playSound(player.getLocation(), Sound.NOTE_PLING, 1f, 1f);
@@ -736,6 +741,7 @@ public class BedFightListener implements Listener {
         }
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (session.getSessionState() == BedFightSessionState.ENDING || session.getSessionState() == BedFightSessionState.CLEANUP) return;
             Location spawn = session.getSpawn(player.getUniqueId());
             if (spawn == null || spawn.getWorld() == null) {
                 plugin.getLogger().warning("Invalid spawn location for player " + player.getName() + ", falling back to match world spawn.");
@@ -763,6 +769,7 @@ public class BedFightListener implements Listener {
         }, 3 * 20L);
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (session.getSessionState() == BedFightSessionState.ENDING || session.getSessionState() == BedFightSessionState.CLEANUP) return;
             player.removeMetadata("bedfight_invincible", plugin);
 
             session.setPlayerState(player.getUniqueId(), BedFightPlayerState.PLAYING);

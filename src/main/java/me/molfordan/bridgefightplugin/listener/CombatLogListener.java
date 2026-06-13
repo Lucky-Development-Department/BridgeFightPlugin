@@ -62,6 +62,11 @@ public class CombatLogListener implements Listener {
             plugin.getPlatformManager().isInPlatform(victim, PlatformType.BIGPLAT)) {
             return;
         }
+
+        if ((attacker != null && plugin.getPlatformManager().isInPlatform(attacker, PlatformType.BOXINGPLAT)) ||
+                plugin.getPlatformManager().isInPlatform(victim, PlatformType.BOXINGPLAT)) {
+            return;
+        }
         
         // Ignore creative mode attackers and self-damage
         if (attacker == null || attacker.getGameMode() == GameMode.CREATIVE || attacker.equals(victim)) {

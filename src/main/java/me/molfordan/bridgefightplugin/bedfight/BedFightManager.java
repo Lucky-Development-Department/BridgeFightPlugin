@@ -207,7 +207,9 @@ public class BedFightManager {
         allParticipants.addAll(session.getSpectators());
 
         for (UUID uuid : allParticipants) {
-            session.setPlayerState(uuid, BedFightPlayerState.ENDED);
+            if (session.getPlayerState(uuid) != BedFightPlayerState.DIED) {
+                session.setPlayerState(uuid, BedFightPlayerState.ENDED);
+            }
             setGameEndTime(uuid, now);
         }
 

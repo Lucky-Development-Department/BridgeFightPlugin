@@ -36,22 +36,30 @@ public class PlatformCommand extends BukkitCommand {
         if (!(sender instanceof Player)) return true;
         Player p = (Player) sender;
 
-        String cmd = alias.toLowerCase(); // IMPORTANT
+        String cmd = this.getName().toLowerCase(); // Use registered name instead of alias
 
         // =============== SET PLATFORM SPAWN ===============
-        if (cmd.startsWith("setplat") || cmd.startsWith("setbigplat")) {
-
+        if (cmd.startsWith("set")) {
             if (!p.hasPermission("arenamap.admin")) {
                 p.sendMessage("§cYou don't have permission.");
                 return true;
             }
 
-            String plat = cmd.replace("set", "").toLowerCase(); // e.g. plat1
+            String plat = cmd.substring(3); // remove "set"
             PlatformRegion region = platformManager.getPlatform(plat);
 
             if (region == null) {
                 p.sendMessage("§cPlatform §e" + plat + " §cdoes not exist.");
                 return true;
+            }
+
+            // Explicitly set type if it's a new platform or type not set
+            if (plat.startsWith("boxingplat")) {
+                region.setType(me.molfordan.bridgefightplugin.object.enums.PlatformType.BOXINGPLAT);
+            } else if (plat.startsWith("bigplat")) {
+                region.setType(me.molfordan.bridgefightplugin.object.enums.PlatformType.BIGPLAT);
+            } else if (plat.startsWith("plat")) {
+                region.setType(me.molfordan.bridgefightplugin.object.enums.PlatformType.PLAT);
             }
 
             Location loc = p.getLocation();
@@ -63,15 +71,7 @@ public class PlatformCommand extends BukkitCommand {
         }
 
         // =============== TELEPORT ===============
-        if (cmd.startsWith("plat") || cmd.startsWith("bigplat")) {
-            /*
-            if (!p.hasPermission("bridgefight.teleport")) {
-                p.sendMessage("§cYou don't have permission.");
-                return true;
-            }
-
-             */
-
+        if (cmd.startsWith("plat") || cmd.startsWith("bigplat") || cmd.startsWith("boxingplat")) {
             if (plugin.getBridgeFightBanManager().isPlayerBanned(p.getUniqueId())) {
 
                 long expire = plugin.getBridgeFightBanManager().getBanExpire(p.getUniqueId());

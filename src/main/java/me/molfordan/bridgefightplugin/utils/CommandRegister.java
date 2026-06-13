@@ -21,6 +21,6 @@ public class CommandRegister {
     }
 
     public static void registerCommand(BukkitCommand command) {
-        commandMap.register(command.getName(), command);
+        commandMap.register("bridgefight", command);
     }
 }
