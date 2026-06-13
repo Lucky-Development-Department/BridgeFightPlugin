@@ -1,5 +1,6 @@
 package me.molfordan.bridgefightplugin.hotbarmanager;
 
+import org.bukkit.ChatColor;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import me.molfordan.bridgefightplugin.manager.BedFightHotbarSessionManager;
 import org.bukkit.entity.Player;
@@ -45,14 +46,8 @@ public class BedFightHotbarListener implements Listener {
         Inventory top = e.getView().getTopInventory();
         if (!top.equals(session.getInventory())) return;
 
-        if (!session.isHotbarValid()) {
-            p.sendMessage("§cYour hotbar layout is invalid! You cannot have duplicate unique items. Please fix it.");
-            // Reopen GUI safely next tick
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                p.openInventory(session.getInventory());
-            });
-            return; // Do NOT close session!
-        }
+        // Perform internal session cleanup (like resetting if invalid)
+        session.onClose();
 
         // Final save before closing
         session.saveHotbarLayoutToDB();

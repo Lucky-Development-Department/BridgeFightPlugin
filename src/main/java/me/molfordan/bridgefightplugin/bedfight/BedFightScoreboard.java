@@ -49,7 +49,7 @@ public class BedFightScoreboard {
         int redCount = 0;
         for (UUID uuid : session.getPlayersByTeam("RED")) {
             redCount++;
-            if (session.getPlayerState(uuid) != BedFightState.ENDED) redAlive++;
+            if (session.getPlayerState(uuid) != BedFightPlayerState.ENDED) redAlive++;
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) redPingTotal += getPing(p);
         }
@@ -59,13 +59,13 @@ public class BedFightScoreboard {
         int blueCount = 0;
         for (UUID uuid : session.getPlayersByTeam("BLUE")) {
             blueCount++;
-            if (session.getPlayerState(uuid) != BedFightState.ENDED) blueAlive++;
+            if (session.getPlayerState(uuid) != BedFightPlayerState.ENDED) blueAlive++;
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) bluePingTotal += getPing(p);
         }
 
         // Status logic using BedFightScoreboardState
-        BedFightState playerState = session.getPlayerState(player.getUniqueId());
+        BedFightPlayerState playerState = session.getPlayerState(player.getUniqueId());
         
         BedFightScoreboardState redState = session.getTeamScoreboardState("RED");
         BedFightScoreboardState blueState = session.getTeamScoreboardState("BLUE");
@@ -73,7 +73,7 @@ public class BedFightScoreboard {
         String redStatus = redState.getIcon(redAlive);
         String blueStatus = blueState.getIcon(blueAlive);
 
-        if (session.isSpectator(player.getUniqueId()) && playerState != BedFightState.SPECTATOR_DUEL) {
+        if (session.isSpectator(player.getUniqueId()) && playerState != BedFightPlayerState.SPECTATOR_DUEL) {
             // Pure Spectator view (for joining spectators)
             updateScore(board, objective, ChatColor.RED + "R " + ChatColor.WHITE+ "Red: " + redStatus, 9);
             updateScore(board, objective, ChatColor.BLUE + "B " + ChatColor.WHITE+ "Blue: " + blueStatus, 8);
@@ -123,7 +123,7 @@ public class BedFightScoreboard {
     private String getTeamFormatted(BedFightSession session, String team) {
         List<String> formatted = new ArrayList<>();
         for (UUID uuid : session.getPlayersByTeam(team)) {
-            if (session.getPlayerState(uuid) == BedFightState.PLAYING || session.getPlayerState(uuid) == BedFightState.RESPAWNED) {
+            if (session.getPlayerState(uuid) == BedFightPlayerState.PLAYING || session.getPlayerState(uuid) == BedFightPlayerState.RESPAWNED) {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p != null) {
                     formatted.add(p.getName() + "(" + getPing(p) + "ms)");

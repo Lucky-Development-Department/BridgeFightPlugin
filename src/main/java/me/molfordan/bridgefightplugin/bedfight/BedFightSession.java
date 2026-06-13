@@ -16,9 +16,10 @@ public class BedFightSession {
     private final Set<UUID> blueTeamInitial;
     
     private final List<Location> placedBlocks = new ArrayList<>();
-    private Set<UUID> spectators = new HashSet<>();
-    private Map<UUID, BedFightState> playerStates = new HashMap<>();
-    private Map<UUID, BedFightStats> playerStats = new HashMap<>();
+    private BedFightSessionState sessionState = BedFightSessionState.WAITING;
+    private final Set<UUID> spectators = new HashSet<>();
+    private final Map<UUID, BedFightPlayerState> playerStates = new HashMap<>();
+    private final Map<UUID, BedFightStats> playerStats = new HashMap<>();
     private boolean active = true;
 
     private boolean redBedAlive = true;
@@ -43,15 +44,27 @@ public class BedFightSession {
         teams.put("BLUE", new HashSet<>(blueTeam));
         
         for (UUID uuid : redTeam) {
-            playerStates.put(uuid, BedFightState.PREPARE);
+            playerStates.put(uuid, BedFightPlayerState.PREPARE);
             playerStats.put(uuid, new BedFightStats());
         }
         for (UUID uuid : blueTeam) {
-            playerStates.put(uuid, BedFightState.PREPARE);
+            playerStates.put(uuid, BedFightPlayerState.PREPARE);
             playerStats.put(uuid, new BedFightStats());
         }
         
         initializeLocations();
+    }
+
+    public BedFightSessionState getSessionState() {
+        return sessionState;
+    }
+
+    public void setSessionState(BedFightSessionState sessionState) {
+        this.sessionState = sessionState;
+    }
+
+    public boolean isActive() {
+        return sessionState != BedFightSessionState.CLEANUP && sessionState != BedFightSessionState.ENDING;
     }
 
     public Set<UUID> getInitialTeamPlayers(String team) {
@@ -140,11 +153,11 @@ public class BedFightSession {
         return playerStats.get(uuid);
     }
     
-    public BedFightState getPlayerState(UUID uuid) {
-        return playerStates.getOrDefault(uuid, BedFightState.PLAYING);
+    public BedFightPlayerState getPlayerState(UUID uuid) {
+        return playerStates.getOrDefault(uuid, BedFightPlayerState.PLAYING);
     }
 
-    public void setPlayerState(UUID uuid, BedFightState state) {
+    public void setPlayerState(UUID uuid, BedFightPlayerState state) {
         playerStates.put(uuid, state);
     }
     
@@ -162,10 +175,17 @@ public class BedFightSession {
         return teams.getOrDefault(team.toUpperCase(), new HashSet<>());
     }
     
-    public Set<UUID> getAllPlayers() {
+    public Set<UUID> getAlivePlayers() {
         Set<UUID> all = new HashSet<>();
         all.addAll(teams.get("RED"));
         all.addAll(teams.get("BLUE"));
+        return all;
+    }
+    
+    public Set<UUID> getAllPlayers() {
+        Set<UUID> all = new HashSet<>();
+        all.addAll(redTeamInitial);
+        all.addAll(blueTeamInitial);
         return all;
     }
     
@@ -189,7 +209,7 @@ public class BedFightSession {
         teams.get("BLUE").remove(uuid);
         
         spectators.add(uuid);
-        playerStates.put(uuid, BedFightState.SPECTATOR);
+        playerStates.put(uuid, BedFightPlayerState.SPECTATOR);
     }
 
     public boolean isSpectator(UUID uuid) {
@@ -209,6 +229,9 @@ public class BedFightSession {
         return BedFightScoreboardState.BED_DESTROYED;
     }
 
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
+    public String getWinningTeam() {
+        if (redEliminated) return "BLUE";
+        if (blueEliminated) return "RED";
+        return null;
+    }
 }

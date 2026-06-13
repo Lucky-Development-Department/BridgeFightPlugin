@@ -90,9 +90,27 @@ public class GlobalListener implements Listener {
 
     @EventHandler
     public void onPlayerIsQueueing(EntityDamageByEntityEvent event){
-        Player player = (Player) event.getEntity();
-        if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
+        if (!(event.getEntity() instanceof Player) || !(event.getDamager() instanceof Player)) return;
+        
+        Player victim = (Player) event.getEntity();
+        Player damager = (Player) event.getDamager();
+        
+        String buildFFAWorld = plugin.getConfigManager().getBuildFFAWorldName();
+        boolean inBuildFFA = victim.getWorld().getName().equals(buildFFAWorld);
+        
+        // Only apply in BuildFFA world or based on global policy
+        if (!inBuildFFA) return;
+
+        boolean damagerQueued = plugin.getMatchmakingService().isInWaitingQueue(damager.getUniqueId());
+        boolean victimQueued = plugin.getMatchmakingService().isInWaitingQueue(victim.getUniqueId());
+
+        if (damagerQueued) {
             event.setCancelled(true);
+            damager.sendMessage(ChatColor.RED + "You're in bedfight queue! you can't damage other players!");
+            victim.sendMessage(ChatColor.RED + "This player is in bedfight queue!");
+        } else if (victimQueued) {
+            event.setCancelled(true);
+            damager.sendMessage(ChatColor.RED + "This player is in bedfight queue!");
         }
     }
 
@@ -114,6 +132,7 @@ public class GlobalListener implements Listener {
 
         me.molfordan.bridgefightplugin.bedfight.BedFightSession session = plugin.getBedFightManager().getSession(player);
         if (session == null) return;
+        if (session.isSpectator(player.getUniqueId())) return; // Allow spectators to use commands
 
         String cmd = event.getMessage().toLowerCase();
         String command = cmd.split(" ")[0];

@@ -15,6 +15,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -62,18 +63,38 @@ public class BridgeFightListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onEntityDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player p = (Player) event.getEntity();
+
+        String worldName = configManager.getBridgeFightWorldName();
+        if (worldName == null || !p.getWorld().getName().equals(worldName)) return;
+
+        // Check if damage is caused by void or if the player is at or below Y=0
+        if (event.getCause() == EntityDamageEvent.DamageCause.VOID || p.getLocation().getY() <= 0) {
+            event.setCancelled(true);
+            handleBridgeVoidFall(p);
+        }
+    }
+
     private void handleBridgeVoidFall(Player p) {
         Location spawn = null;
         for (Arena arena : BridgeFightPlugin.getPlugin().getArenaManager().getArenas()) {
             if (arena.getWorldName().equals(p.getWorld().getName()) && arena.getType() == ArenaType.FFA) {
                 if (arena.getCenter() != null) {
                     spawn = arena.getCenter();
+                    // Ensure the spawn location has a valid world
+                    if (spawn.getWorld() == null) {
+                        spawn = spawn.clone();
+                        spawn.setWorld(Bukkit.getWorld(arena.getWorldName()));
+                    }
                     break;
                 }
             }
         }
         
-        if (spawn == null) {
+        if (spawn == null || spawn.getWorld() == null) {
             spawn = configManager.getBridgeFightLocation();
         }
         
@@ -81,38 +102,32 @@ public class BridgeFightListener implements Listener {
     }
 
     private void handleBridgeVoidFall(Player p, Location spawn) {
-        PlayerStats stats = BridgeFightPlugin.getPlugin().getStatsManager().getStats(p.getUniqueId());
-        
-        // Find attacker for message
+        // Find attacker for stats tracking
         Player attacker = plugin.getCombatManager().getAttacker(p);
-        String message;
-        if (attacker != null && attacker.isOnline() && !attacker.equals(p)) {
-            message = ChatColor.RED + p.getName() + ChatColor.GRAY + " was thrown into the void by " + ChatColor.RED + attacker.getName();
-        } else {
-            message = ChatColor.RED + p.getName() + ChatColor.GRAY + " fell into the void.";
-        }
-        
-        // Broadcast message to players in the same world
-        for (Player other : p.getWorld().getPlayers()) {
-            other.sendMessage(message);
-        }
+        Arena arena = BridgeFightPlugin.getPlugin().getArenaManager().getArenaByLocation(p.getLocation());
+        PlatformRegion region = platformManager.fromLocationIgnoreY(p.getLocation());
 
-        if (spawn != null) {
+        // Use DeathMessageManager to handle stats and messages
+        // We pass 'true' for isVoidDeath
+        plugin.getDeathMessageManager().handleDeath(p, arena, true, false);
+
+        if (spawn != null && spawn.getWorld() != null) {
             p.teleport(spawn);
+        } else {
+            // Last resort: Teleport to world spawn or log error
+            p.teleport(p.getWorld().getSpawnLocation());
         }
         
-        stats.resetBridgeStreak();
-        BridgeFightPlugin.getPlugin().getStatsManager().savePlayerAsync(stats);
-
-        // Notify DeathMessageManager for stats tracking (but it will send its own message, 
-        // we might want to suppress it or let it handle stats only)
-        // For now, let's just do the manual cleanup to match user request
+        // Manual cleanup to match existing mechanics
         p.getInventory().clear();
         p.getInventory().setArmorContents(null);
         p.setHealth(20.0);
         p.setFireTicks(0);
         p.setFallDistance(0);
-        
+        if (region == null){
+            plugin.getSpawnItem().giveBridgeFightSpawnItem(p);
+            return;
+        }
         plugin.getKitManager().applyBridgeFightKit(p);
         plugin.getEnderPearlListener().removeCooldown(p);
         plugin.getCombatManager().clear(p);

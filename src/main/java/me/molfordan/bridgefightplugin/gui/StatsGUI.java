@@ -22,40 +22,87 @@ public class StatsGUI {
     }
 
     public void open(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 45, ChatColor.BLUE + "Your Statistics");
-        UUID uuid = player.getUniqueId();
-        PlayerStats stats = plugin.getStatsManager().getStats(uuid);
+        openFor(player, player.getUniqueId(), player.getName());
+    }
 
-        // Ranked
-        inv.setItem(11, createItem(Material.DIAMOND_SWORD, ChatColor.GOLD + "Ranked Stats", Arrays.asList(
-            ChatColor.GRAY + "ELO: " + ChatColor.YELLOW + stats.getRankedElo(),
-            ChatColor.GRAY + "Peak ELO: " + ChatColor.YELLOW + stats.getPeakElo(),
-            ChatColor.GRAY + "Wins: " + ChatColor.GREEN + stats.getRankedWins(),
-            ChatColor.GRAY + "Losses: " + ChatColor.RED + stats.getRankedLosses(),
-            ChatColor.GRAY + "Kills: " + ChatColor.WHITE + stats.getRankedKills(),
-            ChatColor.GRAY + "Deaths: " + ChatColor.WHITE + stats.getRankedDeaths(),
-            ChatColor.GRAY + "Beds: " + ChatColor.AQUA + stats.getRankedBeds()
-        )));
+    public void openFor(Player viewer, UUID targetUuid, String targetName) {
+        PlayerStats stats = plugin.getStatsManager().loadPlayer(targetUuid, targetName);
+        if (stats == null) {
+            viewer.sendMessage(ChatColor.RED + "Failed to load statistics.");
+            return;
+        }
 
-        // Unranked
-        inv.setItem(13, createItem(Material.IRON_SWORD, ChatColor.GRAY + "Unranked Stats", Arrays.asList(
-            ChatColor.GRAY + "Wins: " + ChatColor.GREEN + stats.getUnrankedWins(),
-            ChatColor.GRAY + "Losses: " + ChatColor.RED + stats.getUnrankedLosses(),
-            ChatColor.GRAY + "Kills: " + ChatColor.WHITE + stats.getUnrankedKills(),
-            ChatColor.GRAY + "Deaths: " + ChatColor.WHITE + stats.getUnrankedDeaths(),
-            ChatColor.GRAY + "Beds: " + ChatColor.AQUA + stats.getUnrankedBeds(),
-            ChatColor.GRAY + "Best Streak: " + ChatColor.YELLOW + stats.getBestUnrankedStreak()
-        )));
+        Inventory inv = Bukkit.createInventory(null, 27, ChatColor.GOLD + "Stats: " + ChatColor.YELLOW + stats.getUsername());
 
-        // Legacy (Bridge/Build)
-        inv.setItem(15, createItem(Material.WOOL, ChatColor.LIGHT_PURPLE + "Legacy Stats", Arrays.asList(
-            ChatColor.GRAY + "Bridge Kills: " + ChatColor.WHITE + stats.getBridgeKills(),
-            ChatColor.GRAY + "Bridge Deaths: " + ChatColor.WHITE + stats.getBridgeDeaths(),
-            ChatColor.GRAY + "Build Kills: " + ChatColor.WHITE + stats.getBuildKills(),
-            ChatColor.GRAY + "Build Deaths: " + ChatColor.WHITE + stats.getBuildDeaths()
-        )));
+        // Border glass
+        ItemStack glass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 15);
+        ItemMeta gm = glass.getItemMeta();
+        gm.setDisplayName(" ");
+        glass.setItemMeta(gm);
 
-        player.openInventory(inv);
+        int[] border = {
+                0,1,2,3,4,5,6,7,8,
+                9,17,
+                18,19,20,21,22,23,24,25,26
+        };
+
+        for (int slot : border) {
+            inv.setItem(slot, glass);
+        }
+
+        // Player head
+        ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+        org.bukkit.inventory.meta.SkullMeta sm = (org.bukkit.inventory.meta.SkullMeta) head.getItemMeta();
+        sm.setOwner(stats.getUsername());
+        sm.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + stats.getUsername());
+        sm.setLore(Arrays.asList(
+                ChatColor.GRAY + "UUID:",
+                ChatColor.WHITE + stats.getUuid().toString()
+        ));
+        head.setItemMeta(sm);
+        inv.setItem(13, head);
+
+        // BridgeFight stats
+        ItemStack bridge = new ItemStack(Material.STONE_SWORD);
+        ItemMeta bm = bridge.getItemMeta();
+        bm.setDisplayName(ChatColor.RED + "" + ChatColor.BOLD + "Bridge Fight Stats");
+        bm.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
+        bm.setLore(Arrays.asList(
+                ChatColor.GRAY + "Kills: " + ChatColor.GREEN + stats.getBridgeKills(),
+                ChatColor.GRAY + "Deaths: " + ChatColor.GREEN + stats.getBridgeDeaths(),
+                ChatColor.GRAY + "Current Streak: " + ChatColor.GREEN + stats.getBridgeStreak(),
+                ChatColor.GRAY + "Highest Streak: " + ChatColor.GOLD + stats.getBridgeHighestStreak()
+        ));
+        bridge.setItemMeta(bm);
+        inv.setItem(11, bridge);
+
+        // BuildFFA stats
+        ItemStack build = new ItemStack(Material.WOOL, 1, (short) 14); // red wool
+        ItemMeta wm = build.getItemMeta();
+        wm.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + "Build FFA Stats");
+        wm.setLore(Arrays.asList(
+                ChatColor.GRAY + "Kills: " + ChatColor.GREEN + stats.getBuildKills(),
+                ChatColor.GRAY + "Deaths: " + ChatColor.GREEN + stats.getBuildDeaths(),
+                ChatColor.GRAY + "Current Streak: " + ChatColor.GREEN + stats.getBuildStreak(),
+                ChatColor.GRAY + "Highest Streak: " + ChatColor.GOLD + stats.getBuildHighestStreak()
+        ));
+        build.setItemMeta(wm);
+        inv.setItem(15, build);
+
+        // BedFight/Ranked Stats (Bottom Row)
+        ItemStack ranked = new ItemStack(Material.DIAMOND_SWORD);
+        ItemMeta rm = ranked.getItemMeta();
+        rm.setDisplayName(ChatColor.GOLD + "" + ChatColor.BOLD + "Ranked BedFight Stats");
+        rm.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
+        rm.setLore(Arrays.asList(
+                ChatColor.GRAY + "ELO: " + ChatColor.YELLOW + stats.getRankedElo(),
+                ChatColor.GRAY + "Wins: " + ChatColor.GREEN + stats.getRankedWins(),
+                ChatColor.GRAY + "Losses: " + ChatColor.RED + stats.getRankedLosses()
+        ));
+        ranked.setItemMeta(rm);
+        inv.setItem(22, ranked);
+
+        viewer.openInventory(inv);
     }
 
     private ItemStack createItem(Material mat, String name, java.util.List<String> lore) {

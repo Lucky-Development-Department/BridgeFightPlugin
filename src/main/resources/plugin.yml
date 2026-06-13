@@ -177,6 +177,10 @@ commands:
     usage: '/togglebridgeegg'
     description: 'toggle bridge egg functionality'
     permission: arenamap.admin
+  databasebackup:
+    usage: '/databasebackup'
+    description: 'Manually trigger a MySQL database backup'
+    permission: arenamap.admin
 
 permissions:
   arenamap.admin:

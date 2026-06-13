@@ -55,6 +55,7 @@ public class SlimeWorldAdapter {
         World world = Bukkit.getWorld(worldName);
         if (world != null) {
             Bukkit.unloadWorld(world, false);
+
         }
     }
 

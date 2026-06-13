@@ -21,40 +21,55 @@ public class LeaveCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (!(sender instanceof Player)) return true;
         Player player = (Player) sender;
-        String lobbyWorld = plugin.getConfigManager().getLobbyWorldName();
+        UUID uuid = player.getUniqueId();
 
+        // 1. Check if in queue
+        boolean inQueue = plugin.getMatchmakingService().isInWaitingQueue(uuid);
+        plugin.getLogger().info("DEBUG: LeaveCommand check inQueue=" + inQueue + " for " + player.getName());
+        
+        if (inQueue) {
+            plugin.getLogger().info("DEBUG: LeaveCommand calling removeFromQueue for " + player.getName());
+            plugin.getMatchmakingService().removeFromQueue(player);
+            plugin.getLogger().info("DEBUG: LeaveCommand removeFromQueue called for " + player.getName());
+            // MatchmakingService already sends "Left the queue!"
+            return true;
+        }
 
+        // 2. Check if in a session (participant or spectator)
         BedFightSession session = plugin.getBedFightManager().getSession(player);
-        if (session == null) {
-            if (player.getWorld().getName().equalsIgnoreCase(lobbyWorld)) {
-                player.sendMessage(ChatColor.RED + "You are already in the lobby!");
+        plugin.getLogger().info("DEBUG: LeaveCommand session=" + (session != null) + " for " + player.getName());
+        if (session != null) {
+            BedFightPlayerState state = session.getPlayerState(uuid);
+            
+            if (state == BedFightPlayerState.ENDED) {
+                // Match finished, just leaving
+                performLeave(player);
+                player.sendMessage(ChatColor.YELLOW + "You have left the match.");
+            } else if (session.isSpectator(uuid)) {
+                // Joined via /spec OR eliminated during match
+                performLeave(player);
+                player.sendMessage(ChatColor.YELLOW + "You are no longer spectating the match.");
             } else {
-                player.sendMessage(ChatColor.RED + "You are not in a BedFight duel!");
+                // Active participant leaving - treated as forfeit
+                String playerTeam = session.getTeam(uuid);
+                String opponentTeam = "RED".equalsIgnoreCase(playerTeam) ? "BLUE" : "RED";
+
+                String msg = String.format(BedFightMessages.FORFEIT, player.getName());
+                plugin.getBedFightListener().broadcastMessage(session, ChatColor.RED + msg);
+                
+                performLeave(player);
+                player.sendMessage(ChatColor.RED + "You have forfeited the match.");
+                plugin.getBedFightManager().endMatch(session, opponentTeam);
             }
             return true;
         }
 
-        BedFightState state = session.getPlayerState(player.getUniqueId());
-        if (state == BedFightState.ENDED || state == BedFightState.SPECTATOR) {
-            // Simple exit
-            performLeave(player);
+        // 3. Fallback
+        String lobbyWorld = plugin.getConfigManager().getLobbyWorldName();
+        if (player.getWorld().getName().equalsIgnoreCase(lobbyWorld)) {
+            player.sendMessage(ChatColor.RED + "You are already in the lobby!");
         } else {
-            // Treat as forfeit if leaving during active play
-            String playerTeam = session.getTeam(player.getUniqueId());
-            String opponentTeam = playerTeam.equals("RED") ? "BLUE" : "RED";
-            Set<UUID> opponents = session.getPlayersByTeam(opponentTeam);
-            
-            Player opponent = null;
-            for (UUID oppId : opponents) {
-                opponent = org.bukkit.Bukkit.getPlayer(oppId);
-                if (opponent != null) break;
-            }
-
-            String msg = String.format(BedFightMessages.FORFEIT, player.getName());
-            plugin.getBedFightListener().broadcastMessage(session, ChatColor.RED + msg);
-            
-            performLeave(player);
-            plugin.getBedFightManager().endMatch(session, opponent);
+            player.sendMessage(ChatColor.RED + "You are not in a match or queue!");
         }
 
         return true;

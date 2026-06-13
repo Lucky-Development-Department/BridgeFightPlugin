@@ -1,5 +1,6 @@
 package me.molfordan.bridgefightplugin.manager;
 
+import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.Player;
@@ -14,6 +15,11 @@ public class FireballTracker {
     private final Map<UUID, UUID> fireballOwners = new ConcurrentHashMap<>();
     private final Map<UUID, Long> fireballTimes = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> recentlyHitByFireball = new ConcurrentHashMap<>();
+    private final BridgeFightPlugin plugin;
+
+    public FireballTracker(BridgeFightPlugin plugin) {
+        this.plugin = plugin;
+    }
     
     public void trackFireball(Fireball fireball, Player owner) {
         fireballOwners.put(fireball.getUniqueId(), owner.getUniqueId());
@@ -26,7 +32,7 @@ public class FireballTracker {
                 fireballOwners.remove(fireball.getUniqueId());
                 fireballTimes.remove(fireball.getUniqueId());
             }
-        }.runTaskLater(owner.getServer().getPluginManager().getPlugin("ArenaAndFFAManager"), 20L * 30L);
+        }.runTaskLater(owner.getServer().getPluginManager().getPlugin(plugin.getName()), 20L * 30L);
     }
     
     public void markPlayerHitByFireball(Player player, Fireball fireball) {
@@ -42,7 +48,7 @@ public class FireballTracker {
             public void run() {
                 recentlyHitByFireball.remove(player.getUniqueId());
             }
-        }.runTaskLater(Bukkit.getPluginManager().getPlugin("ArenaAndFFAManager"), 20L * 3L);
+        }.runTaskLater(plugin, 20L * 3L);
     }
     
     public boolean wasRecentlyHitByFireball(Player player) {

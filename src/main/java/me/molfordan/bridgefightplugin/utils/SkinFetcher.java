@@ -37,7 +37,7 @@ public class SkinFetcher {
         }
 
         Bukkit.getScheduler().runTaskAsynchronously(
-                Bukkit.getPluginManager().getPlugin("ArenaAndFFAManager"),
+                me.molfordan.bridgefightplugin.BridgeFightPlugin.plugin,
                 () -> {
                     String base64 = null;
 
@@ -65,7 +65,7 @@ public class SkinFetcher {
             con.setConnectTimeout(5000);
             con.setReadTimeout(5000);
             con.setRequestMethod("GET");
-            con.setRequestProperty("User-Agent", "ArenaAndFFAManager/1.0");
+            con.setRequestProperty("User-Agent", "BridgeFightPlugin/1.0");
 
             if (con.getResponseCode() != 200) return null;
 
@@ -100,7 +100,7 @@ public class SkinFetcher {
             con.setConnectTimeout(5000);
             con.setReadTimeout(5000);
             con.setRequestMethod("GET");
-            con.setRequestProperty("User-Agent", "ArenaAndFFAManager/1.0");
+            con.setRequestProperty("User-Agent", "BridgeFightPlugin/1.0");
 
             if (con.getResponseCode() != 200) return null;
 
@@ -136,7 +136,7 @@ public class SkinFetcher {
     }
 
     private static void runOnMain(Runnable r) {
-        Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("ArenaAndFFAManager"), r);
+        Bukkit.getScheduler().runTask(me.molfordan.bridgefightplugin.BridgeFightPlugin.plugin, r);
     }
 
     public interface SkinCallback {

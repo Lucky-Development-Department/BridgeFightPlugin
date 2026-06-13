@@ -50,12 +50,8 @@ public class HotbarListener implements Listener {
 
         // Validate hotbar
         if (!session.isHotbarValid()) {
-            p.sendMessage("§cYour hotbar layout is invalid! You cannot have duplicate unique items.");
-
-            // Reopen GUI safely next tick
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                p.openInventory(session.getInventory());
-            });
+            p.sendMessage("§cYour hotbar layout is invalid! You cannot have duplicate unique items. Your changes were not saved.");
+            // Do NOT close session, but do NOT force reopen to prevent OOM
             return;
         }
 
@@ -65,7 +61,7 @@ public class HotbarListener implements Listener {
         String lobbyWorldName = plugin.getConfigManager().getLobbyWorldName();
         String bridgeFightWorldName = plugin.getConfigManager().getBridgeFightWorldName();
 
-        // Apply kit AFTER GUI closes (your giveKillRewards will handle ensureItem)
+        // Apply kit AFTER GUI closes
         if (p.getWorld().getName().equals(lobbyWorldName)) return;
         if (p.getWorld().getName().equals(bridgeFightWorldName)) return;
         // Apply BuildFFA kit

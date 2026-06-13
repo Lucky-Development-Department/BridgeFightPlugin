@@ -152,27 +152,47 @@ public class AutoRestartManager {
     }
     
     private void performRestart() {
-        plugin.getLogger().info("Performing automatic server restart...");
+        plugin.getLogger().info("Starting automatic server restart sequence...");
 
-        // Perform block cleanup and map restoration
-        cleanupBlocksAndRestore();
-        
-        // Kick all players with restart message
+        // 1. Kick all players first to flush final stats to DB
         Bukkit.getOnlinePlayers().forEach(player -> {
-            player.kickPlayer("§c§lServer is restarting!\n§ePlease rejoin in a moment.");
+            player.kickPlayer("§c§lServer is restarting!\n§ePlease rejoin in a moment.\n§7(Data is being backed up...)");
         });
         
-        // Save all data
+        // 2. Save all world and player data
+        plugin.getLogger().info("Saving all server data...");
         Bukkit.savePlayers();
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "save-all");
-        
-        // Schedule the actual restart after a short delay
+
+        // 3. Run Database Backups (Async to avoid Watchdog)
         new BukkitRunnable() {
             @Override
             public void run() {
-                System.exit(0); // This will trigger the server restart script
+                if (plugin.getBackupManager() != null) {
+                    plugin.getLogger().info("Running pre-restart database backups...");
+                    plugin.getBackupManager().backupMySQL();
+                    plugin.getBackupManager().syncToRemoteDatabase();
+                    plugin.getLogger().info("Database backups completed.");
+                }
+
+                // 4. Return to main thread for final cleanup and exit
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        plugin.getLogger().info("Performing final cleanup and shutdown.");
+                        cleanupBlocksAndRestore();
+                        
+                        // Small delay to allow cleanup to finish logging
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                System.exit(0);
+                            }
+                        }.runTaskLater(plugin, 10L);
+                    }
+                }.runTask(plugin);
             }
-        }.runTaskLater(plugin, 20L);
+        }.runTaskAsynchronously(plugin);
     }
 
     private void cleanupBlocksAndRestore() {

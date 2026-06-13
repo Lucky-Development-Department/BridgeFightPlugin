@@ -135,6 +135,7 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
                     String worldName = player.getWorld().getName();
                     if (worldName.equals(configManager.getBuildFFAWorldName())) return String.valueOf(s.getBuildStreak());
                     if (worldName.equals(configManager.getBridgeFightWorldName())) return String.valueOf(s.getBridgeStreak());
+                    //if (worldName.startsWith("bf")) return String.valueOf(s.getBestUnrankedStreak());
                 }
                 return "0";
 

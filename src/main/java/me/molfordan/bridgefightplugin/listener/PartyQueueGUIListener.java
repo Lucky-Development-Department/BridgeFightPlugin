@@ -24,7 +24,7 @@ public class PartyQueueGUIListener implements Listener {
         event.setCancelled(true);
 
         ItemStack clicked = event.getCurrentItem();
-        if (clicked == null || !clicked.hasItemMeta()) return;
+        if (clicked == null || !clicked.hasItemMeta() || !clicked.getItemMeta().hasDisplayName()) return;
 
         Player player = (Player) event.getWhoClicked();
         String name = clicked.getItemMeta().getDisplayName();

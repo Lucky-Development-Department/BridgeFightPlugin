@@ -30,6 +30,7 @@ public class BedFightListener implements Listener {
     private final Map<UUID, Long> hitTimestamp = new ConcurrentHashMap<>();
     private final Map<UUID, Long> killMessageTimestamp = new ConcurrentHashMap<>();
     private final Map<UUID, Location> deathLocations = new ConcurrentHashMap<>();
+    private Set<Material> undropableItems = new HashSet<>(Arrays.asList(Material.WOOD_SWORD, Material.WOOD_AXE, Material.SHEARS, Material.WOOD_PICKAXE));
 
     public BedFightListener(BridgeFightPlugin plugin, BedFightManager bedFightManager) {
         this.plugin = plugin;
@@ -95,7 +96,42 @@ public class BedFightListener implements Listener {
         BedFightSession session = bedFightManager.getSession(player);
         if (session == null) return;
 
-        if (session.getPlayerState(player.getUniqueId()) == BedFightState.DIED) {
+        if (session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.DIED) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onBreakBlock(BlockBreakEvent event){
+        Player player = event.getPlayer();
+        BedFightSession session = bedFightManager.getSession(player);
+        if (session == null) return;
+
+        BedFightPlayerState state = session.getPlayerState(player.getUniqueId());
+        if (state == BedFightPlayerState.PREPARE || state == BedFightPlayerState.DIED || session.isSpectator(player.getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onItemPickup(PlayerPickupItemEvent event){
+        Player player = event.getPlayer();
+        BedFightSession session = bedFightManager.getSession(player);
+
+        if (event.getItem().getItemStack().getType() == Material.BED || event.getItem().getItemStack().getType() == Material.BED_BLOCK){
+            event.setCancelled(true);
+        }
+
+        if (session == null) return;
+
+
+
+        BedFightPlayerState state = session.getPlayerState(player.getUniqueId());
+        if (state == BedFightPlayerState.PREPARE || state == BedFightPlayerState.DIED || session.isSpectator(player.getUniqueId())) {
+            event.setCancelled(true);
+        }
+
+        if (undropableItems.contains(event.getItem().getType())) {
             event.setCancelled(true);
         }
     }
@@ -106,7 +142,12 @@ public class BedFightListener implements Listener {
         BedFightSession session = bedFightManager.getSession(player);
         if (session == null) return;
 
-        if (session.getPlayerState(player.getUniqueId()) == BedFightState.PREPARE || session.getPlayerState(player.getUniqueId()) == BedFightState.SPECTATOR) {
+        BedFightPlayerState state = session.getPlayerState(player.getUniqueId());
+        if (state == BedFightPlayerState.PREPARE || session.isSpectator(player.getUniqueId())) {
+            event.setCancelled(true);
+        }
+
+        if (undropableItems.contains(event.getItemDrop().getItemStack().getType())) {
             event.setCancelled(true);
         }
     }
@@ -130,8 +171,18 @@ public class BedFightListener implements Listener {
         BedFightSession session = bedFightManager.getSession(player);
         if (session == null) return;
 
-        if (session.getPlayerState(player.getUniqueId()) == BedFightState.PREPARE || session.getPlayerState(player.getUniqueId()) == BedFightState.SPECTATOR) {
-            if (session.getPlayerState(player.getUniqueId()) == BedFightState.PREPARE) {
+        if (event.getBlock().getType() == Material.BED || event.getBlock().getType() == Material.BED_BLOCK) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (!session.isActive()) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.PREPARE || session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.SPECTATOR || session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.DIED) {
+            if (session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.PREPARE) {
                 player.setAllowFlight(false);
                 player.setFlying(false);
             }
@@ -191,7 +242,12 @@ public class BedFightListener implements Listener {
         BedFightSession session = bedFightManager.getSession(player);
         if (session == null) return;
 
-        if (session.getPlayerState(player.getUniqueId()) == BedFightState.SPECTATOR) {
+        if (!session.isActive()) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.SPECTATOR || session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.DIED) {
             event.setCancelled(true);
             return;
         }
@@ -327,7 +383,7 @@ public class BedFightListener implements Listener {
         event.getDrops().clear();
         event.setDroppedExp(0);
 
-        if (session.getPlayerState(victim.getUniqueId()) == BedFightState.PREPARE) {
+        if (session.getPlayerState(victim.getUniqueId()) == BedFightPlayerState.PREPARE) {
             return;
         }
 
@@ -336,9 +392,9 @@ public class BedFightListener implements Listener {
     }
 
     private void processDeath(Player victim, Player killer, BedFightSession session, boolean isVoid) {
-        if (session.getPlayerState(victim.getUniqueId()) == BedFightState.DIED ||
-                session.getPlayerState(victim.getUniqueId()) == BedFightState.SPECTATOR_DUEL ||
-                session.getPlayerState(victim.getUniqueId()) == BedFightState.ENDED) {
+        if (session.getPlayerState(victim.getUniqueId()) == BedFightPlayerState.DIED ||
+                session.getPlayerState(victim.getUniqueId()) == BedFightPlayerState.SPECTATOR_DUEL ||
+                session.getPlayerState(victim.getUniqueId()) == BedFightPlayerState.ENDED) {
             return;
         }
 
@@ -346,6 +402,7 @@ public class BedFightListener implements Listener {
         deathLocations.put(victim.getUniqueId(), victim.getLocation());
 
         victim.getInventory().clear();
+        
         victim.getInventory().setArmorContents(null);
         victim.setHealth(20.0);
         victim.setFoodLevel(20);
@@ -357,7 +414,8 @@ public class BedFightListener implements Listener {
         ChatColor victimColor = team.equalsIgnoreCase("RED") ? ChatColor.RED : ChatColor.BLUE;
 
         if (bedAlive) {
-            session.setPlayerState(victim.getUniqueId(), BedFightState.DIED);
+            session.setPlayerState(victim.getUniqueId(), BedFightPlayerState.DIED);
+
 
             ChatColor killerColor = ChatColor.WHITE;
             if (killer != null && killer != victim) {
@@ -368,11 +426,32 @@ public class BedFightListener implements Listener {
                 if (isVoid) killerStats.voidKills++;
                 else killerStats.kills++;
 
-                killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+                // Play sound to opponent on void death
+                if (isVoid) {
+                    String victimTeam = session.getTeam(victim.getUniqueId());
+                    String opponentTeam = victimTeam.equals("RED") ? "BLUE" : "RED";
+                    for (UUID opponentId : session.getPlayersByTeam(opponentTeam)) {
+                        Player opponent = Bukkit.getPlayer(opponentId);
+                        if (opponent != null && opponent.isOnline()) {
+                            opponent.playSound(opponent.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+                        }
+                    }
+                }
+
                 killMessageTimestamp.put(killer.getUniqueId(), System.currentTimeMillis() + 2000);
 
                 String actionText = isVoid ? ChatColor.RED + "" + ChatColor.BOLD + "VOID KILL! " : ChatColor.RED + "" + ChatColor.BOLD + "KILL! ";
                 sendActionBar(killer, actionText + victimColor + victim.getName());
+            } else if (isVoid) {
+                // Play sound to opponent even if no killer detected
+                String victimTeam = session.getTeam(victim.getUniqueId());
+                String opponentTeam = victimTeam.equals("RED") ? "BLUE" : "RED";
+                for (UUID opponentId : session.getPlayersByTeam(opponentTeam)) {
+                    Player opponent = Bukkit.getPlayer(opponentId);
+                    if (opponent != null && opponent.isOnline()) {
+                        opponent.playSound(opponent.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
+                    }
+                }
             }
 
             String msgFormat;
@@ -391,7 +470,7 @@ public class BedFightListener implements Listener {
         } else {
             // Bed destroyed, set to ended (eliminated)
             session.addSpectator(victim.getUniqueId());
-            session.setPlayerState(victim.getUniqueId(), BedFightState.SPECTATOR_DUEL);
+            session.setPlayerState(victim.getUniqueId(), BedFightPlayerState.SPECTATOR_DUEL);
 
             victim.setGameMode(GameMode.ADVENTURE);
             victim.setAllowFlight(true);
@@ -399,13 +478,19 @@ public class BedFightListener implements Listener {
 
             SpectatorListener.giveSpectatorItems(victim);
 
+            // Hide victim from all participants
             for (UUID uuid : session.getAllPlayers()) {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p != null) p.hidePlayer(victim);
             }
+
+            // Show other spectators to victim, and victim to other spectators
             for (UUID specId : session.getSpectators()) {
                 Player spec = Bukkit.getPlayer(specId);
-                if (spec != null) victim.showPlayer(spec);
+                if (spec != null && !spec.equals(victim)) {
+                    victim.showPlayer(spec);
+                    spec.showPlayer(victim);
+                }
             }
 
             ChatColor killerColor = ChatColor.WHITE;
@@ -442,9 +527,9 @@ public class BedFightListener implements Listener {
         boolean allEliminated = true;
         plugin.getLogger().info("DEBUG: Checking elimination for team: " + team);
         for (UUID memberId : new ArrayList<>(session.getPlayersByTeam(team))) {
-            BedFightState state = session.getPlayerState(memberId);
+            BedFightPlayerState state = session.getPlayerState(memberId);
             plugin.getLogger().info("DEBUG: Player " + memberId + " state: " + state);
-            if (state != BedFightState.ENDED && state != BedFightState.SPECTATOR_DUEL) {
+            if (state != BedFightPlayerState.ENDED && state != BedFightPlayerState.SPECTATOR_DUEL) {
                 allEliminated = false;
                 break;
             }
@@ -458,10 +543,7 @@ public class BedFightListener implements Listener {
             updateScoreboard(session);
             
             String winnerTeam = team.equals("RED") ? "BLUE" : "RED";
-            Set<UUID> winnerTeamPlayers = session.getPlayersByTeam(winnerTeam);
-            Player winner = winnerTeamPlayers.isEmpty() ? null : Bukkit.getPlayer(winnerTeamPlayers.iterator().next());
-            
-            bedFightManager.endMatch(session, winner);
+            bedFightManager.endMatch(session, winnerTeam);
         } else {
             plugin.getLogger().info("DEBUG: Team " + team + " still has active players.");
         }
@@ -491,7 +573,7 @@ public class BedFightListener implements Listener {
         BedFightSession session = bedFightManager.getSession(player);
         if (session == null) return;
 
-        if (session.getPlayerState(player.getUniqueId()) == BedFightState.PREPARE) {
+        if (session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.PREPARE) {
             if (event.getFrom().getX() != event.getTo().getX() || event.getFrom().getZ() != event.getTo().getZ()) {
                 event.setTo(event.getFrom());
             }
@@ -500,7 +582,7 @@ public class BedFightListener implements Listener {
 
         Arena arena = session.getArena();
         if (event.getTo().getY() <= arena.getVoidLimit()) {
-            if (session.getPlayerState(player.getUniqueId()) == BedFightState.PLAYING) {
+            if (session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.PLAYING) {
                 handleVoidFall(player, session);
             }
         }
@@ -531,7 +613,7 @@ public class BedFightListener implements Listener {
         BedFightSession session = bedFightManager.getSession(victim);
         if (session == null) return;
 
-        if (session.getPlayerState(victim.getUniqueId()) == BedFightState.SPECTATOR) {
+        if (session.getPlayerState(victim.getUniqueId()) == BedFightPlayerState.SPECTATOR) {
             event.setCancelled(true);
             return;
         }
@@ -546,6 +628,7 @@ public class BedFightListener implements Listener {
                 EntityDamageByEntityEvent e = (EntityDamageByEntityEvent) event;
                 if (e.getDamager() instanceof Player) {
                     killer = (Player) e.getDamager();
+                    killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100f, 1f);
                 }
             }
 
@@ -571,8 +654,8 @@ public class BedFightListener implements Listener {
         BedFightSession victimSession = bedFightManager.getSession(victim);
         BedFightSession attackerSession = bedFightManager.getSession(attacker);
 
-        if ((victimSession != null && (victimSession.getPlayerState(victim.getUniqueId()) == BedFightState.PREPARE || victimSession.getPlayerState(victim.getUniqueId()) == BedFightState.DIED || victimSession.getPlayerState(victim.getUniqueId()) == BedFightState.SPECTATOR || victimSession.getPlayerState(victim.getUniqueId()) == BedFightState.ENDED)) ||
-                (attackerSession != null && (attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.PREPARE || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.DIED || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.SPECTATOR || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightState.ENDED))) {
+        if ((victimSession != null && (victimSession.getPlayerState(victim.getUniqueId()) == BedFightPlayerState.PREPARE || victimSession.getPlayerState(victim.getUniqueId()) == BedFightPlayerState.DIED || victimSession.getPlayerState(victim.getUniqueId()) == BedFightPlayerState.SPECTATOR || victimSession.getPlayerState(victim.getUniqueId()) == BedFightPlayerState.ENDED)) ||
+                (attackerSession != null && (attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightPlayerState.PREPARE || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightPlayerState.DIED || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightPlayerState.SPECTATOR || attackerSession.getPlayerState(attacker.getUniqueId()) == BedFightPlayerState.ENDED))) {
             event.setCancelled(true);
             return;
         }
@@ -672,7 +755,7 @@ public class BedFightListener implements Listener {
                 if (opponent != null) opponent.showPlayer(player);
             }
 
-            session.setPlayerState(player.getUniqueId(), BedFightState.RESPAWNED);
+            session.setPlayerState(player.getUniqueId(), BedFightPlayerState.RESPAWNED);
             updateScoreboard(session);
 
             plugin.getKitManager().applyBedFightKit(player, session.getTeam(player.getUniqueId()));
@@ -682,7 +765,7 @@ public class BedFightListener implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             player.removeMetadata("bedfight_invincible", plugin);
 
-            session.setPlayerState(player.getUniqueId(), BedFightState.PLAYING);
+            session.setPlayerState(player.getUniqueId(), BedFightPlayerState.PLAYING);
             updateScoreboard(session);
         }, 5 * 20L);
     }
@@ -749,8 +832,43 @@ public class BedFightListener implements Listener {
         BedFightSession session = bedFightManager.getSession(player);
         if (session == null) return;
 
-        if (session.getPlayerState(player.getUniqueId()) == BedFightState.SPECTATOR) {
+        if (session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.SPECTATOR) {
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onChat(org.bukkit.event.player.AsyncPlayerChatEvent event) {
+        Player player = event.getPlayer();
+        BedFightSession session = bedFightManager.getSession(player);
+        if (session == null) return;
+
+        if (session.isSpectator(player.getUniqueId()) || session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.ENDED) {
+            event.setCancelled(true);
+            String message = ChatColor.GRAY + "[SPEC] " + player.getName() + ": " + ChatColor.WHITE + event.getMessage();
+            
+            // Send to all spectators in the session
+            for (UUID specId : session.getSpectators()) {
+                Player spec = Bukkit.getPlayer(specId);
+                if (spec != null) spec.sendMessage(message);
+            }
+            
+            // Also allow spectators to see it
+            plugin.getLogger().info("[BedFight-Spec] " + player.getName() + ": " + event.getMessage());
+        } else {
+            String team = session.getTeam(player.getUniqueId());
+            ChatColor color = "RED".equalsIgnoreCase(team) ? ChatColor.RED : ChatColor.BLUE;
+            
+            // Update format for participants
+            event.setFormat(color + player.getName() + ChatColor.WHITE + ": %2$s");
+            
+            // Ensure spectators are included in recipients if they are not already
+            for (UUID specId : session.getSpectators()) {
+                Player spec = Bukkit.getPlayer(specId);
+                if (spec != null && !event.getRecipients().contains(spec)) {
+                    event.getRecipients().add(spec);
+                }
+            }
         }
     }
 
@@ -769,7 +887,7 @@ public class BedFightListener implements Listener {
         String msg = String.format(BedFightMessages.DISCONNECT, player.getName());
         broadcastMessage(session, ChatColor.RED + msg);
 
-        session.setPlayerState(player.getUniqueId(), BedFightState.ENDED);
+        session.setPlayerState(player.getUniqueId(), BedFightPlayerState.ENDED);
         checkTeamElimination(session, team);
     }
 }

@@ -31,8 +31,8 @@ public class ForfeitCommand implements CommandExecutor {
             return true;
         }
 
-        BedFightState state = session.getPlayerState(player.getUniqueId());
-        if (state == BedFightState.ENDED) {
+        BedFightPlayerState state = session.getPlayerState(player.getUniqueId());
+        if (state == BedFightPlayerState.ENDED) {
             player.sendMessage(ChatColor.RED + "The game has already ended! Use /leave.");
             return true;
         }
@@ -53,8 +53,8 @@ public class ForfeitCommand implements CommandExecutor {
 
         performSimpleLeave(player);
 
-        // End match with opponent as winner
-        plugin.getBedFightManager().endMatch(session, opponent);
+        // End match with opponent team as winner
+        plugin.getBedFightManager().endMatch(session, opponentTeam);
 
         return true;
     }

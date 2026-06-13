@@ -27,49 +27,41 @@ public class PlayAgainCommand implements CommandExecutor {
         Player player = (Player) sender;
         long endTime = plugin.getBedFightManager().getGameEndTime(player.getUniqueId());
         
-        if (System.currentTimeMillis() - endTime > 45000) {
+        if (System.currentTimeMillis() - endTime > 60000) {
             player.sendMessage(ChatColor.RED + "The play again period has expired!");
             return true;
         }
 
-        // Manually perform cleanup instead of /leave command
-        plugin.getBedFightManager().removePlayerFromSession(player);
-        player.getInventory().clear();
-        player.getInventory().setArmorContents(null);
-        player.setGameMode(org.bukkit.GameMode.ADVENTURE);
-        player.setFlying(false);
-        player.setAllowFlight(false);
-        player.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getNewScoreboard());
-
-        MetadataValue meta = player.getMetadata("lastQueueType").stream().findFirst().orElse(null);
-        if (meta != null) {
-            try {
-                QueueType type = QueueType.valueOf(meta.asString());
-                plugin.getMatchmakingService().addToQueue(player, type);
-                player.removeMetadata("lastQueueType", plugin);
-            } catch (IllegalArgumentException e) {
-                player.sendMessage(ChatColor.RED + "Could not determine last queue type.");
-            }
-        } else {
-            player.sendMessage(ChatColor.RED + "Could not find your last queue!");
+        if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
+            player.sendMessage(ChatColor.RED + "You are already in a queue!");
+            return true;
         }
 
-        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (plugin.getBedFightManager().isInMatch(player)) return;
+        MetadataValue meta = player.getMetadata("lastQueueType").stream().findFirst().orElse(null);
+        if (meta == null) {
+            player.sendMessage(ChatColor.RED + "Could not find your last queue!");
+            return true;
+        }
 
-            if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
-                player.getInventory().clear();
-                player.getInventory().setArmorContents(null);
-                plugin.getMatchmakingService().giveLeaveItem(player);
-                return;
-            }
+        try {
+            QueueType type = QueueType.valueOf(meta.asString());
             
-            if (plugin.getPartyManager().isInParty(player.getUniqueId())) {
-                plugin.getPartyManager().givePartyItems(player);
-            } else {
-                plugin.getSpawnItem().giveSpawnItem(player);
-            }
-        }, 1L);
+            plugin.getLogger().info("DEBUG: PlayAgain for " + player.getName() + " with type: " + type.name());
+            
+            // Clean up from current session but stay in world
+            plugin.getBedFightManager().removePlayerFromSession(player);
+            player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
+            player.setGameMode(org.bukkit.GameMode.ADVENTURE);
+            player.setAllowFlight(true);
+            player.setFlying(true);
+            
+            plugin.getMatchmakingService().addToQueue(player, type);
+            player.removeMetadata("lastQueueType", plugin);
+            plugin.getLogger().info("DEBUG: PlayAgain successfully added " + player.getName() + " to queue.");
+        } catch (IllegalArgumentException e) {
+            player.sendMessage(ChatColor.RED + "Could not determine last queue type.");
+        }
 
         return true;
     }

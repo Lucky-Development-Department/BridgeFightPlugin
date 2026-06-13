@@ -26,6 +26,8 @@ public class StatsManager {
     private final File statsFolder;
 
     private final Map<UUID, PlayerStats> cache = new HashMap<>();
+    private final com.google.gson.Gson gson = new com.google.gson.Gson();
+    private static final String REDIS_PREFIX = "bf_stats:";
     
     public StatsManager(BridgeFightPlugin plugin) {
         this.plugin = plugin;
@@ -110,9 +112,42 @@ public class StatsManager {
     }
 
     // --------------------------------------------------------------------------------------
+    // REDIS CACHING
+    // --------------------------------------------------------------------------------------
+    private boolean isRedisCachingEnabled() {
+        return db.getRedisConnector() != null && db.getRedisConnector().isConnected();
+    }
+
+    private void saveToRedis(PlayerStats stats) {
+        if (!isRedisCachingEnabled()) return;
+
+        try (redis.clients.jedis.Jedis jedis = db.getRedisConnector().getRedisClient()) {
+            String json = gson.toJson(stats);
+            jedis.setex(REDIS_PREFIX + stats.getUuid().toString(), 3600, json); // Cache for 1 hour
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to save stats to Redis", e);
+        }
+    }
+
+    private PlayerStats loadFromRedis(UUID uuid) {
+        if (!isRedisCachingEnabled()) return null;
+
+        try (redis.clients.jedis.Jedis jedis = db.getRedisConnector().getRedisClient()) {
+            String json = jedis.get(REDIS_PREFIX + uuid.toString());
+            if (json != null) {
+                return gson.fromJson(json, PlayerStats.class);
+            }
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to load stats from Redis", e);
+        }
+        return null;
+    }
+
+    // --------------------------------------------------------------------------------------
     // LOAD PLAYER
     // --------------------------------------------------------------------------------------
     public PlayerStats loadPlayer(UUID uuid, String username) {
+        // 1. Local Memory Cache
         if (cache.containsKey(uuid)) {
             PlayerStats cached = cache.get(uuid);
             if (username != null && !username.equalsIgnoreCase("Unknown")) {
@@ -123,6 +158,17 @@ public class StatsManager {
             return cached;
         }
 
+        // 2. Redis Cache
+        PlayerStats redisStats = loadFromRedis(uuid);
+        if (redisStats != null) {
+            if (username != null && !username.equalsIgnoreCase("Unknown")) {
+                redisStats.setUsername(username);
+            }
+            cache.put(uuid, redisStats);
+            return redisStats;
+        }
+
+        // 3. Primary Database
         DatabaseConnector connector = db.getConnector();
         PlayerStats stats;
 
@@ -140,6 +186,9 @@ public class StatsManager {
                 stats.setUsername(username);
             }
         }
+
+        // Save to Redis for next time
+        saveToRedis(stats);
 
         cache.put(uuid, stats);
         return stats;
@@ -166,8 +215,14 @@ public class StatsManager {
 
                     stats.setBridgeKills(rs.getInt("bridge_kills"));
                     stats.setBridgeDeaths(rs.getInt("bridge_deaths"));
+                    stats.setBridgeStreak(rs.getInt("bridge_streak"));
+                    stats.setBridgeHighestStreak(rs.getInt("bridge_highest_streak"));
+
                     stats.setBuildKills(rs.getInt("build_kills"));
                     stats.setBuildDeaths(rs.getInt("build_deaths"));
+                    stats.setBuildStreak(rs.getInt("build_streak"));
+                    stats.setBuildHighestStreak(rs.getInt("build_highest_streak"));
+                    
                     stats.setLastSelectedBridgeKit(rs.getString("last_selected_bridge_kit"));
 
                     // New Ranked/Unranked
@@ -281,6 +336,9 @@ public class StatsManager {
             saveToYAML(stats);
         }
 
+        // Sync with Redis cache
+        saveToRedis(stats);
+        
         cache.put(stats.getUuid(), stats);
     }
 
@@ -600,10 +658,35 @@ public class StatsManager {
     // --------------------------------------------------------------------------------------
     public void clearCache() {
         cache.clear();
+        clearRedisCache();
+    }
+
+    private void clearRedisCache() {
+        if (!isRedisCachingEnabled()) return;
+        
+        try (redis.clients.jedis.Jedis jedis = db.getRedisConnector().getRedisClient()) {
+            Set<String> keys = jedis.keys(REDIS_PREFIX + "*");
+            if (keys != null && !keys.isEmpty()) {
+                jedis.del(keys.toArray(new String[0]));
+            }
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to clear Redis cache", e);
+        }
     }
 
     public void removeFromCache(UUID uuid) {
         cache.remove(uuid);
+        deleteFromRedis(uuid);
+    }
+
+    private void deleteFromRedis(UUID uuid) {
+        if (!isRedisCachingEnabled()) return;
+
+        try (redis.clients.jedis.Jedis jedis = db.getRedisConnector().getRedisClient()) {
+            jedis.del(REDIS_PREFIX + uuid.toString());
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to delete stats from Redis", e);
+        }
     }
 
     public Map<UUID, PlayerStats> getCache() {

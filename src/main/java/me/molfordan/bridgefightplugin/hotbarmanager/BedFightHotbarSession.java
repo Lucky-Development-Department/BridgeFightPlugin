@@ -121,10 +121,8 @@ public class BedFightHotbarSession {
 
         if (rawSlot == 3) {
             if (!isHotbarValid()) {
-                player.sendMessage(ChatColor.RED + "Your hotbar is invalid!"
-                        + ChatColor.GRAY + " (Duplicate unique items or exceeded slot limits)");
-                Bukkit.getScheduler().runTask(plugin, () -> player.openInventory(inventory));
-                return;
+                player.sendMessage(ChatColor.YELLOW + "Your hotbar was invalid! Resetting to defaults.");
+                applyDefaultLayout();
             }
             player.closeInventory();
             return;
@@ -180,23 +178,28 @@ public class BedFightHotbarSession {
         }
     }
 
-    public boolean isHotbarValid() {
+    public String getInvalidReason() {
         Set<String> seen = new HashSet<>();
         int blocksCount = 0;
 
-        for (String id : hotbarLayout.values()) {
+        for (Map.Entry<Integer, String> entry : hotbarLayout.entrySet()) {
+            String id = entry.getValue();
             if (id == null) continue;
             id = id.toLowerCase();
             if (UNIQUE_CATEGORIES.contains(id)) {
-                if (seen.contains(id)) return false;
+                if (seen.contains(id)) return "Duplicate unique item: " + categoryDisplayName(id);
                 seen.add(id);
             }
             if (id.equals("blocks")) {
                 blocksCount++;
-                if (blocksCount > 2) return false;
+                if (blocksCount > 2) return "Too many block slots (max 2)";
             }
         }
-        return true;
+        return null;
+    }
+
+    public boolean isHotbarValid() {
+        return getInvalidReason() == null;
     }
 
     private void loadHotbarLayoutFromDB() {
@@ -293,5 +296,10 @@ public class BedFightHotbarSession {
         return Character.toUpperCase(clean.charAt(0)) + clean.substring(1);
     }
 
-    public void onClose() {}
+    public void onClose() {
+        if (!isHotbarValid()) {
+            player.sendMessage(ChatColor.YELLOW + "Your hotbar layout was invalid! Resetting to defaults.");
+            applyDefaultLayout();
+        }
+    }
 }

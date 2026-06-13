@@ -68,6 +68,14 @@ public class GUILeaderboardBridgeFight {
             pm.setDisplayName("§aPrevious Page");
             prev.setItemMeta(pm);
             inv.setItem(45, prev);
+        } else {
+            // Return to Main Menu on Page 1
+            ItemStack main = new ItemStack(Material.BOOK);
+            ItemMeta mm = main.getItemMeta();
+            mm.setDisplayName("§eBack to Main Menu");
+            mm.setLore(java.util.Arrays.asList("§7Click to return to the", "§7main leaderboard selection."));
+            main.setItemMeta(mm);
+            inv.setItem(45, main);
         }
 
         if (page < maxPage) {

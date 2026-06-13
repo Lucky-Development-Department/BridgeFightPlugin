@@ -239,7 +239,7 @@ public class DeathMessageManager implements Listener {
             }
             
             // Play noteblock sound and give redstone block breaking effect
-            killer.playSound(killer.getLocation(), Sound.NOTE_PIANO, 1.0f, 6.0f);
+            killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100, 1.0f);
 
         }
 

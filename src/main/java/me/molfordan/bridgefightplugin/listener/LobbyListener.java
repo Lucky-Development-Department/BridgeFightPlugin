@@ -188,17 +188,18 @@ public class LobbyListener implements Listener {
     public void onPlayerInteract(PlayerInteractEvent event){
         Player player = event.getPlayer();
         Block block = event.getClickedBlock();
+        Action action = event.getAction();
+
+        if (action == null) return;
+        
+        if (action == Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK) return;
+        if (action == Action.RIGHT_CLICK_AIR) return;
 
         if (block == null) return;
 
-        if (event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK) return;
-        if (event.getAction() == Action.RIGHT_CLICK_AIR) return;
-
         if (isPlayerInLobby(player)){
             if (configManager.isBuildMode(player.getUniqueId())) return;
-            if (event.getAction() == Action.RIGHT_CLICK_BLOCK) event.setCancelled(true);
-
-
+            if (action == Action.RIGHT_CLICK_BLOCK) event.setCancelled(true);
         }
     }
 

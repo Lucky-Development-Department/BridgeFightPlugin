@@ -23,9 +23,11 @@ public class SpectatorListener implements Listener {
     public void onInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         BedFightSession session = plugin.getBedFightManager().getSession(player);
-        // Relax: Allow interacting if player is in a session (participant or spectator)
         if (session == null) return;
 
+        if (!session.isSpectator(player.getUniqueId()) && session.getPlayerState(player.getUniqueId()) != BedFightPlayerState.ENDED) return;
+
+        event.setCancelled(true);
         ItemStack item = event.getItem();
         if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return;
 
@@ -38,6 +40,38 @@ public class SpectatorListener implements Listener {
     }
 
     @EventHandler
+    public void onEntityDamage(org.bukkit.event.entity.EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        BedFightSession session = plugin.getBedFightManager().getSession(player);
+        if (session != null && (session.isSpectator(player.getUniqueId()) || session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.ENDED)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onEntityTarget(org.bukkit.event.entity.EntityTargetLivingEntityEvent event) {
+        if (!(event.getTarget() instanceof Player)) return;
+        Player player = (Player) event.getTarget();
+        BedFightSession session = plugin.getBedFightManager().getSession(player);
+        if (session != null && (session.isSpectator(player.getUniqueId()) || session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.ENDED)) {
+            event.setTarget(null);
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onFoodLevelChange(org.bukkit.event.entity.FoodLevelChangeEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        BedFightSession session = plugin.getBedFightManager().getSession(player);
+        if (session != null && (session.isSpectator(player.getUniqueId()) || session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.ENDED)) {
+            event.setFoodLevel(20);
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
@@ -45,6 +79,7 @@ public class SpectatorListener implements Listener {
         if (event.getView().getTitle().equals(ChatColor.DARK_GRAY + "Teleport to Player")) {
             event.setCancelled(true);
             if (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.AIR) return;
+            if (!event.getCurrentItem().hasItemMeta() || !event.getCurrentItem().getItemMeta().hasDisplayName()) return;
             
             String targetName = ChatColor.stripColor(event.getCurrentItem().getItemMeta().getDisplayName());
             Player target = Bukkit.getPlayer(targetName);
@@ -57,7 +92,7 @@ public class SpectatorListener implements Listener {
         }
 
         BedFightSession session = plugin.getBedFightManager().getSession(player);
-        if (session != null && (session.getPlayerState(player.getUniqueId()) == BedFightState.ENDED || session.isSpectator(player.getUniqueId()))) {
+        if (session != null && (session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.ENDED || session.isSpectator(player.getUniqueId()))) {
             event.setCancelled(true);
         }
     }

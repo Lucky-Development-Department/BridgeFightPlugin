@@ -97,8 +97,14 @@ public class LeaderboardGUIListener implements Listener {
             return;
         }
 
+        // BACK TO MAIN MENU
+        if (type == Material.BOOK) {
+            plugin.getGuiLeaderboardMain().open(p);
+            return;
+        }
+
         // PAGINATION
-        if (type == Material.ARROW && item.hasItemMeta()) {
+        if (type == Material.ARROW && item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
             ItemMeta meta = item.getItemMeta();
 
             boolean next = meta.getDisplayName().contains("Next");
@@ -158,8 +164,14 @@ public class LeaderboardGUIListener implements Listener {
             return;
         }
 
+        // BACK TO MAIN MENU
+        if (type == Material.BOOK) {
+            plugin.getGuiLeaderboardMain().open(p);
+            return;
+        }
+
         // PAGINATION
-        if (type == Material.ARROW && item.hasItemMeta()) {
+        if (type == Material.ARROW && item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
             ItemMeta meta = item.getItemMeta();
             boolean next = meta.getDisplayName().contains("Next");
 

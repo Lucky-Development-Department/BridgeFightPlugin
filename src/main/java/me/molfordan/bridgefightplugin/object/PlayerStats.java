@@ -33,7 +33,7 @@ public class PlayerStats {
     // --- Ranked ---
     private int rankedElo = 1000;
     private int peakElo = 1000;
-    private int rankedWins, rankedLosses, rankedKills, rankedDeaths, rankedBeds;
+    private int rankedWins, rankedLosses, rankedKills, rankedDeaths, rankedBeds, rankedStreak, rankedHighestStreak;
 
     // --- BedFight Specific ---
     private int bedFightBedBreaks = 0;
@@ -42,7 +42,7 @@ public class PlayerStats {
 
 
     // --- Unranked ---
-    private int unrankedWins, unrankedLosses, unrankedKills, unrankedDeaths, unrankedBeds, bestUnrankedStreak;
+    private int unrankedWins, unrankedLosses, unrankedKills, unrankedDeaths, unrankedBeds, unrankedStreak, bestUnrankedStreak;
     
     // --- Duel ---
     private int duelWins, duelLosses;
@@ -89,6 +89,8 @@ public class PlayerStats {
     public int getRankedKills() { return rankedKills; }
     public int getRankedDeaths() { return rankedDeaths; }
     public int getRankedBeds() { return rankedBeds; }
+    public int getRankedStreak() { return rankedStreak; }
+    public int getRankedHighestStreak() { return rankedHighestStreak; }
 
     // --- New Unranked Stats ---
     public int getUnrankedWins() { return unrankedWins; }
@@ -96,6 +98,8 @@ public class PlayerStats {
     public int getUnrankedKills() { return unrankedKills; }
     public int getUnrankedDeaths() { return unrankedDeaths; }
     public int getUnrankedBeds() { return unrankedBeds; }
+    public int getUnrankedStreak() { return unrankedStreak; }
+    public int getUnrankedHighestStreak() { return bestUnrankedStreak; }
     public int getBestUnrankedStreak() { return bestUnrankedStreak; }
     
     // --- Duel Stats ---
@@ -139,6 +143,7 @@ public class PlayerStats {
     public void setUnrankedKills(int kills) { this.unrankedKills = Math.max(0, kills); }
     public void setUnrankedDeaths(int deaths) { this.unrankedDeaths = Math.max(0, deaths); }
     public void setUnrankedBeds(int beds) { this.unrankedBeds = Math.max(0, beds); }
+    public void setUnrankedStreak(int streak) { this.unrankedStreak = Math.max(0, streak); }
     public void setBestUnrankedStreak(int streak) { this.bestUnrankedStreak = Math.max(0, streak); }
 
     // Duel Setters

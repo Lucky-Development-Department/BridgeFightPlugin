@@ -43,7 +43,7 @@ public class SpecCommand implements CommandExecutor {
         }
 
         plugin.getBedFightManager().addSpectator(session, player);
-        session.setPlayerState(player.getUniqueId(), BedFightState.SPECTATOR);
+        session.setPlayerState(player.getUniqueId(), BedFightPlayerState.SPECTATOR);
         return true;
     }
 }

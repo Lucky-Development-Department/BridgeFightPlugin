@@ -44,8 +44,8 @@ public class QueueListener implements Listener {
         if (title.equals(ChatColor.BLUE + "Select Queue Type")) {
             event.setCancelled(true);
             switch (event.getRawSlot()) {
-                case 2: plugin.getQueueGUI().openSoloType(player); break;
-                case 4: plugin.getQueueGUI().openDuoType(player); break;
+                case 3: plugin.getQueueGUI().openSoloType(player); break;
+                case 5: plugin.getQueueGUI().openDuoType(player); break;
                 case 6: plugin.getQueueGUI().openPartyType(player); break;
             }
         } else if (title.equals(ChatColor.BLUE + "Select Solo Mode")) {

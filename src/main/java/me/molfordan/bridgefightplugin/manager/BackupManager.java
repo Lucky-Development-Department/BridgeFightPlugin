@@ -45,6 +45,213 @@ public class BackupManager {
     }
     
     /**
+     * Mirror the primary database to a secondary MySQL server
+     */
+    public boolean syncToRemoteDatabase() {
+        File databaseCfgFile = new File(plugin.getDataFolder(), "database.yml");
+        if (!databaseCfgFile.exists()) return false;
+        
+        FileConfiguration cfg = YamlConfiguration.loadConfiguration(databaseCfgFile);
+        if (!cfg.getBoolean("mysql_remote_backup.enabled", false)) return false;
+        
+        // Primary Credentials
+        String pHost = cfg.getString("mysql.host");
+        int pPort = cfg.getInt("mysql.port");
+        String pDatabase = cfg.getString("mysql.database");
+        String pUser = cfg.getString("mysql.user");
+        String pPass = cfg.getString("mysql.password");
+        
+        // Remote Credentials
+        String rHost = cfg.getString("mysql_remote_backup.host");
+        int rPort = cfg.getInt("mysql_remote_backup.port");
+        String rDatabase = cfg.getString("mysql_remote_backup.database");
+        String rUser = cfg.getString("mysql_remote_backup.user");
+        String rPass = cfg.getString("mysql_remote_backup.password");
+
+        String pUrl = "jdbc:mysql://" + pHost + ":" + pPort + "/" + pDatabase + "?useSSL=false&allowPublicKeyRetrieval=true";
+        String rUrl = "jdbc:mysql://" + rHost + ":" + rPort + "/" + rDatabase + "?useSSL=false&allowPublicKeyRetrieval=true";
+
+        plugin.getLogger().info("Syncing primary database to remote mirror: " + rHost);
+
+        try (Connection pConn = DriverManager.getConnection(pUrl, pUser, pPass);
+             Connection rConn = DriverManager.getConnection(rUrl, rUser, rPass)) {
+            
+            try (Statement rStmt = rConn.createStatement()) {
+                rStmt.execute("SET FOREIGN_KEY_CHECKS=0;");
+            }
+
+            DatabaseMetaData metaData = pConn.getMetaData();
+            try (ResultSet tables = metaData.getTables(pDatabase, null, "%", new String[]{"TABLE"})) {
+                while (tables.next()) {
+                    String tableName = tables.getString("TABLE_NAME");
+                    
+                    // 1. Mirror Table Structure
+                    String createSql = "";
+                    try (Statement st = pConn.createStatement();
+                         ResultSet rs = st.executeQuery("SHOW CREATE TABLE `" + tableName + "`")) {
+                        if (rs.next()) createSql = rs.getString(2);
+                    }
+
+                    if (!createSql.isEmpty()) {
+                        try (Statement st = rConn.createStatement()) {
+                            st.execute("DROP TABLE IF EXISTS `" + tableName + "`;");
+                            st.execute(createSql + ";");
+                        }
+                    }
+
+                    // 2. Mirror Data
+                    mirrorTableData(pConn, rConn, tableName);
+                }
+            }
+
+            try (Statement rStmt = rConn.createStatement()) {
+                rStmt.execute("SET FOREIGN_KEY_CHECKS=1;");
+            }
+
+            plugin.getLogger().info("Database mirror sync completed successfully!");
+            return true;
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to sync to remote database mirror", e);
+            return false;
+        }
+    }
+
+    private void mirrorTableData(Connection pConn, Connection rConn, String tableName) throws SQLException {
+        try (Statement pStmt = pConn.createStatement();
+             ResultSet rs = pStmt.executeQuery("SELECT * FROM `" + tableName + "`")) {
+            
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int columnCount = rsmd.getColumnCount();
+
+            // Build prepared statement for insertion
+            StringBuilder sb = new StringBuilder("INSERT INTO `" + tableName + "` VALUES (");
+            for (int i = 1; i <= columnCount; i++) {
+                sb.append("?");
+                if (i < columnCount) sb.append(", ");
+            }
+            sb.append(")");
+
+            try (PreparedStatement rPstmt = rConn.prepareStatement(sb.toString())) {
+                while (rs.next()) {
+                    for (int i = 1; i <= columnCount; i++) {
+                        rPstmt.setObject(i, rs.getObject(i));
+                    }
+                    rPstmt.addBatch();
+                }
+                rPstmt.executeBatch();
+            }
+        }
+    }
+
+    /**
+     * Create a SQL dump of the MySQL database using pure Java/JDBC
+     */
+    public boolean backupMySQL() {
+        File databaseCfgFile = new File(plugin.getDataFolder(), "database.yml");
+        if (!databaseCfgFile.exists()) return false;
+        
+        FileConfiguration cfg = YamlConfiguration.loadConfiguration(databaseCfgFile);
+        if (!cfg.getString("type", "SQLITE").equalsIgnoreCase("MYSQL")) return false;
+        
+        String host = cfg.getString("mysql.host");
+        int port = cfg.getInt("mysql.port");
+        String databaseName = cfg.getString("mysql.database");
+        String user = cfg.getString("mysql.user");
+        String password = cfg.getString("mysql.password");
+        
+        File sqlBackupFolder = new File(plugin.getDataFolder(), "database_backup");
+        if (!sqlBackupFolder.exists()) sqlBackupFolder.mkdirs();
+        
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+        String fileName = "backup_database_" + timestamp + "_temp.sql";
+        File backupFile = new File(sqlBackupFolder, fileName);
+        
+        String url = "jdbc:mysql://" + host + ":" + port + "/" + databaseName + "?useSSL=false&allowPublicKeyRetrieval=true";
+        
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.FileWriter(backupFile))) {
+            
+            writer.println("-- BridgeFightPlugin SQL Backup");
+            writer.println("-- Date: " + timestamp);
+            writer.println("-- Database: " + databaseName);
+            writer.println();
+            writer.println("SET FOREIGN_KEY_CHECKS=0;");
+            writer.println();
+
+            DatabaseMetaData metaData = conn.getMetaData();
+            try (ResultSet tables = metaData.getTables(databaseName, null, "%", new String[]{"TABLE"})) {
+                while (tables.next()) {
+                    String tableName = tables.getString("TABLE_NAME");
+                    
+                    // 1. Generate CREATE TABLE
+                    dumpTableStructure(conn, tableName, writer);
+                    
+                    // 2. Generate INSERTs
+                    dumpTableData(conn, tableName, writer);
+                    
+                    writer.println();
+                }
+            }
+
+            writer.println("SET FOREIGN_KEY_CHECKS=1;");
+            plugin.getLogger().info("Database SQL backup (Java) created: " + fileName);
+            return true;
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to perform Java-based SQL backup", e);
+            return false;
+        }
+    }
+
+    private void dumpTableStructure(Connection conn, String tableName, java.io.PrintWriter writer) throws SQLException {
+        writer.println("-- Structure for table: " + tableName);
+        writer.println("DROP TABLE IF EXISTS `" + tableName + "`;");
+        
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SHOW CREATE TABLE `" + tableName + "`")) {
+            if (rs.next()) {
+                String createSql = rs.getString(2);
+                writer.println(createSql + ";");
+            }
+        }
+        writer.println();
+    }
+
+    private void dumpTableData(Connection conn, String tableName, java.io.PrintWriter writer) throws SQLException {
+        writer.println("-- Data for table: " + tableName);
+        
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM `" + tableName + "`")) {
+            
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int columnCount = rsmd.getColumnCount();
+            
+            while (rs.next()) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("INSERT INTO `").append(tableName).append("` VALUES (");
+                
+                for (int i = 1; i <= columnCount; i++) {
+                    Object value = rs.getObject(i);
+                    if (value == null) {
+                        sb.append("NULL");
+                    } else if (value instanceof Number) {
+                        sb.append(value);
+                    } else {
+                        String str = value.toString().replace("'", "''").replace("\\", "\\\\");
+                        sb.append("'").append(str).append("'");
+                    }
+                    
+                    if (i < columnCount) sb.append(", ");
+                }
+                
+                sb.append(");");
+                writer.println(sb.toString());
+            }
+        }
+    }
+
+    /**
      * Create backup of current database data
      */
     public String createBackup(String reason) {

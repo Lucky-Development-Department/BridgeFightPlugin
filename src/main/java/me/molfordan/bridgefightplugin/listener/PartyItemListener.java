@@ -19,7 +19,7 @@ public class PartyItemListener implements Listener {
     }
 
     private boolean isPartyItem(ItemStack item) {
-        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) return false;
+        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return false;
         String name = item.getItemMeta().getDisplayName();
         return name != null && (name.contains("Party Queue") || name.contains("Leave Party"));
     }
@@ -29,7 +29,7 @@ public class PartyItemListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = event.getItem();
 
-        if (item == null || item.getType() == Material.AIR) return;
+        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return;
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
         if (item.getType() == Material.DIAMOND_SWORD && item.getItemMeta().getDisplayName().contains("Party Queue")) {

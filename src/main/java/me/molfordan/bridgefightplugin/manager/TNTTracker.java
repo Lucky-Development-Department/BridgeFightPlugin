@@ -1,5 +1,6 @@
 package me.molfordan.bridgefightplugin.manager;
 
+import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
@@ -13,6 +14,11 @@ public class TNTTracker {
     
     private final Map<UUID, UUID> tntOwners = new ConcurrentHashMap<>();
     private final Map<UUID, Long> tntTimes = new ConcurrentHashMap<>();
+    private final BridgeFightPlugin plugin;
+
+    public TNTTracker(BridgeFightPlugin plugin) {
+        this.plugin = plugin;
+    }
     
     public void trackTNT(TNTPrimed tnt, Player owner) {
         tntOwners.put(tnt.getUniqueId(), owner.getUniqueId());
@@ -25,7 +31,7 @@ public class TNTTracker {
                 tntOwners.remove(tnt.getUniqueId());
                 tntTimes.remove(tnt.getUniqueId());
             }
-        }.runTaskLater(Bukkit.getPluginManager().getPlugin("ArenaAndFFAManager"), 20L * 30L);
+        }.runTaskLater(plugin, 20L * 30L);
     }
     
     public Player getTNTOwner(TNTPrimed tnt) {

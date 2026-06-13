@@ -26,9 +26,9 @@ public class QueueGUI {
         ItemStack duo = buildItem(Material.DIAMOND_SWORD, ChatColor.GOLD + "DUO Queue", ChatColor.GRAY + "2v2 Matchmaking");
         ItemStack party = buildItem(Material.NAME_TAG, ChatColor.GOLD + "PARTY Queue", ChatColor.GRAY + "Party matches");
         
-        inv.setItem(2, solo);
-        inv.setItem(4, duo);
-        inv.setItem(6, party);
+        inv.setItem(3, solo);
+        inv.setItem(5, duo);
+        //inv.setItem(6, party);
         
         player.openInventory(inv);
     }

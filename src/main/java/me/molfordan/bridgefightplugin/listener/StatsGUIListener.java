@@ -15,12 +15,12 @@ public class StatsGUIListener implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-
         if (event.getClickedInventory() == null) return;
 
-        // Check by inventory title (Java 8 compatible)
-        if (event.getView().getTitle().equals("§9Your Statistics") || event.getView().getTitle().startsWith("§6Stats: §e")) {
-            event.setCancelled(true); // ⛔ block taking items
+        // Check by inventory title using the ChatColor codes from StatsGUI
+        String title = event.getView().getTitle();
+        if (title.startsWith("§6Stats: §e")) {
+            event.setCancelled(true);
         }
     }
 }

@@ -13,6 +13,7 @@ public class DatabaseManager {
 
     private final BridgeFightPlugin plugin;
     private DatabaseConnector selectedConnector;
+    private RedisConnector redisConnector;
     private DataSource dataSource;
 
     public DatabaseManager(BridgeFightPlugin plugin) {
@@ -48,11 +49,22 @@ public class DatabaseManager {
         changed |= setDefault(cfg, "mysql.database", "mydatabase");
         changed |= setDefault(cfg, "mysql.user", "root");
         changed |= setDefault(cfg, "mysql.password", "password");
+        changed |= setDefault(cfg, "mysql.mysqldump_path", "mysqldump");
+
+        // Remote Backup MySQL
+        changed |= setDefault(cfg, "mysql_remote_backup.enabled", false);
+        changed |= setDefault(cfg, "mysql_remote_backup.host", "backup-host");
+        changed |= setDefault(cfg, "mysql_remote_backup.port", 3306);
+        changed |= setDefault(cfg, "mysql_remote_backup.database", "backup_db");
+        changed |= setDefault(cfg, "mysql_remote_backup.user", "backup_user");
+        changed |= setDefault(cfg, "mysql_remote_backup.password", "backup_password");
 
         // Redis
         changed |= setDefault(cfg, "redis.enabled", false);
         changed |= setDefault(cfg, "redis.host", "localhost");
         changed |= setDefault(cfg, "redis.port", 6379);
+        changed |= setDefault(cfg, "redis.password", "");
+        changed |= setDefault(cfg, "redis.channel", "bridgefight_channel");
 
         // MongoDB
         changed |= setDefault(cfg, "mongodb.enabled", false);
@@ -98,6 +110,18 @@ public class DatabaseManager {
         boolean redis = cfg.getBoolean("redis.enabled");
         boolean mongo = cfg.getBoolean("mongodb.enabled");
 
+        // Initialize Redis separately if enabled (for caching)
+        if (redis) {
+            redisConnector = new RedisConnector(
+                    cfg.getString("redis.host"),
+                    cfg.getInt("redis.port"),
+                    cfg.getString("redis.password", ""),
+                    cfg.getString("redis.channel", "bridgefight_channel")
+            );
+            redisConnector.connect();
+            System.out.println("[Database] Redis caching enabled.");
+        }
+
         // NOTHING enabled → auto fallback to SQLite
         if (!mysql && !redis && !mongo) {
             System.out.println("[Database] No database enabled → Using SQLite.");
@@ -123,10 +147,7 @@ public class DatabaseManager {
 
             case REDIS:
                 if (redis) {
-                    selectedConnector = new RedisConnector(
-                            cfg.getString("redis.host"),
-                            cfg.getInt("redis.port")
-                    );
+                    selectedConnector = redisConnector;
                 }
                 break;
 
@@ -155,11 +176,17 @@ public class DatabaseManager {
             selectedConnector = new SQLiteConnector(new File(plugin.getDataFolder(), "data.db"));
         }
 
-        selectedConnector.connect();
+        if (selectedConnector != redisConnector) {
+            selectedConnector.connect();
+        }
     }
 
     public DatabaseConnector getConnector() {
         return selectedConnector;
+    }
+
+    public RedisConnector getRedisConnector() {
+        return redisConnector;
     }
 
     public boolean isConnected() {
@@ -169,6 +196,9 @@ public class DatabaseManager {
     public void shutdown() {
         if (selectedConnector != null) {
             selectedConnector.disconnect();
+        }
+        if (redisConnector != null && redisConnector != selectedConnector) {
+            redisConnector.disconnect();
         }
     }
 

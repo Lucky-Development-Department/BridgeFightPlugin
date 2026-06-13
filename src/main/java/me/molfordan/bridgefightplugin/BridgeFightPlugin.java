@@ -157,8 +157,8 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.hotbarDataManager = new HotbarDataManager(this);
         this.kitManager = new KitManager(hotbarDataManager);
         this.hotbarSessionManager = new HotbarSessionManager(this, hotbarDataManager, kitManager);
-        this.fireballTracker = new FireballTracker();
-        this.tntTracker = new TNTTracker();
+        this.fireballTracker = new FireballTracker(this);
+        this.tntTracker = new TNTTracker(this);
         this.deathMessageManager = new DeathMessageManager(this,combatManager, arenaManager, hotbarDataManager, statsManager, fireballTracker);
         this.hotbarSorter = new HotbarSorter(hotbarDataManager);
         this.bridgeFightBanManager = new BridgeFightBanManager(getDataFolder());
@@ -203,7 +203,8 @@ public final class BridgeFightPlugin extends JavaPlugin {
         regionManager.loadAllFromConfig();
         arenaManager.loadArenas();
         Bukkit.getLogger().info("[ArenaManager] Arenas loaded successfully.");
-        dailyArenaRestorer = new DailyArenaRestorer(this, arenaManager);
+        this.dailyArenaRestorer = new DailyArenaRestorer(this, arenaManager);
+        this.backupManager = new BackupManager(this);
         this.autoRestartManager = new AutoRestartManager(this, configManager);
         this.patchNotesManager = new PatchNotesManager(this);
         new CombatTagDisplayTask(combatManager).runTaskTimer(this, 0L, 1L);
@@ -262,6 +263,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         getCommand("freeze").setExecutor(new FrozenCommand(this));
         getCommand("unfreeze").setExecutor(new UnfrozenCommand(this));
         getCommand("togglebridgeegg").setExecutor(new ToggleBridgeEggCommand(this));
+        getCommand("databasebackup").setExecutor(new me.molfordan.bridgefightplugin.commands.admin.DatabaseBackupCommand(this));
         getCommand("report").setExecutor(new ReportCommand(this));
         getCommand("reports").setExecutor(new ReportsCommand(this));
         getCommand("statsreset").setExecutor(new StatsResetCommand(this));
@@ -354,6 +356,8 @@ public final class BridgeFightPlugin extends JavaPlugin {
             getLogger().info("ArenaPlaceholderExpansion registered with PlaceholderAPI.");
             new me.molfordan.bridgefightplugin.placeholder.LeaderboardPlaceholderExpansion(this).register();
             getLogger().info("LeaderboardPlaceholderExpansion registered with PlaceholderAPI.");
+            new me.molfordan.bridgefightplugin.placeholder.WorldCountPlaceholderExpansion(this).register();
+            getLogger().info("WorldCountPlaceholderExpansion registered with PlaceholderAPI.");
         } else {
             getLogger().info("PlaceholderAPI not found - arena placeholders not registered.");
         }
@@ -361,7 +365,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         // Start auto-restart system
         autoRestartManager.start();
 
-        getLogger().info("ArenaAndFFAManager has been enabled.");
+        getLogger().info("BridgeFightPlugin has been enabled.");
 
         // Reset all daily streaks on server startup
         if (statsManager != null) {
@@ -399,6 +403,10 @@ public final class BridgeFightPlugin extends JavaPlugin {
 
         if (persistentRestoreManager != null) {
             persistentRestoreManager.saveAll();
+        }
+
+        if (matchmakingService != null) {
+            matchmakingService.stop();
         }
 
         if (statsManager != null) {
@@ -447,6 +455,10 @@ public final class BridgeFightPlugin extends JavaPlugin {
 
     public ArenaManager getArenaManager() {
         return arenaManager;
+    }
+
+    public BackupManager getBackupManager() {
+        return backupManager;
     }
 
     public ConfigManager getConfigManager() {

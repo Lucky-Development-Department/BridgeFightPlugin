@@ -253,7 +253,7 @@ public class SpawnItem implements Listener {
 
         Player player = event.getPlayer();
         ItemStack item = event.getItem();
-        if (!item.hasItemMeta()) return;
+        if (!item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return;
 
         String name = item.getItemMeta().getDisplayName();
 
