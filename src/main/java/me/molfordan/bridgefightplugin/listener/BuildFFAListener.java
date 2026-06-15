@@ -86,6 +86,7 @@ public class BuildFFAListener implements Listener {
         
         // Handle stats and messages via DeathMessageManager
         BridgeFightPlugin.getPlugin().getDeathMessageManager().handleDeath(victim, arena, isVoid, false);
+        BridgeFightPlugin.getPlugin().getEnderPearlListener().removeCooldown(victim);
 
         // Reset player state
         victim.setHealth(20.0);

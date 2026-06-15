@@ -181,6 +181,14 @@ commands:
     usage: '/databasebackup'
     description: 'Manually trigger a MySQL database backup'
     permission: arenamap.admin
+  platformwand:
+    usage: '/platformwand <name>'
+    description: 'Get a platform wand'
+    permission: arenamap.admin
+  platform:
+    usage: '/platform info'
+    description: 'platform info command'
+    permission: arenamap.admin
 
 permissions:
   arenamap.admin:

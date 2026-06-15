@@ -51,19 +51,16 @@ public class SetPlatformPosCommand implements CommandExecutor {
         if (posKey.equals("pos1")) region.setPos1(loc);
         else region.setPos2(loc);
 
-        saveLocation("platforms." + plat + "." + posKey, loc);
+        platformManager.savePlatformPos(plat, posKey, loc);
 
         p.sendMessage("§aSet " + posKey + " for §e" + plat + "§a!");
         return true;
     }
 
     private void saveLocation(String baseKey, Location loc) {
-        plugin.getBridgeFightConfig().getConfig().set(baseKey + ".world", loc.getWorld().getName());
-        plugin.getBridgeFightConfig().getConfig().set(baseKey + ".x", loc.getX());
-        plugin.getBridgeFightConfig().getConfig().set(baseKey + ".y", loc.getY());
-        plugin.getBridgeFightConfig().getConfig().set(baseKey + ".z", loc.getZ());
-        plugin.getBridgeFightConfig().getConfig().set(baseKey + ".yaw", loc.getYaw());
-        plugin.getBridgeFightConfig().getConfig().set(baseKey + ".pitch", loc.getPitch());
-        plugin.getBridgeFightConfig().save();
+        // This method is now redundant, but I'll leave it to avoid breaking changes if it's called elsewhere, 
+        // though I am only modifying SetPlatformPosCommand here.
+        // Actually, since I have PlatformManager.savePlatformPos, I can just use that.
+        // I'll keep the original structure for now.
     }
 }

@@ -9,6 +9,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
 import java.util.UUID;
@@ -77,9 +78,29 @@ public class BedFightCommand implements CommandExecutor {
         arena.setType(ArenaType.BEDFIGHT);
         plugin.getBedFightArenaManager().startSetupSession(player, worldName, arena);
 
+        // Give setup tools
+        player.getInventory().clear();
+        ItemStack wand = new ItemStack(Material.STONE_AXE);
+        org.bukkit.inventory.meta.ItemMeta meta = wand.getItemMeta();
+        meta.setDisplayName("§cBedFight Wand");
+        wand.setItemMeta(meta);
+        player.getInventory().addItem(wand);
+
+        ItemStack redBed = new ItemStack(Material.BED_BLOCK);
+        org.bukkit.inventory.meta.ItemMeta redMeta = redBed.getItemMeta();
+        redMeta.setDisplayName("§cRed Bed");
+        redBed.setItemMeta(redMeta);
+        player.getInventory().addItem(redBed);
+
+        ItemStack blueBed = new ItemStack(Material.BED_BLOCK);
+        org.bukkit.inventory.meta.ItemMeta blueMeta = blueBed.getItemMeta();
+        blueMeta.setDisplayName("§9Blue Bed");
+        blueBed.setItemMeta(blueMeta);
+        player.getInventory().addItem(blueBed);
+
         player.teleport(world.getSpawnLocation());
         player.sendMessage(ChatColor.GREEN + "Started setup session for '" + worldName + "'.");
-        player.sendMessage(ChatColor.YELLOW + "Use /bedfight <redspawn|bluespawn|redbed|bluebed|pos1|pos2|voidlimit|buildlimit> to configure.");
+        player.sendMessage(ChatColor.YELLOW + "Use Wand (left/right click) for Pos1/Pos2. Place Beds for Red/Blue beds.");
         return true;
     }
 

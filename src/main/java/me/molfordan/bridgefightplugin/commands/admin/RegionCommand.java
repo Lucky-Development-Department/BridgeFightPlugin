@@ -55,7 +55,6 @@
                     p.sendMessage("§aPos2 set.");
                     return true;
 
-                // ----------------------------------------------------------------
                 case "wand":
                     ItemStack axe = new ItemStack(Material.STONE_AXE);
                     ItemMeta meta = axe.getItemMeta();

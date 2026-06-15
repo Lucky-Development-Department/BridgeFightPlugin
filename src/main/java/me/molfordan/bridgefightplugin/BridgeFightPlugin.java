@@ -33,6 +33,7 @@ import me.molfordan.bridgefightplugin.kits.bridgefightkit.customkit.gui.CustomKi
 import me.molfordan.bridgefightplugin.kits.bridgefightkit.gui.BridgeFightKitGUI;
 import me.molfordan.bridgefightplugin.kits.bridgefightkit.gui.EditKitListener;
 import me.molfordan.bridgefightplugin.kits.bridgefightkit.gui.SelectKitListener;
+import me.molfordan.bridgefightplugin.listener.PlatformWandListener;
 import me.molfordan.bridgefightplugin.listener.*;
 import me.molfordan.bridgefightplugin.manager.*;
 import me.molfordan.bridgefightplugin.object.Arena;
@@ -145,7 +146,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.statsManager = new StatsManager(this);
         this.bridgeFightConfig = new BridgeFightConfig(this);
         bridgeFightConfig.load();
-        this.platformManager = new PlatformManager();
+        this.platformManager = new PlatformManager(this);
         ConfigurationSerialization.registerClass(Arena.class);
         ConfigurationSerialization.registerClass(SerializableBlockState.class);
         LadderRestorer ladderRestorer = new LadderRestorer();
@@ -243,6 +244,8 @@ public final class BridgeFightPlugin extends JavaPlugin {
         RegionCommand rc = new RegionCommand(regionManager);
         getCommand("rc").setExecutor(rc);
         getCommand("rc").setTabCompleter(rc);
+        getCommand("platformwand").setExecutor(new PlatformWandCommand());
+        getCommand("platform").setExecutor(new me.molfordan.bridgefightplugin.commands.bridgefight.PlatformInfoCommand(this));
         
         getCommand("hotbarmanager").setExecutor(
                 new HotbarManagerCommand(hotbarSessionManager)
@@ -298,6 +301,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BridgeFightListener(platformManager, configManager, this), this);
         this.bedFightListener = new BedFightListener(this, bedFightManager);
         getServer().getPluginManager().registerEvents(this.bedFightListener, this);
+        getServer().getPluginManager().registerEvents(new me.molfordan.bridgefightplugin.listener.BedFightSetupListener(this, bedFightArenaManager), this);
         getServer().getPluginManager().registerEvents(new BedFightHotbarListener(this, bedFightHotbarSessionManager), this);
         getServer().getPluginManager().registerEvents(new SpectatorListener(this), this);
         getServer().getPluginManager().registerEvents(new PartyItemListener(this), this);
@@ -325,6 +329,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
                 new BridgeFightBanListener(bridgeFightBanManager), this
         );
         getServer().getPluginManager().registerEvents(new RegionListener(regionManager), this);
+        getServer().getPluginManager().registerEvents(new PlatformWandListener(platformManager), this);
         getServer().getPluginManager().registerEvents(new RegionFlagListener(regionManager), this);
         getServer().getPluginManager().registerEvents(new InvisPlayerListener(this), this);
         getServer().getPluginManager().registerEvents(new MasterPickupDebugger(), this);

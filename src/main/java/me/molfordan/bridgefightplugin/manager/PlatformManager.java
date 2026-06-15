@@ -1,5 +1,6 @@
 package me.molfordan.bridgefightplugin.manager;
 
+import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import me.molfordan.bridgefightplugin.object.PlatformRegion;
 import me.molfordan.bridgefightplugin.object.enums.PlatformType;
 import org.bukkit.Bukkit;
@@ -14,7 +15,24 @@ import java.util.Map;
 
 public class PlatformManager {
 
+    private final BridgeFightPlugin plugin;
     private final Map<String, PlatformRegion> platforms = new HashMap<>();
+
+    public PlatformManager(BridgeFightPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    public void savePlatformPos(String name, String posKey, Location loc) {
+        String path = "platforms." + name + "." + posKey;
+        FileConfiguration cfg = plugin.getBridgeFightConfig().getConfig();
+        cfg.set(path + ".world", loc.getWorld().getName());
+        cfg.set(path + ".x", loc.getX());
+        cfg.set(path + ".y", loc.getY());
+        cfg.set(path + ".z", loc.getZ());
+        cfg.set(path + ".yaw", loc.getYaw());
+        cfg.set(path + ".pitch", loc.getPitch());
+        plugin.getBridgeFightConfig().save();
+    }
 
     public boolean isInPlatform(Player player) {
         if (player == null) return false;

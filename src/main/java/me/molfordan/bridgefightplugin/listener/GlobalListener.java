@@ -1,6 +1,7 @@
 package me.molfordan.bridgefightplugin.listener;
 
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
+import me.molfordan.bridgefightplugin.bedfight.BedFightSession;
 import me.molfordan.bridgefightplugin.manager.ArenaManager;
 import me.molfordan.bridgefightplugin.object.PlayerStats;
 import me.molfordan.bridgefightplugin.manager.StatsManager;
@@ -45,6 +46,17 @@ public class GlobalListener implements Listener {
             event.setCancelled(true);
         }
 
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onInventoryClick(org.bukkit.event.inventory.InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        Player player = (Player) event.getWhoClicked();
+
+        // Prevent armor removal
+        if (event.getSlotType() == org.bukkit.event.inventory.InventoryType.SlotType.ARMOR) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

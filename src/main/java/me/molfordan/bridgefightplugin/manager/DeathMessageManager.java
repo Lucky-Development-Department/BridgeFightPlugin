@@ -525,8 +525,7 @@ public class DeathMessageManager implements Listener {
             return;
         }
 
-        if (plugin.getPlatformManager().isInPlatform(player, PlatformType.BIGPLAT) ||
-            plugin.getPlatformManager().isInPlatform(player, PlatformType.BOXINGPLAT)) return;
+        if (plugin.getPlatformManager().isInPlatform(player, PlatformType.BIGPLAT)) return;
         
         Location from = event.getFrom();
         Location to = event.getTo();
