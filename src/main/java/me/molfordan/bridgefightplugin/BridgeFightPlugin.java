@@ -49,6 +49,7 @@ import me.molfordan.bridgefightplugin.spawnitem.SpawnItem;
 import me.molfordan.bridgefightplugin.task.CombatTagDisplayTask;
 import me.molfordan.bridgefightplugin.utils.CommandRegister;
 import me.molfordan.bridgefightplugin.utils.WorldGuardUtils;
+import me.neznamy.tab.api.TabAPI;
 //import me.molfordan.arenaAndFFAManager.utils.FlightManager;
 import org.bukkit.Bukkit;
 import org.bukkit.WorldType;
@@ -224,7 +225,9 @@ public final class BridgeFightPlugin extends JavaPlugin {
         getCommand("leave").setExecutor(new LeaveCommand(this));
         getCommand("spec").setExecutor(new SpecCommand(this));
         getCommand("queue").setExecutor(new me.molfordan.bridgefightplugin.queue.QueueCommand(this));
-        getCommand("stats").setExecutor(new StatsCommand(this));
+        StatsCommand statsCommand = new StatsCommand(this);
+        getCommand("stats").setExecutor(statsCommand);
+        getCommand("stats").setTabCompleter(statsCommand);
         getCommand("bfparty").setExecutor(new PartyCommand(this));
         getCommand("bfparty").setTabCompleter(new PartyTabCompleter());
         getCommand("duel").setExecutor(new DuelCommand(this));
@@ -237,7 +240,6 @@ public final class BridgeFightPlugin extends JavaPlugin {
         getCommand("spawn").setExecutor(new LobbyCommand(configManager, teleportPendingManager, this));
         getCommand("setpos1").setExecutor(new SetPlatformPosCommand(this, platformManager));
         getCommand("setpos2").setExecutor(new SetPlatformPosCommand(this, platformManager));
-        getCommand("stats").setExecutor(new StatsCommand(this));
         getCommand("guistats").setExecutor(new GUIStatsCommand(this));
         getCommand("leaderboard").setExecutor(new LeaderboardCommand(this));
         getCommand("guileaderboard").setExecutor(new GUILeaderboardCommand(this));
@@ -359,7 +361,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
             getLogger().warning("No database connection established!");
         }
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new me.molfordan.bridgefightplugin.placeholder.ArenaPlaceholderExpansion(this).register();
+            new me.molfordan.bridgefightplugin.placeholder.ArenaPlaceholderExpansion(this, deathMessageManager).register();
             getLogger().info("ArenaPlaceholderExpansion registered with PlaceholderAPI.");
             new me.molfordan.bridgefightplugin.placeholder.LeaderboardPlaceholderExpansion(this).register();
             getLogger().info("LeaderboardPlaceholderExpansion registered with PlaceholderAPI.");

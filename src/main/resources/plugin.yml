@@ -6,6 +6,7 @@ softdepend:
   - PlaceholderAPI
   - WorldGuard
   - ProtocolLib
+  - TAB
 commands:
   arenamap:
     usage: '/arenamap <create|pos1|pos2|finish|remove> <name>'

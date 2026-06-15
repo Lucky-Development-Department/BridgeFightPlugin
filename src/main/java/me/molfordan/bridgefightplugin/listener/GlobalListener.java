@@ -154,7 +154,8 @@ public class GlobalListener implements Listener {
             "/kiteditor", "/forfeit", "/leave", "/duel", "/bfparty", "/bfp", "/queue"
         ));
 
-        if (!allowed.contains(command) || !player.isOp()) {
+        // Block if not allowed AND not OP
+        if (!allowed.contains(command) && !player.isOp()) {
             event.setCancelled(true);
             player.sendMessage(ChatColor.RED + "You cannot use that command during a BedFight match!");
         }

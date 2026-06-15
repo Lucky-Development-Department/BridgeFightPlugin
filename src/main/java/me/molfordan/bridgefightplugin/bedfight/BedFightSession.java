@@ -2,10 +2,13 @@ package me.molfordan.bridgefightplugin.bedfight;
 
 import me.molfordan.bridgefightplugin.object.Arena;
 import me.molfordan.bridgefightplugin.queue.enums.QueueType;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class BedFightSession {
     private final Arena arena;
@@ -53,6 +56,23 @@ public class BedFightSession {
         }
         
         initializeLocations();
+    }
+
+    public List<Player> getInitialPlayers(String team) {
+        Set<UUID> uuids = team.equalsIgnoreCase("RED") ? redTeamInitial : blueTeamInitial;
+        return uuids.stream()
+                .map(Bukkit::getPlayer)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    public List<Player> getCurrentPlayers(String team) {
+        Set<UUID> uuids = teams.get(team.toUpperCase());
+        if (uuids == null) return new ArrayList<>();
+        return uuids.stream()
+                .map(Bukkit::getPlayer)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     public BedFightSessionState getSessionState() {

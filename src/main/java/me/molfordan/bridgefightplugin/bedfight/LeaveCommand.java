@@ -59,7 +59,7 @@ public class LeaveCommand implements CommandExecutor {
                 
                 performLeave(player);
                 player.sendMessage(ChatColor.RED + "You have forfeited the match.");
-                plugin.getBedFightManager().endMatch(session, opponentTeam);
+                plugin.getBedFightManager().endMatch(session, opponentTeam, true);
             }
             return true;
         }

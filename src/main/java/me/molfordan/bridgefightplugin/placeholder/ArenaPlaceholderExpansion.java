@@ -3,8 +3,10 @@ package me.molfordan.bridgefightplugin.placeholder;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import me.molfordan.bridgefightplugin.manager.ConfigManager;
+import me.molfordan.bridgefightplugin.manager.DeathMessageManager;
 import me.molfordan.bridgefightplugin.manager.StatsManager;
 import me.molfordan.bridgefightplugin.object.PlayerStats;
+import me.molfordan.bridgefightplugin.object.enums.PlatformType;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
@@ -18,14 +20,16 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
     private final BridgeFightPlugin plugin;
     private final StatsManager statsManager;
     private final ConfigManager configManager;
+    private final DeathMessageManager deathMessageManager;
 
     private static final Pattern UUID_PATTERN =
             Pattern.compile("^([0-9a-fA-F\\-]{36})_(.+)$");
 
-    public ArenaPlaceholderExpansion(BridgeFightPlugin plugin) {
+    public ArenaPlaceholderExpansion(BridgeFightPlugin plugin, DeathMessageManager deathMessageManager) {
         this.plugin = plugin;
         this.statsManager = plugin.getStatsManager();
         this.configManager = plugin.getConfigManager();
+        this.deathMessageManager = deathMessageManager;
     }
 
     @Override
@@ -35,21 +39,11 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
 
     @Override
     public String getAuthor() {
-        try {
-            if (plugin.getDescription() != null &&
-                    !plugin.getDescription().getAuthors().isEmpty()) {
-
-                return plugin.getDescription().getAuthors().get(0);
-            }
-        } catch (Exception ignored) {}
         return "Molfordan";
     }
 
     @Override
     public String getVersion() {
-        try {
-            return plugin.getDescription().getVersion();
-        } catch (Exception ignored) {}
         return "1.0.0";
     }
 
@@ -99,14 +93,32 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
                 ? op.getName()
                 : uuid.toString();
 
-        // blocking load is allowed because PlaceholderAPI is async-safe
         return statsManager.loadPlayer(uuid, name);
     }
 
     private String resolve(PlayerStats s, String key, Player player) {
-        if (s == null) return "0";
+        if (s == null && !key.startsWith("is_in_boxing_duel") && !key.startsWith("boxing_hits") && !key.startsWith("boxing_opponent_hits")) return "0";
 
         switch (key.toLowerCase()) {
+
+            // Boxing
+            case "is_in_boxing_duel":
+                if (player != null) {
+                    boolean inDuel = deathMessageManager.isInDuel(player);
+                    boolean inBoxing = plugin.getPlatformManager().isInPlatform(player, PlatformType.BOXINGPLAT);
+                    return String.valueOf(inDuel && inBoxing);
+                }
+                return "false";
+            case "boxing_hits":
+                if (player != null) {
+                    return String.valueOf(deathMessageManager.getHits(player.getUniqueId()));
+                }
+                return "0";
+            case "boxing_opponent_hits":
+                if (player != null) {
+                    return String.valueOf(deathMessageManager.getOpponentHits(player.getUniqueId()));
+                }
+                return "0";
 
             // World Detection
             case "in_buildffa":
@@ -135,7 +147,6 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
                     String worldName = player.getWorld().getName();
                     if (worldName.equals(configManager.getBuildFFAWorldName())) return String.valueOf(s.getBuildStreak());
                     if (worldName.equals(configManager.getBridgeFightWorldName())) return String.valueOf(s.getBridgeStreak());
-                    //if (worldName.startsWith("bf")) return String.valueOf(s.getBestUnrankedStreak());
                 }
                 return "0";
 

@@ -1101,6 +1101,18 @@ public class DeathMessageManager implements Listener {
         return duels.containsKey(player.getUniqueId());
     }
 
+    public int getHits(UUID uuid) {
+        DuelSession duel = duels.get(uuid);
+        return (duel != null) ? duel.getHits(uuid) : 0;
+    }
+
+    public int getOpponentHits(UUID uuid) {
+        DuelSession duel = duels.get(uuid);
+        if (duel == null) return 0;
+        UUID opponentUUID = duel.getOpponent(uuid);
+        return duel.getHits(opponentUUID);
+    }
+
     /**
      * Check if a player can enter a location (used for WorldGuard region checking)
      */

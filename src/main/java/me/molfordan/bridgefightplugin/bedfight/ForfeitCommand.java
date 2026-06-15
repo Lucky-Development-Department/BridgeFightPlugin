@@ -54,7 +54,7 @@ public class ForfeitCommand implements CommandExecutor {
         performSimpleLeave(player);
 
         // End match with opponent team as winner
-        plugin.getBedFightManager().endMatch(session, opponentTeam);
+        plugin.getBedFightManager().endMatch(session, opponentTeam, true);
 
         return true;
     }

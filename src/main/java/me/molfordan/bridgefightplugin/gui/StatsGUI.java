@@ -1,17 +1,21 @@
 package me.molfordan.bridgefightplugin.gui;
 
+import me.clip.placeholderapi.PlaceholderAPI;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import me.molfordan.bridgefightplugin.object.PlayerStats;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class StatsGUI {
 
@@ -19,6 +23,15 @@ public class StatsGUI {
 
     public StatsGUI(BridgeFightPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    private List<String> parsePlaceholders(OfflinePlayer player, List<String> lore) {
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            return lore.stream()
+                    .map(line -> PlaceholderAPI.setPlaceholders(player, line))
+                    .collect(Collectors.toList());
+        }
+        return lore;
     }
 
     public void open(Player player) {
@@ -32,6 +45,7 @@ public class StatsGUI {
             return;
         }
 
+        OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(targetUuid);
         Inventory inv = Bukkit.createInventory(null, 27, ChatColor.GOLD + "Stats: " + ChatColor.YELLOW + stats.getUsername());
 
         // Border glass
@@ -55,10 +69,10 @@ public class StatsGUI {
         org.bukkit.inventory.meta.SkullMeta sm = (org.bukkit.inventory.meta.SkullMeta) head.getItemMeta();
         sm.setOwner(stats.getUsername());
         sm.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + stats.getUsername());
-        sm.setLore(Arrays.asList(
+        sm.setLore(parsePlaceholders(targetPlayer, Arrays.asList(
                 ChatColor.GRAY + "UUID:",
                 ChatColor.WHITE + stats.getUuid().toString()
-        ));
+        )));
         head.setItemMeta(sm);
         inv.setItem(13, head);
 
@@ -67,12 +81,12 @@ public class StatsGUI {
         ItemMeta bm = bridge.getItemMeta();
         bm.setDisplayName(ChatColor.RED + "" + ChatColor.BOLD + "Bridge Fight Stats");
         bm.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
-        bm.setLore(Arrays.asList(
+        bm.setLore(parsePlaceholders(targetPlayer, Arrays.asList(
                 ChatColor.GRAY + "Kills: " + ChatColor.GREEN + stats.getBridgeKills(),
                 ChatColor.GRAY + "Deaths: " + ChatColor.GREEN + stats.getBridgeDeaths(),
                 ChatColor.GRAY + "Current Streak: " + ChatColor.GREEN + stats.getBridgeStreak(),
                 ChatColor.GRAY + "Highest Streak: " + ChatColor.GOLD + stats.getBridgeHighestStreak()
-        ));
+        )));
         bridge.setItemMeta(bm);
         inv.setItem(11, bridge);
 
@@ -80,25 +94,32 @@ public class StatsGUI {
         ItemStack build = new ItemStack(Material.WOOL, 1, (short) 14); // red wool
         ItemMeta wm = build.getItemMeta();
         wm.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + "Build FFA Stats");
-        wm.setLore(Arrays.asList(
+        wm.setLore(parsePlaceholders(targetPlayer, Arrays.asList(
                 ChatColor.GRAY + "Kills: " + ChatColor.GREEN + stats.getBuildKills(),
                 ChatColor.GRAY + "Deaths: " + ChatColor.GREEN + stats.getBuildDeaths(),
                 ChatColor.GRAY + "Current Streak: " + ChatColor.GREEN + stats.getBuildStreak(),
                 ChatColor.GRAY + "Highest Streak: " + ChatColor.GOLD + stats.getBuildHighestStreak()
-        ));
+        )));
         build.setItemMeta(wm);
         inv.setItem(15, build);
 
         // BedFight/Ranked Stats (Bottom Row)
         ItemStack ranked = new ItemStack(Material.DIAMOND_SWORD);
         ItemMeta rm = ranked.getItemMeta();
-        rm.setDisplayName(ChatColor.GOLD + "" + ChatColor.BOLD + "Ranked BedFight Stats");
+        rm.setDisplayName(ChatColor.GOLD + "" + ChatColor.BOLD + "BedFight Stats");
         rm.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
-        rm.setLore(Arrays.asList(
+        rm.setLore(parsePlaceholders(targetPlayer, Arrays.asList(
+                ChatColor.YELLOW + "" + ChatColor.BOLD + "Ranked Stats",
                 ChatColor.GRAY + "ELO: " + ChatColor.YELLOW + stats.getRankedElo(),
                 ChatColor.GRAY + "Wins: " + ChatColor.GREEN + stats.getRankedWins(),
-                ChatColor.GRAY + "Losses: " + ChatColor.RED + stats.getRankedLosses()
-        ));
+                ChatColor.GRAY + "Losses: " + ChatColor.RED + stats.getRankedLosses(),
+                "",
+                ChatColor.YELLOW + "" + ChatColor.BOLD + "Unranked Stats",
+                ChatColor.GRAY + "Wins: " + ChatColor.YELLOW + "%ranksystem_kitwins_bedfight%",
+                ChatColor.GRAY + "Streak: " + ChatColor.YELLOW + "%ranksystem_streak_current_bedfight%",
+                ChatColor.GRAY + "Highest Streak: " + ChatColor.GOLD + "%ranksystem_streak_highest_bedfight%",
+                ChatColor.GRAY + "Division: " + ChatColor.GOLD + "" + ChatColor.BOLD + "%ranksystem_ranks_bedfight%"
+        )));
         ranked.setItemMeta(rm);
         inv.setItem(22, ranked);
 

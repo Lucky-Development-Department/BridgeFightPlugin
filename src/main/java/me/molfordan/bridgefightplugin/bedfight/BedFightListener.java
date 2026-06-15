@@ -2,7 +2,10 @@ package me.molfordan.bridgefightplugin.bedfight;
 
 import com.sk89q.worldguard.WorldGuard;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
+import me.molfordan.bridgefightplugin.bedfight.events.BedBreakEvent;
+import me.molfordan.bridgefightplugin.bedfight.events.DuelEndEvent;
 import me.molfordan.bridgefightplugin.object.Arena;
+import me.molfordan.bridgefightplugin.queue.enums.QueueType;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -133,6 +136,72 @@ public class BedFightListener implements Listener {
 
         if (undropableItems.contains(event.getItem().getType())) {
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onDuelEnd(DuelEndEvent event) {
+        List<Player> winners = event.getWinners();
+        List<Player> losers = event.getLosers();
+
+        BedFightSession session = event.getSession();
+
+
+
+        if (session == null || winners.isEmpty() || losers.isEmpty()) return;
+
+        Player winner = winners.get(0);
+        Player loser = losers.get(0);
+
+        // Do not dispatch stats if the match ended during COUNTDOWN phase
+        if (session.getSessionState() == BedFightSessionState.COUNTDOWN || event.isForfeit()) {
+            Bukkit.getScheduler().runTaskLater(
+                    plugin,
+                    () -> {
+                        String valueRankCmd = "addvaluerank " + winner.getName() + " bedfight 0";
+                        plugin.debug("Executing command: " + valueRankCmd);
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), valueRankCmd);
+                    },
+                    15L
+            );
+            return;
+        }
+
+        if (session.getQueueType() == QueueType.SOLO_UNRANKED){
+
+
+
+            // Ensure both players are still online
+            if (winner == null || !winner.isOnline() || loser == null || !loser.isOnline()) return;
+
+            Bukkit.getScheduler().runTaskLater(
+                    plugin,
+                    () -> {
+
+                        String addWinnerStreakCmd = "addstreak " + winner.getName() + " bedfight 1";
+                        String removeLoserStreakCmd = "removestreak " + loser.getName() + " bedfight";
+                        String addLoserMatchCmd = "addmatch " + loser.getName() + " bedfight 1";
+
+                        plugin.debug("Executing BedFight stats commands for " + winner.getName() + " and " + loser.getName());
+
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), addWinnerStreakCmd);
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), removeLoserStreakCmd);
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), addLoserMatchCmd);
+                    },
+                    10L
+            );
+
+            Bukkit.getScheduler().runTaskLater(
+                    plugin,
+                    () -> {
+                        String valueRankCmd = "addvaluerank " + winner.getName() + " bedfight 1";
+                        plugin.debug("Executing command: " + valueRankCmd);
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), valueRankCmd);
+                    },
+                    15L
+            );
+
+
         }
     }
 
@@ -543,7 +612,7 @@ public class BedFightListener implements Listener {
             updateScoreboard(session);
             
             String winnerTeam = team.equals("RED") ? "BLUE" : "RED";
-            bedFightManager.endMatch(session, winnerTeam);
+            bedFightManager.endMatch(session, winnerTeam, false);
         } else {
             plugin.getLogger().info("DEBUG: Team " + team + " still has active players.");
         }
@@ -801,6 +870,9 @@ public class BedFightListener implements Listener {
     }
 
     private void broadcastBedBreak(BedFightSession session, String color, Player breaker) {
+        // Call BedBreakEvent
+        Bukkit.getPluginManager().callEvent(new BedBreakEvent(session, breaker, color));
+
         ChatColor bedTeamColor = color.equalsIgnoreCase("RED") ? ChatColor.RED : ChatColor.BLUE;
 
         // Increment bed break stat

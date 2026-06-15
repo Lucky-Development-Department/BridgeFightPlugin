@@ -55,6 +55,8 @@ public class DuelManager {
 
         // Received message
         target.sendMessage(ChatColor.YELLOW + "" + ChatColor.BOLD + "Bedfight Duel Request");
+        sender.playSound(sender.getLocation(), Sound.ITEM_PICKUP, 1f, 1f);
+        target.playSound(sender.getLocation(), Sound.ITEM_PICKUP, 1f, 1f);
         target.sendMessage(ChatColor.YELLOW + "● From: " + ChatColor.GREEN + sender.getName() + " (" + getPing(sender) + "ms)");
         target.sendMessage(ChatColor.YELLOW + "● Map: " + ChatColor.WHITE + mapName);
 
@@ -83,8 +85,8 @@ public class DuelManager {
         requests.remove(accepter.getUniqueId());
         
         // Play sound
-        accepter.playSound(accepter.getLocation(), Sound.ITEM_PICKUP, 1f, 1f);
-        sender.playSound(sender.getLocation(), Sound.ITEM_PICKUP, 1f, 1f);
+        accepter.playSound(accepter.getLocation(), Sound.ORB_PICKUP, 1f, 2f);
+        sender.playSound(accepter.getLocation(), Sound.ORB_PICKUP, 1f, 2f);
 
         accepter.sendMessage(ChatColor.GREEN + "Duel accepted!");
         sender.sendMessage(ChatColor.GREEN + accepter.getName() + " accepted your duel!");

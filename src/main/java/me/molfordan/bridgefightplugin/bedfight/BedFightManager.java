@@ -2,6 +2,8 @@ package me.molfordan.bridgefightplugin.bedfight;
 
 import com.grinderwolf.swm.api.world.SlimeWorld;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
+import me.molfordan.bridgefightplugin.bedfight.events.DuelEndEvent;
+import me.molfordan.bridgefightplugin.bedfight.events.DuelStartEvent;
 import me.molfordan.bridgefightplugin.object.Arena;
 import me.molfordan.bridgefightplugin.queue.enums.QueueType;
 import me.molfordan.bridgefightplugin.queue.enums.StatisticType;
@@ -115,6 +117,10 @@ public class BedFightManager {
     private void startGameplay(BedFightSession session) {
         session.setSessionState(BedFightSessionState.RUNNING);
         broadcastTitle(session, ChatColor.GREEN + "GO!", "", Sound.NOTE_PLING, 1f, 2f);
+        
+        // Call DuelStartEvent
+        Bukkit.getPluginManager().callEvent(new DuelStartEvent(session));
+
         for (UUID uuid : session.getAllPlayers()) {
             session.setPlayerState(uuid, BedFightPlayerState.PLAYING);
             Player p = Bukkit.getPlayer(uuid);
@@ -191,11 +197,14 @@ public class BedFightManager {
         }
     }
 
-    public void endMatch(BedFightSession session, String winningTeam) {
+    public void endMatch(BedFightSession session, String winningTeam, boolean isForfeit) {
         if (session.getSessionState() == BedFightSessionState.ENDING || session.getSessionState() == BedFightSessionState.CLEANUP) return;
 
         session.setSessionState(BedFightSessionState.ENDING);
         saveMatchStats(session, winningTeam);
+
+        // Call DuelEndEvent
+        Bukkit.getPluginManager().callEvent(new DuelEndEvent(session, winningTeam, isForfeit));
         
         int eloChange = 0;
         if (session.getQueueType().getStatisticType() == StatisticType.RANKED && winningTeam != null) {
