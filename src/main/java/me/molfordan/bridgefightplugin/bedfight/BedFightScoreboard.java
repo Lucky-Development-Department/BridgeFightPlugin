@@ -101,12 +101,26 @@ public class BedFightScoreboard {
             updateScore(board, objective, ChatColor.RED + "R " + ChatColor.WHITE + "Red: " + redStatus + redSuffix, 9);
             updateScore(board, objective, ChatColor.BLUE + "B " + ChatColor.WHITE + "Blue: " + blueStatus + blueSuffix, 8);
             updateScore(board, objective, " ", 7);
+            
             if (stats != null) {
                 updateScore(board, objective, ChatColor.WHITE + "Kills: " + ChatColor.YELLOW + totalKills, 6);
             } else {
                 updateScore(board, objective, ChatColor.GRAY + "SPECTATING", 6);
             }
-            updateScore(board, objective, "  ", 5);
+
+            if (session.getQueueType() == me.molfordan.bridgefightplugin.queue.enums.QueueType.DUEL && (playerState == BedFightPlayerState.SPECTATOR_DUEL || playerState == BedFightPlayerState.ENDED)) {
+                List<UUID> players = new ArrayList<>(session.getAllPlayers());
+                if (players.size() >= 2) {
+                    UUID p1 = players.get(0);
+                    UUID p2 = players.get(1);
+                    int redScore = plugin.getDuelScoreManager().getScore("RED", p1, p2);
+                    int blueScore = plugin.getDuelScoreManager().getScore("BLUE", p1, p2);
+                    updateScore(board, objective, ChatColor.GREEN + "" + ChatColor.BOLD + redScore + ChatColor.WHITE + " - " + ChatColor.RED + "" + ChatColor.BOLD + blueScore + ChatColor.GRAY + " (Scores)", 5);
+                }
+            } else {
+                updateScore(board, objective, "  ", 5);
+            }
+
             updateScore(board, objective, ChatColor.WHITE + "Your ping: " + ChatColor.YELLOW + yourPing + "ms", 4);
             if (stats != null) {
                 updateScore(board, objective, ChatColor.WHITE + "Enemy ping: " + ChatColor.YELLOW + enemyPing + "ms", 3);
@@ -115,7 +129,7 @@ public class BedFightScoreboard {
             }
         }
         updateScore(board, objective, getSeparator("bottom"), 2);
-        updateScore(board, objective, ChatColor.WHITE + "Version: "+ ChatColor.YELLOW+"0.5", 1);
+        updateScore(board, objective, ChatColor.WHITE + "Version: "+ ChatColor.YELLOW+"0.6", 1);
         updateScore(board, objective, ChatColor.YELLOW + "luckynetwork.net", 0);
     }
 

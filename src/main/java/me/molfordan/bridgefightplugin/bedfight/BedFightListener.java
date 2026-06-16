@@ -146,9 +146,39 @@ public class BedFightListener implements Listener {
 
         BedFightSession session = event.getSession();
 
-
-
         if (session == null || winners.isEmpty() || losers.isEmpty()) return;
+
+        if (session.getQueueType() == QueueType.DUEL) {
+            UUID duelId = session.getMatchWorld().getUID(); // Keep for timer
+            
+            // Normalize team color to uppercase "RED" or "BLUE"
+            String teamColor = event.getWinningTeamColor().toUpperCase(); 
+            
+            // Get player pair
+            List<UUID> players = new ArrayList<>(session.getAllPlayers());
+            if (players.size() >= 2) {
+                plugin.getDuelScoreManager().incrementScore(teamColor, players.get(0), players.get(1));
+            }
+
+            plugin.getDuelScoreManager().setMatchEndTime(duelId); // Set end time
+            plugin.getDuelScoreManager().startResetTimer(duelId);
+            
+            // Force update all player scoreboards
+            for (UUID uuid : session.getAllPlayers()) {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p != null) {
+                    plugin.getBedFightScoreboard().updateScoreboard(p);
+                    plugin.getDuelScoreManager().removeRematchRequest(uuid); // Clear pending requests
+                }
+            }
+
+            // Remove from session after a delay
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (UUID uuid : session.getAllPlayers()) {
+                    bedFightManager.removePlayerFromSession(uuid, session);
+                }
+            }, 100L); // 5 seconds (20 ticks * 5)
+        }
 
         Player winner = winners.get(0);
         Player loser = losers.get(0);

@@ -121,6 +121,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
     private StatsGUI statsGUI;
     private BedFightHologramManager bedFightHologramManager;
     private PatchNotesManager patchNotesManager;
+    private DuelScoreManager duelScoreManager;
     private FireballTracker fireballTracker;
     private TNTTracker tntTracker;
     private EnderPearlListener enderPearlListener;
@@ -185,6 +186,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.matchmakingService = new MatchmakingService(this);
         this.partyManager = new PartyManager();
         this.duelManager = new DuelManager(this);
+        this.duelScoreManager = new DuelScoreManager(this);
         this.teleportPendingManager = new TeleportPendingManager();
         this.eggBridgeManager = new EggBridgeManager();
         //this.flightManager = new FlightManager(configManager.getLobbyWorldName());
@@ -285,6 +287,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         getCommand("kit").setExecutor(new BridgeFightKitCommand(this));
         getCommand("debugging").setExecutor(new GUICustomKit(this));
         getCommand("givepots").setExecutor(new GivePotsCommand(this));
+        getCommand("rematch").setExecutor(new RematchCommand(this));
 
         // schedule expiry cleanup every minute
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
@@ -313,6 +316,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PartyListGUIListener(this), this);
         getServer().getPluginManager().registerEvents(new PartyListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayAgainListener(this), this);
+        getServer().getPluginManager().registerEvents(new RematchItemListener(this), this);
         getServer().getPluginManager().registerEvents(new QueueListener(this), this);
         getServer().getPluginManager().registerEvents(new me.molfordan.bridgefightplugin.listener.QueueQuitListener(this), this);
         getServer().getPluginManager().registerEvents(new BedfightKnockback(), this);
@@ -595,6 +599,10 @@ public final class BridgeFightPlugin extends JavaPlugin {
 
     public DuelManager getDuelManager() {
         return duelManager;
+    }
+
+    public DuelScoreManager getDuelScoreManager() {
+        return duelScoreManager;
     }
 
     public BridgeFightKitManager getBridgeFightKitManager(){

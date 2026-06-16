@@ -82,6 +82,17 @@ public class DuelManager {
             return;
         }
 
+        // Force cleanup before starting new match
+        plugin.getBedFightManager().removePlayerFromSession(sender);
+        plugin.getBedFightManager().removePlayerFromSession(accepter);
+
+        // Check if both players are still somehow in a match
+        if (plugin.getBedFightManager().isInMatch(sender) || plugin.getBedFightManager().isInMatch(accepter)) {
+            accepter.sendMessage(ChatColor.RED + "One of the players is still in a match.");
+            sender.sendMessage(ChatColor.RED + "One of the players is still in a match.");
+            return;
+        }
+
         requests.remove(accepter.getUniqueId());
         
         // Play sound

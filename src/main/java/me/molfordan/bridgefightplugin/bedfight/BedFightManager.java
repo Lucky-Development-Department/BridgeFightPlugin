@@ -230,6 +230,7 @@ public class BedFightManager {
         }
 
         broadcastMatchResults(session, winningTeam, eloChange);
+        sendEndGameMessage(session);
         setupEndItems(session, allParticipants);
 
         new BukkitRunnable() {
@@ -308,6 +309,7 @@ public class BedFightManager {
     private void setupEndItems(BedFightSession session, Set<UUID> players) {
         ItemStack leaveItem = createItem(Material.BED, ChatColor.RED + "Leave (Right Click)");
         ItemStack playAgain = createItem(Material.PAPER, ChatColor.GREEN + "Play Again (Right Click)");
+        ItemStack rematchItem = createItem(Material.PAPER, ChatColor.AQUA + "Rematch (Right Click)");
         
         boolean canRequeue = session.getQueueType() != QueueType.DUEL;
 
@@ -329,16 +331,38 @@ public class BedFightManager {
             p.setHealth(20.0);
             p.setFoodLevel(20);
             
-            // Main hand (slot 0) for Play Again, slot 8 for Leave
-            if (canRequeue && session.getInitialTeam(uuid) != null) {
-                p.getInventory().setItem(0, playAgain);
-                p.setMetadata("lastQueueType", new org.bukkit.metadata.FixedMetadataValue(plugin, session.getQueueType().name()));
+            // Main hand (slot 0) for Play Again/Rematch, slot 8 for Leave
+            if (session.getInitialTeam(uuid) != null) {
+                if (canRequeue) {
+                    p.getInventory().setItem(0, playAgain);
+                    p.setMetadata("lastQueueType", new org.bukkit.metadata.FixedMetadataValue(plugin, session.getQueueType().name()));
+                } else {
+                    p.getInventory().setItem(0, rematchItem);
+                }
             }
             p.getInventory().setItem(8, leaveItem);
 
             p.setGameMode(GameMode.ADVENTURE);
             p.setAllowFlight(true);
             p.setFlying(true);
+        }
+    }
+
+    private void sendEndGameMessage(BedFightSession session) {
+        boolean isDuel = session.getQueueType() == QueueType.DUEL;
+        String text = isDuel ? "Rematch" : "Play Again";
+        String command = isDuel ? "/rematch" : "/playagain";
+
+        net.md_5.bungee.api.chat.TextComponent action = new net.md_5.bungee.api.chat.TextComponent(isDuel ? net.md_5.bungee.api.ChatColor.GREEN + "" + net.md_5.bungee.api.ChatColor.BOLD + "(Rematch)" : net.md_5.bungee.api.ChatColor.GREEN + "" + net.md_5.bungee.api.ChatColor.BOLD + "(Play Again)");
+        
+        action.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, command));
+        action.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, new net.md_5.bungee.api.chat.ComponentBuilder("Click here to " + text).create()));
+        
+        for (UUID uuid : session.getAllPlayers()) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null) {
+                p.spigot().sendMessage(action);
+            }
         }
     }
 

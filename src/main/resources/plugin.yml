@@ -8,6 +8,9 @@ softdepend:
   - ProtocolLib
   - TAB
 commands:
+  rematch:
+    usage: '/rematch'
+    description: 'Rematch command'
   arenamap:
     usage: '/arenamap <create|pos1|pos2|finish|remove> <name>'
     description: 'ArenaFFAManager'
