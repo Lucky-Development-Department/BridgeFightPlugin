@@ -119,6 +119,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
     private PartyManager partyManager;
     private DuelManager duelManager;
     private StatsGUI statsGUI;
+    private BedFightHologramManager bedFightHologramManager;
     private PatchNotesManager patchNotesManager;
     private FireballTracker fireballTracker;
     private TNTTracker tntTracker;
@@ -174,6 +175,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.bedFightArenaManager = new BedFightArenaManager(this);
         this.bedFightArenaManager.loadArenas();
         this.bedFightManager = new BedFightManager(this);
+        this.bedFightHologramManager = new BedFightHologramManager(this);
         this.bedFightScoreboard = new BedFightScoreboard(this, bedFightManager);
         this.bedFightKitManager = new BedFightKitManager(this);
         this.bedFightHotbarDataManager = new BedFightHotbarDataManager(this);
@@ -545,6 +547,10 @@ public final class BridgeFightPlugin extends JavaPlugin {
 
     public BedFightManager getBedFightManager() {
         return bedFightManager;
+    }
+
+    public BedFightHologramManager getBedFightHologramManager() {
+        return bedFightHologramManager;
     }
 
     public BedFightScoreboard getBedFightScoreboard() {

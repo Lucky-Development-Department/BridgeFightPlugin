@@ -53,6 +53,10 @@ public class ForfeitCommand implements CommandExecutor {
 
         performSimpleLeave(player);
 
+        session.setForfeit(true);
+        if (session.getSessionState() == BedFightSessionState.COUNTDOWN) {
+            session.setForfeitDuringCountdown(true);
+        }
         // End match with opponent team as winner
         plugin.getBedFightManager().endMatch(session, opponentTeam, true);
 

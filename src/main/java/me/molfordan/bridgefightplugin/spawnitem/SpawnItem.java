@@ -287,8 +287,7 @@ public class SpawnItem implements Listener {
         else if (item.getType() == Material.REDSTONE && name.startsWith("§cBack to Spawn")) {
             event.setCancelled(true);
             player.performCommand("spawn");
-        } else if (item.getType() == Material.BOOK &&
-                "§eSelect Kit".equals(item.getItemMeta().getDisplayName())) {
+        } else if (item.getType() == Material.BOOK && name.startsWith("§eSelect Kit")) {
 
             event.setCancelled(true);
             plugin.getBridgeFightGUI().open(player);

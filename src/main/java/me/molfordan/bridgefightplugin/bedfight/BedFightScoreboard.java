@@ -41,9 +41,6 @@ public class BedFightScoreboard {
             objective.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + "BEDFIGHT");
         }
 
-        updateScore(board, objective, ChatColor.GRAY + "" + ChatColor.STRIKETHROUGH + "                               ", 10);
-
-
         int redAlive = 0;
         int redPingTotal = 0;
         int redCount = 0;
@@ -72,6 +69,8 @@ public class BedFightScoreboard {
         
         String redStatus = redState.getIcon(redAlive);
         String blueStatus = blueState.getIcon(blueAlive);
+
+        updateScore(board, objective, getSeparator("top"), 10);
 
         if (session.isSpectator(player.getUniqueId()) && playerState != BedFightPlayerState.SPECTATOR_DUEL) {
             // Pure Spectator view (for joining spectators)
@@ -115,9 +114,14 @@ public class BedFightScoreboard {
                 updateScore(board, objective, ChatColor.WHITE + "Arena: " + ChatColor.YELLOW + session.getArena().getName(), 3);
             }
         }
-        updateScore(board, objective, ChatColor.GRAY + "" + ChatColor.STRIKETHROUGH + "                               ", 2);
+        updateScore(board, objective, getSeparator("bottom"), 2);
         updateScore(board, objective, ChatColor.WHITE + "Version: "+ ChatColor.YELLOW+"0.5", 1);
         updateScore(board, objective, ChatColor.YELLOW + "luckynetwork.net", 0);
+    }
+
+    private String getSeparator(String id) {
+        // Uses invisible characters based on ID to ensure uniqueness
+        return ChatColor.GRAY.toString() + ChatColor.STRIKETHROUGH.toString() + "                              " + (id.equals("bottom") ? ChatColor.RESET.toString() : "");
     }
 
     private String getTeamFormatted(BedFightSession session, String team) {

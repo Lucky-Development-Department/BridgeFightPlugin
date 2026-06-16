@@ -116,8 +116,9 @@ public class StatsGUI {
                 "",
                 ChatColor.YELLOW + "" + ChatColor.BOLD + "Unranked Stats",
                 ChatColor.GRAY + "Wins: " + ChatColor.YELLOW + "%ranksystem_kitwins_bedfight%",
+                ChatColor.GRAY + "Daily Streak: " + ChatColor.RED + "%ranksystem_streak_daily_bedfight%",
                 ChatColor.GRAY + "Streak: " + ChatColor.YELLOW + "%ranksystem_streak_current_bedfight%",
-                ChatColor.GRAY + "Highest Streak: " + ChatColor.GOLD + "%ranksystem_streak_highest_bedfight%",
+                ChatColor.GRAY + "Highest Streak: " + ChatColor.GOLD + "%ranksystem_streak_highest_daily_bedfight%",
                 ChatColor.GRAY + "Division: " + ChatColor.GOLD + "" + ChatColor.BOLD + "%ranksystem_ranks_bedfight%"
         )));
         ranked.setItemMeta(rm);

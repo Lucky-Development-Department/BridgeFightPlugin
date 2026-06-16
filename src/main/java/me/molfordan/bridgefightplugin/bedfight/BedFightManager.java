@@ -57,6 +57,11 @@ public class BedFightManager {
 
         session.setSessionState(BedFightSessionState.COUNTDOWN);
         activeSessions.put(arena, session);
+
+        if (session.getQueueType() == QueueType.SOLO_UNRANKED) {
+
+            plugin.getBedFightHologramManager().createTeamHolograms(session);
+        }
         
         setupPlayers(session, redTeam, "RED");
         setupPlayers(session, blueTeam, "BLUE");
@@ -117,6 +122,8 @@ public class BedFightManager {
     private void startGameplay(BedFightSession session) {
         session.setSessionState(BedFightSessionState.RUNNING);
         broadcastTitle(session, ChatColor.GREEN + "GO!", "", Sound.NOTE_PLING, 1f, 2f);
+        
+        plugin.getBedFightHologramManager().removeHolograms(session);
         
         // Call DuelStartEvent
         Bukkit.getPluginManager().callEvent(new DuelStartEvent(session));

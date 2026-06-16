@@ -59,6 +59,10 @@ public class LeaveCommand implements CommandExecutor {
                 
                 performLeave(player);
                 player.sendMessage(ChatColor.RED + "You have forfeited the match.");
+                session.setForfeit(true);
+                if (session.getSessionState() == BedFightSessionState.COUNTDOWN) {
+                    session.setForfeitDuringCountdown(true);
+                }
                 plugin.getBedFightManager().endMatch(session, opponentTeam, true);
             }
             return true;

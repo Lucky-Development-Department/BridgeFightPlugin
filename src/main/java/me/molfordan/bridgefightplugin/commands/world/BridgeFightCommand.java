@@ -35,8 +35,7 @@ public class BridgeFightCommand implements CommandExecutor {
 
         String worldName = configManager.getBridgeFightWorldName();
 
-        if (plugin.getPlatformManager().isInPlatform(player, PlatformType.BIGPLAT) 
-            && plugin.getDeathMessageManager().isInDuel(player)) {
+        if ((plugin.getPlatformManager().isInPlatform(player, PlatformType.BIGPLAT) || (plugin.getPlatformManager().isInPlatform(player, PlatformType.BOXINGPLAT))) && plugin.getDeathMessageManager().isInDuel(player)) {
             plugin.getDeathMessageManager().clearDuel(player.getUniqueId());
         }
 

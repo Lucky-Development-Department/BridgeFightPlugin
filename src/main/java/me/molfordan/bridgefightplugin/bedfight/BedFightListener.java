@@ -153,22 +153,24 @@ public class BedFightListener implements Listener {
         Player winner = winners.get(0);
         Player loser = losers.get(0);
 
-        // Do not dispatch stats if the match ended during COUNTDOWN phase
-        if (session.getSessionState() == BedFightSessionState.COUNTDOWN || event.isForfeit()) {
-            Bukkit.getScheduler().runTaskLater(
-                    plugin,
-                    () -> {
-                        String valueRankCmd = "addvaluerank " + winner.getName() + " bedfight 0";
-                        plugin.debug("Executing command: " + valueRankCmd);
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), valueRankCmd);
-                    },
-                    15L
-            );
-            return;
-        }
+        // Handle forfeit stats specifically
 
         if (session.getQueueType() == QueueType.SOLO_UNRANKED){
 
+            if (event.isForfeit() && session.isForfeitDuringCountdown()) {
+                Bukkit.getScheduler().runTaskLater(
+                        plugin,
+                        () -> {
+                            String valueRankCmd = "addvaluerank " + winner.getName() + " bedfight 0";
+                            String removeLoserStreakCmd = "removestreak " + loser.getName() + " bedfight";
+                            plugin.debug("Executing forfeit commands (countdown): " + valueRankCmd + ", " + removeLoserStreakCmd);
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), valueRankCmd);
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), removeLoserStreakCmd);
+                        },
+                        15L
+                );
+                return;
+            }
 
 
             // Ensure both players are still online
@@ -747,6 +749,8 @@ public class BedFightListener implements Listener {
 
         lastAttacker.put(victim.getUniqueId(), attacker.getUniqueId());
         hitTimestamp.put(victim.getUniqueId(), System.currentTimeMillis());
+
+        if (event.isCancelled()) return;
 
         updateHealthBar(attacker, victim, event.getFinalDamage());
     }

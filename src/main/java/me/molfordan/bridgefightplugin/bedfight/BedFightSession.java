@@ -30,6 +30,8 @@ public class BedFightSession {
     
     private boolean redEliminated = false;
     private boolean blueEliminated = false;
+    private boolean isForfeit = false;
+    private boolean forfeitDuringCountdown = false;
     
     private Location redSpawnLoc;
     private Location blueSpawnLoc;
@@ -242,6 +244,22 @@ public class BedFightSession {
     
     public boolean isParticipant(UUID uuid) {
         return isPlayerInSession(uuid);
+    }
+
+    public boolean isForfeit() {
+        return isForfeit;
+    }
+
+    public void setForfeit(boolean forfeit) {
+        isForfeit = forfeit;
+    }
+
+    public boolean isForfeitDuringCountdown() {
+        return forfeitDuringCountdown;
+    }
+
+    public void setForfeitDuringCountdown(boolean forfeitDuringCountdown) {
+        this.forfeitDuringCountdown = forfeitDuringCountdown;
     }
 
     public BedFightScoreboardState getTeamScoreboardState(String team) {
