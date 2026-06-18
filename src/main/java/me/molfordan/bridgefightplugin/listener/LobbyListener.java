@@ -3,6 +3,7 @@ package me.molfordan.bridgefightplugin.listener;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import me.molfordan.bridgefightplugin.kits.KitManager;
 import me.molfordan.bridgefightplugin.manager.ConfigManager;
+import me.molfordan.bridgefightplugin.manager.StatsManager;
 import me.molfordan.bridgefightplugin.object.PlayerStats;
 import me.molfordan.bridgefightplugin.object.enums.ArenaType;
 import org.bukkit.*;

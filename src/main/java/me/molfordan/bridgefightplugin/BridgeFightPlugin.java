@@ -278,6 +278,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         getCommand("report").setExecutor(new ReportCommand(this));
         getCommand("reports").setExecutor(new ReportsCommand(this));
         getCommand("statsreset").setExecutor(new StatsResetCommand(this));
+        getCommand("statsmigrate").setExecutor(new StatsMigrateCommand(this));
         getCommand("hbmresetall").setExecutor(new HBMResetAllCommand(this));
         getCommand("privateworld").setExecutor(new PrivateWorldCommand(this));
         getCommand("setstats").setExecutor(new SetCommand(this));

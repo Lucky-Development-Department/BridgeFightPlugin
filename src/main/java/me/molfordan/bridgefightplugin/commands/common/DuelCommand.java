@@ -7,8 +7,13 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 public class DuelCommand implements CommandExecutor {
     private final BridgeFightPlugin plugin;
+    private final Map<UUID, Long> cooldowns = new HashMap<>();
 
     public DuelCommand(BridgeFightPlugin plugin) {
         this.plugin = plugin;
@@ -18,6 +23,16 @@ public class DuelCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (!(sender instanceof Player)) return true;
         Player player = (Player) sender;
+
+        // Cooldown check
+        if (cooldowns.containsKey(player.getUniqueId())) {
+            long timeLeft = cooldowns.get(player.getUniqueId()) - System.currentTimeMillis();
+            if (timeLeft > 0) {
+                player.sendMessage(ChatColor.RED + "Please wait " + (timeLeft / 1000 + 1) + " seconds before using this command again.");
+                return true;
+            }
+        }
+        cooldowns.put(player.getUniqueId(), System.currentTimeMillis() + 3000); // 3 second cooldown
 
         if (args.length == 0) {
             player.sendMessage(ChatColor.RED + "Usage: /duel <player> or /duel accept <player>");

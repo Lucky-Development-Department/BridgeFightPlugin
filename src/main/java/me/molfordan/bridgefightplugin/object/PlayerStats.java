@@ -136,6 +136,8 @@ public class PlayerStats {
     public void setRankedKills(int kills) { this.rankedKills = Math.max(0, kills); }
     public void setRankedDeaths(int deaths) { this.rankedDeaths = Math.max(0, deaths); }
     public void setRankedBeds(int beds) { this.rankedBeds = Math.max(0, beds); }
+    public void setRankedStreak(int streak) { this.rankedStreak = Math.max(0, streak); }
+    public void setRankedHighestStreak(int streak) { this.rankedHighestStreak = Math.max(0, streak); }
 
     // Unranked Setters
     public void setUnrankedWins(int wins) { this.unrankedWins = Math.max(0, wins); }

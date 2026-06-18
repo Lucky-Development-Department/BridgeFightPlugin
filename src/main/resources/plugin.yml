@@ -193,6 +193,10 @@ commands:
     usage: '/platform info'
     description: 'platform info command'
     permission: arenamap.admin
+  statsmigrate:
+    usage: '/statsmigrate <oldplayername> <newplayername>'
+    description: 'Clone stats from one player to another and reset the old player stats'
+    permission: arenamap.admin
 
 permissions:
   arenamap.admin:

@@ -4,6 +4,8 @@ import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import me.molfordan.bridgefightplugin.manager.PlatformManager;
 import me.molfordan.bridgefightplugin.kits.KitManager;
 import me.molfordan.bridgefightplugin.object.PlatformRegion;
+import me.molfordan.bridgefightplugin.object.PlayerStats;
+import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
@@ -90,6 +92,12 @@ public class PlatformCommand extends BukkitCommand {
                 p.sendMessage("§cYou are banned from BridgeFight.");
                 p.sendMessage("§7Reason: §f" + reason);
                 p.sendMessage("§7Remaining: §e" + formatted);
+                return true;
+            }
+
+            PlayerStats playerStats = plugin.getStatsManager().getStats(p.getUniqueId());
+            if (playerStats.getBuildKills() < 350) {
+                p.sendMessage(ChatColor.translateAlternateColorCodes('&',"&cYou need atleast 350 BuildFFA kills or higher to join the bridge fight!" ));
                 return true;
             }
 

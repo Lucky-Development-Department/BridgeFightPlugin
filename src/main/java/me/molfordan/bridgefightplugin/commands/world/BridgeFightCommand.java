@@ -3,6 +3,7 @@ package me.molfordan.bridgefightplugin.commands.world;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import me.molfordan.bridgefightplugin.listener.LobbyListener;
 import me.molfordan.bridgefightplugin.manager.ConfigManager;
+import me.molfordan.bridgefightplugin.object.PlayerStats;
 import me.molfordan.bridgefightplugin.object.enums.PlatformType;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -55,6 +56,12 @@ public class BridgeFightCommand implements CommandExecutor {
          */
         if (plugin.getBridgeFightBanManager().isPlayerBanned(player.getUniqueId())){
             player.sendMessage(ChatColor.translateAlternateColorCodes('&', prefix + " &cYou are banned from BridgeFight"));
+            return true;
+        }
+
+        PlayerStats playerStats = plugin.getStatsManager().getStats(player.getUniqueId());
+        if (playerStats.getBuildKills() < 350) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',"&cYou need atleast 350 BuildFFA kills or higher to join the bridge fight!" ));
             return true;
         }
 

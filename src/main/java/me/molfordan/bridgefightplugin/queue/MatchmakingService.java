@@ -229,18 +229,20 @@ public class MatchmakingService {
         String buildFFAWorld = plugin.getConfigManager().getBuildFFAWorldName();
         String bridgeFightWorld = plugin.getConfigManager().getBridgeFightWorldName();
         String lobbyWorld = plugin.getConfigManager().getLobbyWorldName();
-        
-        // Teleport to lobby
-        p.teleport(plugin.getConfigManager().getLobbyLocation());
+        String currentWorld = p.getWorld().getName();
         
         // Clear scoreboard
         p.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getNewScoreboard());
         
-        if (p.getWorld().getName().equals(buildFFAWorld)) {
+        if (currentWorld.equalsIgnoreCase(buildFFAWorld)) {
             plugin.getKitManager().applyBuildFFAKit(p);
-        } else if (p.getWorld().getName().equals(bridgeFightWorld)) {
+        } else if (currentWorld.equalsIgnoreCase(bridgeFightWorld)) {
             plugin.getKitManager().applyBridgeFightKit(p);
-        } else if (p.getWorld().getName().equals(lobbyWorld)) {
+        } else if (currentWorld.equalsIgnoreCase(lobbyWorld)) {
+            plugin.getSpawnItem().giveSpawnItem(p);
+        } else {
+            // Default: Teleport to lobby if not in a designated game world
+            p.teleport(plugin.getConfigManager().getLobbyLocation());
             plugin.getSpawnItem().giveSpawnItem(p);
         }
     }

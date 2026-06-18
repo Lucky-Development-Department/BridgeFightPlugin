@@ -7,7 +7,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.Set;
 import java.util.UUID;
 
 public class LeaveCommand implements CommandExecutor {
@@ -31,7 +30,6 @@ public class LeaveCommand implements CommandExecutor {
             plugin.getLogger().info("DEBUG: LeaveCommand calling removeFromQueue for " + player.getName());
             plugin.getMatchmakingService().removeFromQueue(player);
             plugin.getLogger().info("DEBUG: LeaveCommand removeFromQueue called for " + player.getName());
-            // MatchmakingService already sends "Left the queue!"
             return true;
         }
 
@@ -42,15 +40,12 @@ public class LeaveCommand implements CommandExecutor {
             BedFightPlayerState state = session.getPlayerState(uuid);
             
             if (state == BedFightPlayerState.ENDED) {
-                // Match finished, just leaving
                 performLeave(player);
                 player.sendMessage(ChatColor.YELLOW + "You have left the match.");
             } else if (session.isSpectator(uuid)) {
-                // Joined via /spec OR eliminated during match
                 performLeave(player);
                 player.sendMessage(ChatColor.YELLOW + "You are no longer spectating the match.");
             } else {
-                // Active participant leaving - treated as forfeit
                 String playerTeam = session.getTeam(uuid);
                 String opponentTeam = "RED".equalsIgnoreCase(playerTeam) ? "BLUE" : "RED";
 
@@ -81,30 +76,42 @@ public class LeaveCommand implements CommandExecutor {
 
     private void performLeave(Player player) {
         org.bukkit.Location lobby = plugin.getConfigManager().getLobbyLocation();
-        player.teleport(lobby);
-        player.getInventory().clear();
-        player.getInventory().setArmorContents(null);
+        String buildFFAWorld = plugin.getConfigManager().getBuildFFAWorldName();
+        String bridgeFightWorld = plugin.getConfigManager().getBridgeFightWorldName();
+        String currentWorld = player.getWorld().getName();
+
+        // 1. Reset core player state
         player.setGameMode(org.bukkit.GameMode.ADVENTURE);
         player.setFlying(false);
         player.setAllowFlight(false);
         player.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getNewScoreboard());
         
+        // 2. Remove from active session tracking
         plugin.getBedFightManager().removePlayerFromSession(player);
+
+        // 3. Logic: Stay in world with kit if applicable, otherwise return to lobby
+        if (currentWorld.equalsIgnoreCase(buildFFAWorld)) {
+            plugin.getKitManager().applyBuildFFAKit(player);
+        } else if (currentWorld.equalsIgnoreCase(bridgeFightWorld)) {
+            plugin.getKitManager().applyBridgeFightKit(player);
+        } else {
+            player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
+            player.teleport(lobby);
+        }
         
+        // 4. Handle lobby-specific items with a 1-tick delay
         org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (plugin.getBedFightManager().isInMatch(player)) return;
+            if (!player.isOnline() || plugin.getBedFightManager().isInMatch(player)) return;
 
-            if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
-                player.getInventory().clear();
-                player.getInventory().setArmorContents(null);
-                plugin.getMatchmakingService().giveLeaveItem(player);
-                return;
-            }
-
-            if (plugin.getPartyManager().isInParty(player.getUniqueId())) {
-                plugin.getPartyManager().givePartyItems(player);
-            } else {
-                plugin.getSpawnItem().giveSpawnItem(player);
+            if (player.getWorld().getName().equalsIgnoreCase(lobby.getWorld().getName())) {
+                if (plugin.getMatchmakingService().isInWaitingQueue(player.getUniqueId())) {
+                    plugin.getMatchmakingService().giveLeaveItem(player);
+                } else if (plugin.getPartyManager().isInParty(player.getUniqueId())) {
+                    plugin.getPartyManager().givePartyItems(player);
+                } else {
+                    plugin.getSpawnItem().giveSpawnItem(player);
+                }
             }
         }, 1L);
     }
