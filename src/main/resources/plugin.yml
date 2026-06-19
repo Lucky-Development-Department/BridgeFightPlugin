@@ -7,7 +7,18 @@ softdepend:
   - WorldGuard
   - ProtocolLib
   - TAB
+  - LuckPerms
 commands:
+  cosmetics:
+    usage: '/cosmetics [reload|reset <player>]'
+    description: 'Open, reload, or reset purchased cosmetics'
+  balance:
+    usage: '/balance'
+    description: 'View your coin balance'
+  setbalance:
+    usage: '/setbalance <player> <amount>'
+    description: 'Set a player coin balance'
+    permission: bridgefight.balance.set
   rematch:
     usage: '/rematch'
     description: 'Rematch command'
@@ -209,3 +220,9 @@ permissions:
     description: 'BridgeFight Banned'
   bridgefight.unbanned:
     description: 'BridgeFight Unbanned'
+  bridgefight.cosmetics.reload:
+    description: 'Reload cosmetics.yml'
+  bridgefight.cosmetics.reset:
+    description: 'Reset player cosmetics'
+  bridgefight.balance.set:
+    description: 'Set player coin balances'

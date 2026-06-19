@@ -41,7 +41,7 @@ public class BuildFFAListener implements Listener {
 
         // Death detection: if health drops to 0.5 or below (exclude fall damage)
         if (event.getCause() != org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL && 
-            victim.getHealth() - event.getFinalDamage() <= 0.5) {
+            victim.getHealth() - event.getFinalDamage() <= 0.1) {
             event.setCancelled(true);
             processBuildFFADeath(victim, false);
         }

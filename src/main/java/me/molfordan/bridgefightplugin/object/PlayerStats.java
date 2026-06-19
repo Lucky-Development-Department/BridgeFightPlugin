@@ -1,5 +1,8 @@
 package me.molfordan.bridgefightplugin.object;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class PlayerStats {
@@ -30,6 +33,14 @@ public class PlayerStats {
     // --- Kit Selection ---
     private String lastSelectedBridgeKit;
 
+    // --- Cosmetics ---
+    private String selectedKillMessage = "default";
+    private String selectedKillEffect = "none";
+    private String selectedTrail = "none";
+    private Set<String> purchasedKillMessages = new LinkedHashSet<>();
+    private Set<String> purchasedKillEffects = new LinkedHashSet<>();
+    private Set<String> purchasedTrails = new LinkedHashSet<>();
+
     // --- Ranked ---
     private int rankedElo = 1000;
     private int peakElo = 1000;
@@ -47,6 +58,8 @@ public class PlayerStats {
     // --- Duel ---
     private int duelWins, duelLosses;
 
+    private int coins = 0;
+
     private long lastUpdated;
 
     public PlayerStats(UUID uuid, String username) {
@@ -54,6 +67,8 @@ public class PlayerStats {
         this.username = username;
         this.rankedElo = 1000;
         this.peakElo = 1000;
+        this.coins = 0;
+        addDefaultCosmetics();
     }
 
     public PlayerStats(UUID uuid) {
@@ -65,6 +80,8 @@ public class PlayerStats {
     // -----------------------------
     public UUID getUuid() { return uuid; }
     public String getUsername() { return username; }
+
+    public int getCoins() { return coins; }
 
     // --- Original Stats (Legacy/Kept) ---
     public int getBridgeKills() { return bridgeKills; }
@@ -80,6 +97,23 @@ public class PlayerStats {
     public int getBuildDailyStreak() { return buildDailyStreak; }
     public int getBuildDailyHighestStreak() { return buildDailyHighestStreak; }
     public String getLastSelectedBridgeKit() { return lastSelectedBridgeKit; }
+
+    // --- Cosmetics ---
+    public String getSelectedKillMessage() { return selectedKillMessage; }
+    public String getSelectedKillEffect() { return selectedKillEffect; }
+    public String getSelectedTrail() { return selectedTrail; }
+    public Set<String> getPurchasedKillMessages() {
+        ensureCosmeticSets();
+        return purchasedKillMessages;
+    }
+    public Set<String> getPurchasedKillEffects() {
+        ensureCosmeticSets();
+        return purchasedKillEffects;
+    }
+    public Set<String> getPurchasedTrails() {
+        ensureCosmeticSets();
+        return purchasedTrails;
+    }
 
     // --- New Ranked Stats ---
     public int getRankedElo() { return rankedElo; }
@@ -128,6 +162,47 @@ public class PlayerStats {
     public void setBuildDailyHighestStreak(int value) { this.buildDailyHighestStreak = Math.max(0, value); }
     public void setLastSelectedBridgeKit(String kitName) { this.lastSelectedBridgeKit = kitName; }
 
+    // --- Cosmetics ---
+    public void setSelectedKillMessage(String id) { this.selectedKillMessage = id; }
+    public void setSelectedKillEffect(String id) { this.selectedKillEffect = id; }
+    public void setSelectedTrail(String id) { this.selectedTrail = id; }
+    public void setPurchasedKillMessages(Collection<String> ids) {
+        this.purchasedKillMessages = cleanCosmeticIds(ids);
+        this.purchasedKillMessages.add("default");
+    }
+    public void setPurchasedKillEffects(Collection<String> ids) {
+        this.purchasedKillEffects = cleanCosmeticIds(ids);
+        this.purchasedKillEffects.add("none");
+    }
+    public void setPurchasedTrails(Collection<String> ids) {
+        this.purchasedTrails = cleanCosmeticIds(ids);
+        this.purchasedTrails.add("none");
+    }
+    public boolean hasPurchasedKillMessage(String id) {
+        ensureCosmeticSets();
+        return purchasedKillMessages.contains(id);
+    }
+    public boolean hasPurchasedKillEffect(String id) {
+        ensureCosmeticSets();
+        return purchasedKillEffects.contains(id);
+    }
+    public boolean hasPurchasedTrail(String id) {
+        ensureCosmeticSets();
+        return purchasedTrails.contains(id);
+    }
+    public void addPurchasedKillMessage(String id) {
+        ensureCosmeticSets();
+        addCosmeticId(purchasedKillMessages, id);
+    }
+    public void addPurchasedKillEffect(String id) {
+        ensureCosmeticSets();
+        addCosmeticId(purchasedKillEffects, id);
+    }
+    public void addPurchasedTrail(String id) {
+        ensureCosmeticSets();
+        addCosmeticId(purchasedTrails, id);
+    }
+
     // Ranked Setters
     public void setRankedElo(int elo) { this.rankedElo = elo; }
     public void setPeakElo(int peakElo) { this.peakElo = peakElo; }
@@ -151,6 +226,8 @@ public class PlayerStats {
     // Duel Setters
     public void setDuelWins(int wins) { this.duelWins = Math.max(0, wins); }
     public void setDuelLosses(int losses) { this.duelLosses = Math.max(0, losses); }
+
+    public void setCoins(int coins) { this.coins = Math.max(0, coins); }
 
 
     public void setLastUpdated(long lastUpdated) { this.lastUpdated = lastUpdated; }
@@ -243,5 +320,36 @@ public class PlayerStats {
         }
         double kdr = (double) buildKills / buildDeaths;
         return Math.round(kdr * 100.0) / 100.0;
+    }
+
+    private void addDefaultCosmetics() {
+        purchasedKillMessages.add("default");
+        purchasedKillEffects.add("none");
+        purchasedTrails.add("none");
+        addCosmeticId(purchasedKillMessages, selectedKillMessage);
+        addCosmeticId(purchasedKillEffects, selectedKillEffect);
+        addCosmeticId(purchasedTrails, selectedTrail);
+    }
+
+    private void ensureCosmeticSets() {
+        if (purchasedKillMessages == null) purchasedKillMessages = new LinkedHashSet<>();
+        if (purchasedKillEffects == null) purchasedKillEffects = new LinkedHashSet<>();
+        if (purchasedTrails == null) purchasedTrails = new LinkedHashSet<>();
+        addDefaultCosmetics();
+    }
+
+    private Set<String> cleanCosmeticIds(Collection<String> ids) {
+        Set<String> cleaned = new LinkedHashSet<>();
+        if (ids == null) return cleaned;
+
+        for (String id : ids) {
+            addCosmeticId(cleaned, id);
+        }
+        return cleaned;
+    }
+
+    private void addCosmeticId(Set<String> ids, String id) {
+        if (id == null || id.trim().isEmpty()) return;
+        ids.add(id.trim());
     }
 }

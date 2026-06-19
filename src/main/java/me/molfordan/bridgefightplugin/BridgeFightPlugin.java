@@ -102,6 +102,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
     private SpawnItem spawnItem;
     private BackupManager backupManager; // Add this line
     private AutoRestartManager autoRestartManager;
+    private BalanceManager balanceManager;
     private me.molfordan.bridgefightplugin.config.KnockbackConfig knockbackConfig;
 
     public me.molfordan.bridgefightplugin.config.KnockbackConfig getKnockbackConfig() {
@@ -125,6 +126,9 @@ public final class BridgeFightPlugin extends JavaPlugin {
     private FireballTracker fireballTracker;
     private TNTTracker tntTracker;
     private EnderPearlListener enderPearlListener;
+    private me.molfordan.bridgefightplugin.cosmetics.CosmeticsManager cosmeticsManager;
+    private me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUI cosmeticsGUI;
+    private me.molfordan.bridgefightplugin.cosmetics.listener.CosmeticsListener cosmeticsListener;
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
     private static final String BRIDGEFIGHT_PATH = "bridgefight";
@@ -147,6 +151,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.knockbackConfig = new me.molfordan.bridgefightplugin.config.KnockbackConfig(this);
         this.databaseManager = new DatabaseManager(this);
         this.statsManager = new StatsManager(this);
+        this.balanceManager = new BalanceManager(this);
         this.bridgeFightConfig = new BridgeFightConfig(this);
         bridgeFightConfig.load();
         this.platformManager = new PlatformManager(this);
@@ -163,7 +168,10 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.hotbarSessionManager = new HotbarSessionManager(this, hotbarDataManager, kitManager);
         this.fireballTracker = new FireballTracker(this);
         this.tntTracker = new TNTTracker(this);
+        this.cosmeticsManager = new me.molfordan.bridgefightplugin.cosmetics.CosmeticsManager(this);
+        this.cosmeticsGUI = new me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUI(this, cosmeticsManager);
         this.deathMessageManager = new DeathMessageManager(this,combatManager, arenaManager, hotbarDataManager, statsManager, fireballTracker);
+        this.deathMessageManager.setCosmeticsManager(cosmeticsManager);
         this.hotbarSorter = new HotbarSorter(hotbarDataManager);
         this.bridgeFightBanManager = new BridgeFightBanManager(getDataFolder());
         this.placeholderLeaderboardExpansion = new LeaderboardPlaceholderExpansion(this);
@@ -220,6 +228,11 @@ public final class BridgeFightPlugin extends JavaPlugin {
         getCommand("arenaconfig").setExecutor(new ConfigReloadCommand(configManager));
         getCommand("configreload").setExecutor(new ConfigReloadCommand(configManager));
         getCommand("patchnotes").setExecutor(new PatchNotesCommand(this));
+        me.molfordan.bridgefightplugin.cosmetics.CosmeticsCommand cosmeticsCmd = new me.molfordan.bridgefightplugin.cosmetics.CosmeticsCommand(cosmeticsGUI, cosmeticsManager);
+        getCommand("cosmetics").setExecutor(cosmeticsCmd);
+        getCommand("cosmetics").setTabCompleter(cosmeticsCmd);
+        getCommand("balance").setExecutor(new BalanceCommand(this));
+        getCommand("setbalance").setExecutor(new SetBalanceCommand(this));
         getCommand("setlobby").setExecutor(new SetLobbyCommand(configManager));
         getCommand("build").setExecutor(new BuildModeCommand(configManager));
         getCommand("buildffa").setExecutor(new BuildFFACommand(configManager));
@@ -348,8 +361,12 @@ public final class BridgeFightPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ExplosiveListener(), this);
         getServer().getPluginManager().registerEvents(new TNTListener(fireballTracker, tntTracker), this);
         getServer().getPluginManager().registerEvents(new PatchNotesListener(this), this);
+        this.cosmeticsListener = new me.molfordan.bridgefightplugin.cosmetics.listener.CosmeticsListener(this, cosmeticsManager);
+        getServer().getPluginManager().registerEvents(this.cosmeticsListener, this);
+        getServer().getPluginManager().registerEvents(new me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUIListener(this, cosmeticsGUI, cosmeticsManager), this);
         getServer().getPluginManager().registerEvents(new ArmorRemovalListener(this, arenaManager), this);
         getServer().getPluginManager().registerEvents(this.deathMessageManager, this);
+        getServer().getPluginManager().registerEvents(new BalanceListener(this), this);
 
         //new RegionTriggerTask(regionManager).runTaskTimer(this, 0L, 10L);
         getServer().getMessenger().registerOutgoingPluginChannel(this, "nebula:main");
@@ -638,6 +655,9 @@ public final class BridgeFightPlugin extends JavaPlugin {
     public DeathMessageManager getDeathMessageManager() {
         return deathMessageManager;
     }
+    public BalanceManager getBalanceManager() {
+        return balanceManager;
+    }
 
     public PlatformManager getPlatformManager() {
         return platformManager;
@@ -665,5 +685,9 @@ public final class BridgeFightPlugin extends JavaPlugin {
 
     public PatchNotesManager getPatchNotesManager() {
         return patchNotesManager;
+    }
+
+    public me.molfordan.bridgefightplugin.cosmetics.listener.CosmeticsListener getCosmeticsListener() {
+        return cosmeticsListener;
     }
 }

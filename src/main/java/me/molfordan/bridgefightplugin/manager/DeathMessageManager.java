@@ -3,6 +3,7 @@ package me.molfordan.bridgefightplugin.manager;
 import me.molfordan.bridgefightplugin.hotbarmanager.HotbarManager;
 import me.molfordan.bridgefightplugin.object.Arena;
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
+import me.molfordan.bridgefightplugin.event.BridgeFightKillEvent;
 import me.molfordan.bridgefightplugin.object.PlatformRegion;
 import me.molfordan.bridgefightplugin.object.enums.ArenaType;
 import me.molfordan.bridgefightplugin.listener.PlayerKillEventListener;
@@ -50,6 +51,8 @@ public class DeathMessageManager implements Listener {
     private final HotbarDataManager hotbarDataManager;
     private final StatsManager statsManager;
     private final FireballTracker fireballTracker;
+    private me.molfordan.bridgefightplugin.cosmetics.CosmeticsManager cosmeticsManager;
+    private final Map<UUID, me.molfordan.bridgefightplugin.cosmetics.objects.KillEffect> killEffectCache = new ConcurrentHashMap<>();
 
     private ArenaManager arenaManager;
     public String PREFIX;
@@ -71,6 +74,31 @@ public class DeathMessageManager implements Listener {
         this.bridgeFightWorldName = plugin.getConfigManager().getBridgeFightWorldName();
         startDuelCleaner();
         startActionBarTask();
+    }
+
+    public void setCosmeticsManager(me.molfordan.bridgefightplugin.cosmetics.CosmeticsManager cosmeticsManager) {
+        this.cosmeticsManager = cosmeticsManager;
+    }
+
+    public void updateKillEffectCache(Player player) {
+        PlayerStats stats = statsManager.getStats(player.getUniqueId());
+        if (stats == null) {
+            killEffectCache.remove(player.getUniqueId());
+            return;
+        }
+
+        String effectId = stats.getSelectedKillEffect();
+        if (effectId == null) {
+            killEffectCache.remove(player.getUniqueId());
+            return;
+        }
+
+        me.molfordan.bridgefightplugin.cosmetics.objects.KillEffect ke = cosmeticsManager.getKillEffect(effectId);
+        if (ke != null) {
+            killEffectCache.put(player.getUniqueId(), ke);
+        } else {
+            killEffectCache.remove(player.getUniqueId());
+        }
     }
 
     private void startActionBarTask() {
@@ -140,11 +168,9 @@ public class DeathMessageManager implements Listener {
 
         String message;
         if (explosionOwner != null && explosionOwner.isOnline() && !explosionOwner.equals(victim)) {
-            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by an explosion from "
-                    + ChatColor.GREEN + explosionOwner.getName() + ChatColor.GRAY + "[" + attackerStreak + "]";
+            message = getCosmeticKillMessage(explosionOwner, victim, attackerStreak, "{killer} blew {victim} to pieces", arena, true);
         } else if (attacker != null && attacker.isOnline() && !attacker.equals(victim)) {
-            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] was thrown into the void by "
-                    + ChatColor.GREEN + attacker.getName() + ChatColor.GRAY + "[" + attackerStreak + "]";
+            message = getCosmeticKillMessage(attacker, victim, attackerStreak, "{killer} sent {victim} into the void", arena, true);
         } else {
             message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] fell into the void.";
         }
@@ -157,6 +183,7 @@ public class DeathMessageManager implements Listener {
             if (arena.getType() == ArenaType.FFABUILD) {
                 giveKillRewards(rewardPlayer, attackerStreak);
                 giveKillEffect(rewardPlayer);
+                playCosmeticKillEffect(rewardPlayer, victim);
                 plugin.debug("sendVoidDeathMessage: Reward player " + rewardPlayer.getName() + " received FFABUILD rewards.");
             }
         }
@@ -261,6 +288,11 @@ public class DeathMessageManager implements Listener {
         // Get current streak before any increments
         int currentKillerStreak = 0;
         if (killerValid) {
+            // Fire custom kill event for external hooks (e.g. balance system)
+            Bukkit.getPluginManager().callEvent(new BridgeFightKillEvent(killer, victim, arena, isVoidDeath));
+
+            // Play cosmetic kill effect immediately
+            playCosmeticKillEffect(killer, victim);
 
             // Get the correct streak based on arena type BEFORE incrementing
             if (arena.getType() == ArenaType.FFABUILD) {
@@ -271,7 +303,6 @@ public class DeathMessageManager implements Listener {
             
             // Play noteblock sound and give redstone block breaking effect
             killer.playSound(killer.getLocation(), Sound.ORB_PICKUP, 100, 1.0f);
-
         }
 
         // Update totals and increment streaks
@@ -292,7 +323,14 @@ public class DeathMessageManager implements Listener {
         } else if (isVoidDeath) {
             sendVoidDeathMessage(victim, killer, arena, currentKillerStreak + 1);
         } else {
-            victim.getWorld().playEffect(victim.getLocation(), org.bukkit.Effect.STEP_SOUND, Material.REDSTONE_BLOCK);
+            // Only play default effect if no cosmetic effect was played
+            if (killerValid) {
+                if (!playCosmeticKillEffect(killer, victim)) {
+                    victim.getWorld().playEffect(victim.getLocation(), org.bukkit.Effect.STEP_SOUND, Material.REDSTONE_BLOCK);
+                }
+            } else {
+                victim.getWorld().playEffect(victim.getLocation(), org.bukkit.Effect.STEP_SOUND, Material.REDSTONE_BLOCK);
+            }
             sendPlayerKillMessage(victim, killer, arena, currentKillerStreak + 1);
         }
 
@@ -687,18 +725,90 @@ public class DeathMessageManager implements Listener {
             message = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] died.";
         } else {
             // Normal kill message
-            String killString = killer != null ? ChatColor.GRAY + "[0] was killed by" : ChatColor.GRAY + "[0] was killed";
-            message = ChatColor.RED + victim.getName() + ChatColor.GRAY + " " + (killer != null ? killString : ChatColor.GRAY + "[0] was killed")
-                    + ChatColor.GRAY + (killer != null ? " " + ChatColor.GREEN + killer.getName() + ChatColor.GRAY + "[" + newStreak + "]" : "");
+            message = getCosmeticKillMessage(killer, victim, newStreak, "{victim} was killed by {killer}", arena, false);
         }
 
         // Rewards/effects for killer if appropriate
         if (killer != null && killer.isOnline() && arena.getType() == ArenaType.FFABUILD && !handleExplosionDeath(victim, killer)) {
             giveKillRewards(killer, newStreak);
             giveKillEffect(killer);
+            playCosmeticKillEffect(killer, victim);
         }
 
         broadcastMessage(arena, message);
+    }
+
+    private String getCosmeticKillMessage(Player killer, Player victim, int killerStreak, String defaultMsg, Arena arena, boolean isVoid) {
+        if (killer == null) return ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0] died.";
+        
+        PlayerStats stats = statsManager.getStats(killer.getUniqueId());
+        String selected = stats.getSelectedKillMessage();
+        
+        me.molfordan.bridgefightplugin.cosmetics.objects.KillMessage km = cosmeticsManager.getKillMessage(selected);
+        String template;
+        if (km != null) {
+            template = isVoid ? km.getVoidMessage() : km.getMessage();
+        } else {
+            template = defaultMsg;
+        }
+        
+        String victimName = ChatColor.RED + victim.getName() + ChatColor.GRAY + "[0]";
+        String killerName = ChatColor.GREEN + killer.getName() + ChatColor.GRAY + "[" + killerStreak + "]";
+        
+        return ChatColor.translateAlternateColorCodes('&', template)
+                .replace("{victim}", victimName)
+                .replace("{killer}", killerName);
+    }
+
+    private boolean playCosmeticKillEffect(Player killer, Player victim) {
+        if (killer == null || victim == null) return false;
+        
+        me.molfordan.bridgefightplugin.cosmetics.objects.KillEffect ke = killEffectCache.get(killer.getUniqueId());
+        if (ke == null) {
+            updateKillEffectCache(killer);
+            ke = killEffectCache.get(killer.getUniqueId());
+        }
+        
+        if (ke == null) return false;
+        
+        Location loc = victim.getLocation();
+        me.molfordan.bridgefightplugin.cosmetics.objects.KillEffect.SpecialEffect special = ke.getSpecialEffect();
+        
+        if (special != null) {
+            switch (special) {
+                case NONE:
+                    return true; // Explicitly handled "None", don't play default blood
+                case REDSTONE:
+                    victim.getWorld().playEffect(loc.add(0, 1, 0), org.bukkit.Effect.STEP_SOUND, Material.REDSTONE_BLOCK);
+                    break;
+                case LIGHTNING:
+                    victim.getWorld().strikeLightningEffect(loc);
+                    break;
+                case FIREWORK:
+                    spawnFirework(loc);
+                    break;
+                default:
+                    return false;
+            }
+        } else if (ke.getBukkitEffect() != null) {
+            victim.getWorld().playEffect(loc.add(0, 1, 0), ke.getBukkitEffect(), 0);
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    private void spawnFirework(Location loc) {
+        org.bukkit.entity.Firework fw = loc.getWorld().spawn(loc, org.bukkit.entity.Firework.class);
+        org.bukkit.inventory.meta.FireworkMeta fwm = fw.getFireworkMeta();
+        fwm.addEffect(FireworkEffect.builder()
+                .withColor(Color.RED)
+                .withColor(Color.ORANGE)
+                .with(FireworkEffect.Type.BALL)
+                .build());
+        fwm.setPower(0);
+        fw.setFireworkMeta(fwm);
+        Bukkit.getScheduler().runTaskLater(plugin, fw::detonate, 1L);
     }
 
     public void sendCombatLogDeathMessage(Player victim, Player attacker, Arena arena, int newStreak) {

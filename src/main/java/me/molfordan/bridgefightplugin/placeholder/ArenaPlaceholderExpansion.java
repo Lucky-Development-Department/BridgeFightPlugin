@@ -177,6 +177,11 @@ public class ArenaPlaceholderExpansion extends PlaceholderExpansion {
                 return String.valueOf(s.getBuildHighestStreak());
             case "build_kda":
                 return String.valueOf(s.getBuildKDR());
+
+            // Coins/Balance
+            case "coins":
+            case "balance":
+                return String.valueOf(s.getCoins());
         }
 
         return "";

@@ -61,7 +61,11 @@ public class StatsManager {
                         "build_deaths INT DEFAULT 0," +
                         "build_streak INT DEFAULT 0," +
                         "build_highest_streak INT DEFAULT 0," +
-                        "last_selected_bridge_kit VARCHAR(64) DEFAULT 'Default'" +
+                        "last_selected_bridge_kit VARCHAR(64) DEFAULT 'Default'," +
+                        "coins INT DEFAULT 0," +
+                        "purchased_kill_messages TEXT," +
+                        "purchased_kill_effects TEXT," +
+                        "purchased_trails TEXT" +
                         ");";
 
         try (Connection conn = sql.getConnection();
@@ -94,7 +98,14 @@ public class StatsManager {
                 "unranked_kills INT DEFAULT 0",
                 "unranked_deaths INT DEFAULT 0",
                 "unranked_beds INT DEFAULT 0",
-                "best_unranked_streak INT DEFAULT 0"
+                "best_unranked_streak INT DEFAULT 0",
+                "selected_kill_message VARCHAR(64) DEFAULT 'default'",
+                "selected_kill_effect VARCHAR(64) DEFAULT 'none'",
+                "selected_trail VARCHAR(64) DEFAULT 'none'",
+                "coins INT DEFAULT 0",
+                "purchased_kill_messages TEXT",
+                "purchased_kill_effects TEXT",
+                "purchased_trails TEXT"
             };
 
             for (String col : columns) {
@@ -240,6 +251,14 @@ public class StatsManager {
                     stats.setUnrankedDeaths(rs.getInt("unranked_deaths"));
                     stats.setUnrankedBeds(rs.getInt("unranked_beds"));
                     stats.setBestUnrankedStreak(rs.getInt("best_unranked_streak"));
+                    
+                    stats.setSelectedKillMessage(rs.getString("selected_kill_message"));
+                    stats.setSelectedKillEffect(rs.getString("selected_kill_effect"));
+                    stats.setSelectedTrail(rs.getString("selected_trail"));
+                    stats.setCoins(rs.getInt("coins"));
+                    stats.setPurchasedKillMessages(parseCosmeticIds(rs.getString("purchased_kill_messages")));
+                    stats.setPurchasedKillEffects(parseCosmeticIds(rs.getString("purchased_kill_effects")));
+                    stats.setPurchasedTrails(parseCosmeticIds(rs.getString("purchased_trails")));
 
                     return stats;
                 }
@@ -283,6 +302,14 @@ public class StatsManager {
             stats.setBuildDailyHighestStreak(doc.getInteger("build_daily_highest_streak", 0));
             String kitName = doc.getString("last_selected_bridge_kit");
             stats.setLastSelectedBridgeKit(kitName != null ? kitName : "Default");
+            
+            stats.setSelectedKillMessage(doc.getString("selected_kill_message") != null ? doc.getString("selected_kill_message") : "default");
+            stats.setSelectedKillEffect(doc.getString("selected_kill_effect") != null ? doc.getString("selected_kill_effect") : "none");
+            stats.setSelectedTrail(doc.getString("selected_trail") != null ? doc.getString("selected_trail") : "none");
+            stats.setCoins(doc.getInteger("coins", 0));
+            stats.setPurchasedKillMessages(readCosmeticIds(doc, "purchased_kill_messages"));
+            stats.setPurchasedKillEffects(readCosmeticIds(doc, "purchased_kill_effects"));
+            stats.setPurchasedTrails(readCosmeticIds(doc, "purchased_trails"));
 
             return stats;
         }
@@ -318,6 +345,14 @@ public class StatsManager {
         stats.setBuildDailyStreak(config.getInt("build_daily_streak", 0));
         stats.setBuildDailyHighestStreak(config.getInt("build_daily_highest_streak", 0));
         stats.setLastSelectedBridgeKit(config.getString("last_selected_bridge_kit", "Default"));
+        
+        stats.setSelectedKillMessage(config.getString("selected_kill_message", "default"));
+        stats.setSelectedKillEffect(config.getString("selected_kill_effect", "none"));
+        stats.setSelectedTrail(config.getString("selected_trail", "none"));
+        stats.setCoins(config.getInt("coins", 0));
+        stats.setPurchasedKillMessages(config.getStringList("purchased_kill_messages"));
+        stats.setPurchasedKillEffects(config.getStringList("purchased_kill_effects"));
+        stats.setPurchasedTrails(config.getStringList("purchased_trails"));
 
         return stats;
     }
@@ -348,12 +383,14 @@ public class StatsManager {
         String query = "INSERT INTO player_stats (uuid, username, bridge_kills, bridge_deaths, bridge_streak, bridge_highest_streak, " +
                 "build_kills, build_deaths, build_streak, build_highest_streak, last_selected_bridge_kit, " +
                 "ranked_elo, peak_elo, ranked_wins, ranked_losses, ranked_kills, ranked_deaths, ranked_beds, " +
-                "unranked_wins, unranked_losses, unranked_kills, unranked_deaths, unranked_beds, best_unranked_streak) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                "unranked_wins, unranked_losses, unranked_kills, unranked_deaths, unranked_beds, best_unranked_streak, " +
+                "selected_kill_message, selected_kill_effect, selected_trail, coins, purchased_kill_messages, purchased_kill_effects, purchased_trails) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                 "ON DUPLICATE KEY UPDATE username=?, bridge_kills=?, bridge_deaths=?, bridge_streak=?, bridge_highest_streak=?, " +
                 "build_kills=?, build_deaths=?, build_streak=?, build_highest_streak=?, last_selected_bridge_kit=?, " +
                 "ranked_elo=?, peak_elo=?, ranked_wins=?, ranked_losses=?, ranked_kills=?, ranked_deaths=?, ranked_beds=?, " +
-                "unranked_wins=?, unranked_losses=?, unranked_kills=?, unranked_deaths=?, unranked_beds=?, best_unranked_streak=?";
+                "unranked_wins=?, unranked_losses=?, unranked_kills=?, unranked_deaths=?, unranked_beds=?, best_unranked_streak=?, " +
+                "selected_kill_message=?, selected_kill_effect=?, selected_trail=?, coins=?, purchased_kill_messages=?, purchased_kill_effects=?, purchased_trails=?";
 
         try (Connection conn = sql.getConnection();
              PreparedStatement ps = conn.prepareStatement(query)) {
@@ -383,31 +420,45 @@ public class StatsManager {
             ps.setInt(22, stats.getUnrankedDeaths());
             ps.setInt(23, stats.getUnrankedBeds());
             ps.setInt(24, stats.getBestUnrankedStreak());
+            ps.setString(25, stats.getSelectedKillMessage());
+            ps.setString(26, stats.getSelectedKillEffect());
+            ps.setString(27, stats.getSelectedTrail());
+            ps.setInt(28, stats.getCoins());
+            ps.setString(29, serializeCosmeticIds(stats.getPurchasedKillMessages()));
+            ps.setString(30, serializeCosmeticIds(stats.getPurchasedKillEffects()));
+            ps.setString(31, serializeCosmeticIds(stats.getPurchasedTrails()));
 
             // UPDATE
-            ps.setString(25, stats.getUsername());
-            ps.setInt(26, stats.getBridgeKills());
-            ps.setInt(27, stats.getBridgeDeaths());
-            ps.setInt(28, stats.getBridgeStreak());
-            ps.setInt(29, stats.getBridgeHighestStreak());
-            ps.setInt(30, stats.getBuildKills());
-            ps.setInt(31, stats.getBuildDeaths());
-            ps.setInt(32, stats.getBuildStreak());
-            ps.setInt(33, stats.getBuildHighestStreak());
-            ps.setString(34, stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
-            ps.setInt(35, stats.getRankedElo());
-            ps.setInt(36, stats.getPeakElo());
-            ps.setInt(37, stats.getRankedWins());
-            ps.setInt(38, stats.getRankedLosses());
-            ps.setInt(39, stats.getRankedKills());
-            ps.setInt(40, stats.getRankedDeaths());
-            ps.setInt(41, stats.getRankedBeds());
-            ps.setInt(42, stats.getUnrankedWins());
-            ps.setInt(43, stats.getUnrankedLosses());
-            ps.setInt(44, stats.getUnrankedKills());
-            ps.setInt(45, stats.getUnrankedDeaths());
-            ps.setInt(46, stats.getUnrankedBeds());
-            ps.setInt(47, stats.getBestUnrankedStreak());
+            ps.setString(32, stats.getUsername());
+            ps.setInt(33, stats.getBridgeKills());
+            ps.setInt(34, stats.getBridgeDeaths());
+            ps.setInt(35, stats.getBridgeStreak());
+            ps.setInt(36, stats.getBridgeHighestStreak());
+            ps.setInt(37, stats.getBuildKills());
+            ps.setInt(38, stats.getBuildDeaths());
+            ps.setInt(39, stats.getBuildStreak());
+            ps.setInt(40, stats.getBuildHighestStreak());
+            ps.setString(41, stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
+            ps.setInt(42, stats.getRankedElo());
+            ps.setInt(43, stats.getPeakElo());
+            ps.setInt(44, stats.getRankedWins());
+            ps.setInt(45, stats.getRankedLosses());
+            ps.setInt(46, stats.getRankedKills());
+            ps.setInt(47, stats.getRankedDeaths());
+            ps.setInt(48, stats.getRankedBeds());
+            ps.setInt(49, stats.getUnrankedWins());
+            ps.setInt(50, stats.getUnrankedLosses());
+            ps.setInt(51, stats.getUnrankedKills());
+            ps.setInt(52, stats.getUnrankedDeaths());
+            ps.setInt(53, stats.getUnrankedBeds());
+            ps.setInt(54, stats.getBestUnrankedStreak());
+            ps.setString(55, stats.getSelectedKillMessage());
+            ps.setString(56, stats.getSelectedKillEffect());
+            ps.setString(57, stats.getSelectedTrail());
+            ps.setInt(58, stats.getCoins());
+            ps.setString(59, serializeCosmeticIds(stats.getPurchasedKillMessages()));
+            ps.setString(60, serializeCosmeticIds(stats.getPurchasedKillEffects()));
+            ps.setString(61, serializeCosmeticIds(stats.getPurchasedTrails()));
 
             ps.executeUpdate();
 
@@ -435,7 +486,14 @@ public class StatsManager {
                 .append("build_highest_streak", stats.getBuildHighestStreak())
                 .append("build_daily_streak", stats.getBuildDailyStreak())
                 .append("build_daily_highest_streak", stats.getBuildDailyHighestStreak())
-                .append("last_selected_bridge_kit", stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
+                .append("last_selected_bridge_kit", stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default")
+                .append("selected_kill_message", stats.getSelectedKillMessage())
+                .append("selected_kill_effect", stats.getSelectedKillEffect())
+                .append("selected_trail", stats.getSelectedTrail())
+                .append("coins", stats.getCoins())
+                .append("purchased_kill_messages", new ArrayList<>(stats.getPurchasedKillMessages()))
+                .append("purchased_kill_effects", new ArrayList<>(stats.getPurchasedKillEffects()))
+                .append("purchased_trails", new ArrayList<>(stats.getPurchasedTrails()));
 
         collection.replaceOne(
                 new org.bson.Document("_id", stats.getUuid().toString()),
@@ -462,12 +520,53 @@ public class StatsManager {
         config.set("build_daily_streak", stats.getBuildDailyStreak());
         config.set("build_daily_highest_streak", stats.getBuildDailyHighestStreak());
         config.set("last_selected_bridge_kit", stats.getLastSelectedBridgeKit() != null ? stats.getLastSelectedBridgeKit() : "Default");
+        
+        config.set("selected_kill_message", stats.getSelectedKillMessage());
+        config.set("selected_kill_effect", stats.getSelectedKillEffect());
+        config.set("selected_trail", stats.getSelectedTrail());
+        config.set("coins", stats.getCoins());
+        config.set("purchased_kill_messages", new ArrayList<>(stats.getPurchasedKillMessages()));
+        config.set("purchased_kill_effects", new ArrayList<>(stats.getPurchasedKillEffects()));
+        config.set("purchased_trails", new ArrayList<>(stats.getPurchasedTrails()));
 
         try {
             config.save(file);
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save player stats to YAML", e);
         }
+    }
+
+    private String serializeCosmeticIds(Collection<String> ids) {
+        if (ids == null || ids.isEmpty()) return "";
+        return String.join(",", ids);
+    }
+
+    private List<String> parseCosmeticIds(String value) {
+        List<String> ids = new ArrayList<>();
+        if (value == null || value.trim().isEmpty()) return ids;
+
+        for (String id : value.split(",")) {
+            String trimmed = id.trim();
+            if (!trimmed.isEmpty()) {
+                ids.add(trimmed);
+            }
+        }
+        return ids;
+    }
+
+    private List<String> readCosmeticIds(org.bson.Document doc, String key) {
+        Object value = doc.get(key);
+        if (value instanceof List<?>) {
+            List<String> ids = new ArrayList<>();
+            for (Object item : (List<?>) value) {
+                if (item != null && !item.toString().trim().isEmpty()) {
+                    ids.add(item.toString().trim());
+                }
+            }
+            return ids;
+        }
+
+        return parseCosmeticIds(value != null ? value.toString() : null);
     }
 
     // --------------------------------------------------------------------------------------

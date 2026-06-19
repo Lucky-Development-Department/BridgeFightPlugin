@@ -111,6 +111,12 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>net.luckperms</groupId>
+      <artifactId>api</artifactId>
+      <version>5.5</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>net.faydev</groupId>
       <artifactId>spaceframe-api</artifactId>
       <version>1.8.8-R0.1-SNAPSHOT</version>

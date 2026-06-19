@@ -1,0 +1,72 @@
+# Cosmetics Configuration
+# permission supports any Bukkit permission node checked by LuckPerms.
+# Examples:
+#   permission: "bridgefight.cosmetics.vip"
+#   permission: "group.vip"
+# Empty permission means no permission requirement.
+kill_messages:
+  default:
+    display_name: "&7Default"
+    required_balance: 0
+    permission: ""
+    message: "&e{victim} &7was killed by &e{killer}&7."
+    void_message: "&e{victim} &7was sent into the void by &e{killer}&7."
+  fire:
+    display_name: "&cFire"
+    required_balance: 100
+    permission: "bridgefight.cosmetics.kill_messages.fire"
+    message: "&e{victim} &7was burnt to a crisp by &e{killer}&7."
+    void_message: "&e{victim} &7was knocked into the fire pits by &e{killer}&7."
+  abyss:
+    display_name: "&bAbyss"
+    required_balance: 250
+    permission: "bridgefight.cosmetics.kill_messages.abyss"
+    message: "&e{victim} &7was sent to the abyss by &e{killer}&7."
+    void_message: "&e{victim} &7was consumed by the void thanks to &e{killer}&7."
+
+kill_effects:
+  none:
+    display_name: "&7None"
+    required_balance: 0
+    permission: ""
+  blood:
+    display_name: "&cBlood"
+    required_balance: 100
+    permission: "bridgefight.cosmetics.kill_effects.blood"
+    effect_type: "REDSTONE"
+  lightning:
+    display_name: "&eLightning"
+    required_balance: 250
+    permission: "bridgefight.cosmetics.kill_effects.lightning"
+    effect_type: "LIGHTNING"
+  firework:
+    display_name: "&fFirework"
+    required_balance: 500
+    permission: "bridgefight.cosmetics.kill_effects.firework"
+    effect_type: "FIREWORK"
+
+trails:
+  none:
+    display_name: "&7None"
+    required_balance: 0
+    permission: ""
+  heart:
+    display_name: "&cHeart"
+    required_balance: 100
+    permission: "bridgefight.cosmetics.trails.heart"
+    particle: "HEART"
+  flame:
+    display_name: "&eFlame"
+    required_balance: 250
+    permission: "bridgefight.cosmetics.trails.flame"
+    particle: "FLAME"
+  smoke:
+    display_name: "&8Smoke"
+    required_balance: 250
+    permission: "bridgefight.cosmetics.trails.smoke"
+    particle: "SMOKE_NORMAL"
+  note:
+    display_name: "&bNote"
+    required_balance: 500
+    permission: "bridgefight.cosmetics.trails.note"
+    particle: "NOTE"
