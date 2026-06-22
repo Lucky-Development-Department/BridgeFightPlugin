@@ -29,7 +29,7 @@ public class BridgeFightKitCommand implements CommandExecutor {
         // /kit
         // ------------------------------
         if (args.length == 0) {
-            plugin.getBridgeFightGUI().open(player);
+            new me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceGUI(plugin).open(player);
             return true;
         }
 

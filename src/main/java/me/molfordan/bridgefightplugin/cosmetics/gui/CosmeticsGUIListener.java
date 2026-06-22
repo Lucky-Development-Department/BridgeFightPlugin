@@ -49,6 +49,8 @@ public class CosmeticsGUIListener implements Listener {
                 cosmeticsGUI.openKillEffects(player);
             } else if (item.getType() == Material.NETHER_STAR) {
                 cosmeticsGUI.openTrails(player);
+            } else if (item.getType() == Material.DIAMOND_SWORD) {
+                new me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceGUI(plugin).open(player);
             }
         } else if (title.equals(CosmeticsGUI.KILL_MESSAGE_TITLE)) {
             event.setCancelled(true);

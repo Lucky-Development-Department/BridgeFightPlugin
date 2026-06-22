@@ -60,6 +60,26 @@ public class CosmeticsListener implements Listener {
                         );
                     }
                 }
+
+                // Player Trails
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    Trail trail = playerTrailCache.get(player.getUniqueId());
+                    if (trail == null) {
+                        updatePlayerTrailCache(player);
+                        trail = playerTrailCache.get(player.getUniqueId());
+                    }
+                    if (trail != null && trail.getEffect() != null && player.isValid() && !player.isDead()) {
+                        player.getWorld().spigot().playEffect(
+                                player.getLocation().add(0, 0.1, 0),
+                                trail.getEffect(),
+                                0, 0,
+                                0.15f, 0.05f, 0.15f,
+                                0.0f,
+                                1,
+                                32
+                        );
+                    }
+                }
             }
         }.runTaskTimer(plugin, 0L, 1L); // Changed to 1 tick for smoother projectile trails
     }

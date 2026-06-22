@@ -12,6 +12,7 @@ public class Kit2 {
     private String name;
     private String displayName;
     private int requiredKills;
+    private String permission;
 
     private ItemStack weapon;
     private ItemStack helmet;
@@ -22,9 +23,14 @@ public class Kit2 {
     private final Random random = new Random();
 
     public Kit2(String name, String displayName, int requiredKills, ItemStack weapon, ItemStack helmet, ItemStack chest, ItemStack legs, ItemStack boots, int sort) {
+        this(name, displayName, requiredKills, weapon, helmet, chest, legs, boots, sort, "");
+    }
+
+    public Kit2(String name, String displayName, int requiredKills, ItemStack weapon, ItemStack helmet, ItemStack chest, ItemStack legs, ItemStack boots, int sort, String permission) {
         this.name = name;
         this.displayName = displayName;
         this.requiredKills = requiredKills;
+        this.permission = permission != null ? permission : "";
         this.weapon = weapon;
         this.helmet = helmet;
         this.chest = chest;
@@ -38,11 +44,16 @@ public class Kit2 {
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public void setName(String name) { this.name = name; }
     public int getRequiredKills() { return requiredKills; }
+    public String getPermission() { return permission != null ? permission : ""; }
+    public void setPermission(String permission) { this.permission = permission != null ? permission : ""; }
+    public boolean hasPermission(org.bukkit.entity.Player player) {
+        String perm = getPermission();
+        return perm.isEmpty() || player.hasPermission(perm) || player.isOp();
+    }
 
     public void apply(Player p) {
         Color teamColor = random.nextBoolean() ? Color.RED : Color.LIME;
 
-        if (weapon != null) p.getInventory().setItem(0, weapon.clone());
         if (helmet != null) p.getInventory().setHelmet(applyColorIfLeather(helmet, teamColor));
         if (chest != null) p.getInventory().setChestplate(applyColorIfLeather(chest, teamColor));
         if (legs != null) p.getInventory().setLeggings(applyColorIfLeather(legs, teamColor));

@@ -58,6 +58,15 @@ public class BridgeFightKitManager {
             int requiredKills = kitSec.getInt("required-kills", 0);
             int sort = kitSec.getInt("sort", 999);
 
+            // If permission is explicitly set in YAML, use it.
+            // If not set AND the kit is not "Default", auto-assign group.vip.
+            String permission;
+            if (kitSec.contains("permission")) {
+                permission = kitSec.getString("permission", "");
+            } else {
+                permission = kitName.equalsIgnoreCase("Default") ? "" : "group.vip";
+            }
+
             ConfigurationSection items = kitSec.getConfigurationSection("items");
 
             Kit2 kit = new Kit2(
@@ -69,7 +78,8 @@ public class BridgeFightKitManager {
                     loadItem(items, "chestplate"),
                     loadItem(items, "leggings"),
                     loadItem(items, "boots"),
-                    sort
+                    sort,
+                    permission
             );
 
             kits.put(kitName.toLowerCase(), kit);
@@ -90,6 +100,7 @@ public class BridgeFightKitManager {
             def.set("display-name", "Default Kit");
             def.set("required-kills", 0);
             def.set("sort", 0);
+            def.set("permission", ""); // No permission required for Default kit
 
             ConfigurationSection items = def.createSection("items");
 
@@ -208,6 +219,7 @@ public class BridgeFightKitManager {
         sec.set("display-name", kit.getDisplayName());
         sec.set("required-kills", kit.getRequiredKills());
         sec.set("sort", kit.getSort());
+        sec.set("permission", kit.getPermission());
 
         ConfigurationSection items = sec.createSection("items");
 

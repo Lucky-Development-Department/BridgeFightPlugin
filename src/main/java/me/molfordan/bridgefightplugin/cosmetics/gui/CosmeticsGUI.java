@@ -40,9 +40,10 @@ public class CosmeticsGUI {
         ItemStack filler = createItem(Material.STAINED_GLASS_PANE, 15, " ");
         for (int i = 0; i < 27; i++) inv.setItem(i, filler);
 
-        inv.setItem(11, createItem(Material.PAPER, ChatColor.YELLOW + "Kill Messages", ChatColor.GRAY + "Click to select a kill message"));
-        inv.setItem(13, createItem(Material.BLAZE_POWDER, ChatColor.YELLOW + "Kill Effects", ChatColor.GRAY + "Click to select a kill effect"));
-        inv.setItem(15, createItem(Material.NETHER_STAR, ChatColor.YELLOW + "Trails", ChatColor.GRAY + "Click to select a trail"));
+        inv.setItem(10, createItem(Material.DIAMOND_SWORD, ChatColor.YELLOW + "Sword & Armor Choice", ChatColor.GRAY + "Click to select sword and armor kit"));
+        inv.setItem(12, createItem(Material.PAPER, ChatColor.YELLOW + "Kill Messages", ChatColor.GRAY + "Click to select a kill message"));
+        inv.setItem(14, createItem(Material.BLAZE_POWDER, ChatColor.YELLOW + "Kill Effects", ChatColor.GRAY + "Click to select a kill effect"));
+        inv.setItem(16, createItem(Material.NETHER_STAR, ChatColor.YELLOW + "Trails", ChatColor.GRAY + "Click to select a trail"));
         inv.setItem(22, createItem(Material.GOLD_INGOT, ChatColor.GOLD + "Your Balance",
                 ChatColor.GRAY + "Coins: " + ChatColor.YELLOW + plugin.getBalanceManager().getBalance(player)));
 

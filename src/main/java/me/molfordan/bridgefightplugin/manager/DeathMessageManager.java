@@ -30,6 +30,13 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 import net.minecraft.server.v1_8_R3.IChatBaseComponent;
 import net.minecraft.server.v1_8_R3.PacketPlayOutChat;
+import net.minecraft.server.v1_8_R3.EnumParticle;
+import net.minecraft.server.v1_8_R3.PacketPlayOutWorldParticles;
+import net.minecraft.server.v1_8_R3.EntityLightning;
+import net.minecraft.server.v1_8_R3.PacketPlayOutSpawnEntityWeather;
+import net.minecraft.server.v1_8_R3.PacketPlayOutBlockChange;
+import net.minecraft.server.v1_8_R3.BlockPosition;
+import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 
 import java.util.*;
@@ -782,20 +789,336 @@ public class DeathMessageManager implements Listener {
                     victim.getWorld().playEffect(loc.add(0, 1, 0), org.bukkit.Effect.STEP_SOUND, Material.REDSTONE_BLOCK);
                     break;
                 case LIGHTNING:
-                    victim.getWorld().strikeLightningEffect(loc);
+                    sendLightningPacket(killer, loc);
+                    killer.playSound(loc, org.bukkit.Sound.AMBIENCE_THUNDER, 1.0f, 1.0f);
                     break;
                 case FIREWORK:
                     spawnFirework(loc);
+                    break;
+                case EXPLOSION:
+                    victim.getWorld().playEffect(loc.add(0, 1, 0), org.bukkit.Effect.EXPLOSION_HUGE, 0);
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.EXPLODE, 1.0f, 1.0f);
+                    break;
+                case WITHER:
+                    victim.getWorld().playEffect(loc.add(0, 1, 0), org.bukkit.Effect.LARGE_SMOKE, 0);
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.WITHER_DEATH, 1.0f, 1.0f);
+                    break;
+                case ENDER:
+                    for (int i = 0; i < 20; i++) {
+                        victim.getWorld().playEffect(loc.clone().add((Math.random() - 0.5) * 1.5, Math.random() * 2, (Math.random() - 0.5) * 1.5), org.bukkit.Effect.PORTAL, 0);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.ENDERMAN_TELEPORT, 1.0f, 1.0f);
+                    break;
+                case PORTAL:
+                    Location portalBase = loc.clone().add(0, 0.2, 0);
+                    for (double y = 0; y < 2.0; y += 0.25) {
+                        double radius = 0.6;
+                        for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+                            double x = radius * Math.cos(angle);
+                            double z = radius * Math.sin(angle);
+                            sendParticlePacket(portalBase.clone().add(x, y, z), EnumParticle.PORTAL, 0f, 0f, 0f, 0f, 1);
+                        }
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.PORTAL, 1.0f, 1.2f);
+                    break;
+                case MAGIC:
+                    Location magicBase = loc.clone().add(0, 0.5, 0);
+                    for (int i = 0; i < 40; i++) {
+                        double angle = Math.random() * Math.PI * 2;
+                        double radius = Math.random() * 0.8;
+                        double x = radius * Math.cos(angle);
+                        double z = radius * Math.sin(angle);
+                        double y = Math.random() * 2.0;
+                        sendParticlePacket(magicBase.clone().add(x, y, z), EnumParticle.SPELL_WITCH, 0f, 0f, 0f, 0f, 1);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.GLASS, 1.0f, 1.5f);
+                    break;
+                case ANGRY:
+                    Location angryHead = loc.clone().add(0, 1.8, 0);
+                    for (int i = 0; i < 15; i++) {
+                        double x = (Math.random() - 0.5) * 1.0;
+                        double y = (Math.random() - 0.5) * 0.5;
+                        double z = (Math.random() - 0.5) * 1.0;
+                        sendParticlePacket(angryHead.clone().add(x, y, z), EnumParticle.VILLAGER_ANGRY, 0f, 0f, 0f, 0f, 1);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.VILLAGER_NO, 1.0f, 1.0f);
+                    break;
+                case HAPPY:
+                    Location happyBase = loc.clone().add(0, 0.2, 0);
+                    for (int i = 0; i < 25; i++) {
+                        double x = (Math.random() - 0.5) * 1.2;
+                        double y = Math.random() * 2.0;
+                        double z = (Math.random() - 0.5) * 1.2;
+                        sendParticlePacket(happyBase.clone().add(x, y, z), EnumParticle.VILLAGER_HAPPY, 0.1f, 0.2f, 0.1f, 0.02f, 1);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.VILLAGER_YES, 1.0f, 1.0f);
+                    break;
+                case SNOW: {
+                    // Collect surface air-blocks within radius 3 that sit on a solid block
+                    List<Location> snowTargets = new ArrayList<>();
+                    int snowRadius = 3;
+                    for (int dx = -snowRadius; dx <= snowRadius; dx++) {
+                        for (int dz = -snowRadius; dz <= snowRadius; dz++) {
+                            if (dx * dx + dz * dz > snowRadius * snowRadius) continue;
+                            for (int dy = -3; dy <= 3; dy++) {
+                                Location checkLoc = loc.clone().add(dx, dy, dz);
+                                org.bukkit.block.Block above = checkLoc.getBlock();
+                                org.bukkit.block.Block below = checkLoc.clone().add(0, -1, 0).getBlock();
+                                if (above.getType() == Material.AIR && below.getType().isSolid()) {
+                                    snowTargets.add(checkLoc);
+                                }
+                            }
+                        }
+                    }
+                    // Randomly pick ~40% of eligible spots
+                    List<Location> chosenSnow = new ArrayList<>();
+                    for (Location target : snowTargets) {
+                        if (Math.random() < 0.40) {
+                            chosenSnow.add(target);
+                        }
+                    }
+                    // Send fake snow-layer (block ID 78, data 0) only to killer
+                    for (Location snowLoc : chosenSnow) {
+                        sendFakeBlockPacket(killer, snowLoc, 78, 0);
+                    }
+                    // Snowball particle burst around victim (killer-only via sendParticlePacket)
+                    Location snowCenter = loc.clone().add(0, 1.0, 0);
+                    for (int i = 0; i < 40; i++) {
+                        double angle = Math.random() * Math.PI * 2;
+                        double radius = Math.random() * 0.8;
+                        double px = radius * Math.cos(angle);
+                        double pz = radius * Math.sin(angle);
+                        double py = (Math.random() - 0.5) * 1.6;
+                        sendParticlePacket(snowCenter.clone().add(px, py, pz), EnumParticle.SNOWBALL, 0f, 0f, 0f, 0f, 1);
+                    }
+                    // Snow sound only for killer
+                    killer.playSound(loc, org.bukkit.Sound.STEP_SNOW, 1.5f, 1.2f);
+                    // Restore original blocks after 2 seconds (40 ticks)
+                    final Player snowKiller = killer;
+                    final List<Location> finalSnow = chosenSnow;
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        for (Location snowLoc : finalSnow) {
+                            restoreFakeBlock(snowKiller, snowLoc);
+                        }
+                    }, 40L);
+                    break;
+                }
+                case FLAME:
+                    Location flameBase = loc.clone().add(0, 0.2, 0);
+                    for (int i = 0; i < 30; i++) {
+                        double x = (Math.random() - 0.5) * 0.8;
+                        double y = Math.random() * 1.8;
+                        double z = (Math.random() - 0.5) * 0.8;
+                        sendParticlePacket(flameBase.clone().add(x, y, z), EnumParticle.FLAME, 0.05f, 0.05f, 0.05f, 0.02f, 1);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.FIZZ, 1.0f, 1.2f);
+                    break;
+                case SQUID:
+                    Location squidCenter = loc.clone().add(0, 1.0, 0);
+                    for (int i = 0; i < 40; i++) {
+                        double angle = Math.random() * Math.PI * 2;
+                        double radius = Math.random() * 0.8;
+                        double x = radius * Math.cos(angle);
+                        double z = radius * Math.sin(angle);
+                        double y = (Math.random() - 0.5) * 1.6;
+                        sendParticlePacket(squidCenter.clone().add(x, y, z), EnumParticle.WATER_DROP, 0f, 0f, 0f, 0f, 1);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.SPLASH, 1.5f, 1.2f);
+                    break;
+                case HEART:
+                    Location heartBase = loc.clone().add(0, 0.2, 0);
+                    for (int i = 0; i < 15; i++) {
+                        double x = (Math.random() - 0.5) * 1.0;
+                        double y = Math.random() * 1.8;
+                        double z = (Math.random() - 0.5) * 1.0;
+                        sendParticlePacket(heartBase.clone().add(x, y, z), EnumParticle.HEART, 0f, 0f, 0f, 0f, 1);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.CHICKEN_EGG_POP, 1.0f, 1.2f);
+                    break;
+                case MUSIC:
+                    Location musicBase = loc.clone().add(0, 0.2, 0);
+                    for (int i = 0; i < 15; i++) {
+                        double x = (Math.random() - 0.5) * 1.2;
+                        double y = 0.5 + Math.random() * 1.5;
+                        double z = (Math.random() - 0.5) * 1.2;
+                        float colorOffset = (float) Math.random();
+                        sendParticlePacket(musicBase.clone().add(x, y, z), EnumParticle.NOTE, colorOffset, 0f, 0f, 1.0f, 1);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.NOTE_PLING, 1.0f, 1.5f);
+                    break;
+                case SLIME:
+                    Location slimeBase = loc.clone().add(0, 0.5, 0);
+                    for (int i = 0; i < 25; i++) {
+                        double x = (Math.random() - 0.5) * 1.0;
+                        double y = Math.random() * 1.5;
+                        double z = (Math.random() - 0.5) * 1.0;
+                        sendParticlePacket(slimeBase.clone().add(x, y, z), EnumParticle.SLIME, 0.1f, 0.1f, 0.1f, 0.05f, 1);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.SLIME_WALK2, 1.0f, 1.2f);
+                    break;
+                case LAVA:
+                    Location lavaCenter = loc.clone().add(0, 1.0, 0);
+                    for (int i = 0; i < 30; i++) {
+                        double x = (Math.random() - 0.5) * 1.0;
+                        double y = Math.random() * 1.5;
+                        double z = (Math.random() - 0.5) * 1.0;
+                        sendParticlePacket(lavaCenter.clone().add(x, y, z), EnumParticle.LAVA, 0.1f, 0.2f, 0.1f, 0.05f, 1);
+                    }
+                    for (int i = 0; i < 15; i++) {
+                        double x = (Math.random() - 0.5) * 1.2;
+                        double y = 1.0 + Math.random() * 1.0;
+                        double z = (Math.random() - 0.5) * 1.2;
+                        sendParticlePacket(loc.clone().add(x, y, z), EnumParticle.DRIP_LAVA, 0f, 0f, 0f, 0f, 1);
+                    }
+                    victim.getWorld().playSound(loc, org.bukkit.Sound.FIZZ, 1.2f, 0.8f);
                     break;
                 default:
                     return false;
             }
         } else if (ke.getBukkitEffect() != null) {
-            victim.getWorld().playEffect(loc.add(0, 1, 0), ke.getBukkitEffect(), 0);
+            org.bukkit.Effect effect = ke.getBukkitEffect();
+            victim.getWorld().spigot().playEffect(
+                    loc.clone().add(0, 1, 0),
+                    effect,
+                    0, 0,
+                    0.3f, 0.5f, 0.3f,
+                    0.05f,
+                    25,
+                    32
+            );
+
+            org.bukkit.Sound sound = null;
+            float pitch = 1.0f;
+            switch (ke.getId().toLowerCase()) {
+                case "flame":
+                    sound = org.bukkit.Sound.FIZZ;
+                    pitch = 1.2f;
+                    break;
+                case "magic":
+                    sound = org.bukkit.Sound.GLASS;
+                    pitch = 1.5f;
+                    break;
+                case "portal":
+                    sound = org.bukkit.Sound.PORTAL;
+                    pitch = 1.2f;
+                    break;
+                case "angry":
+                    sound = org.bukkit.Sound.VILLAGER_NO;
+                    break;
+                case "happy":
+                    sound = org.bukkit.Sound.VILLAGER_YES;
+                    break;
+                case "snow":
+                    sound = org.bukkit.Sound.STEP_SNOW;
+                    pitch = 1.5f;
+                    break;
+                case "heart":
+                    sound = org.bukkit.Sound.CHICKEN_EGG_POP;
+                    pitch = 1.2f;
+                    break;
+                case "squid":
+                    sound = org.bukkit.Sound.SPLASH;
+                    pitch = 1.2f;
+                    break;
+                case "music":
+                    sound = org.bukkit.Sound.NOTE_PLING;
+                    pitch = 1.5f;
+                    break;
+                case "slime":
+                    sound = org.bukkit.Sound.SLIME_WALK2;
+                    pitch = 1.2f;
+                    break;
+            }
+            if (sound != null) {
+                victim.getWorld().playSound(loc, sound, 1.0f, pitch);
+            }
         } else {
             return false;
         }
         return true;
+    }
+
+    private void sendParticlePacket(Location loc, EnumParticle particle, float offsetX, float offsetY, float offsetZ, float speed, int count) {
+        PacketPlayOutWorldParticles packet = new PacketPlayOutWorldParticles(
+                particle,
+                true,
+                (float) loc.getX(),
+                (float) loc.getY(),
+                (float) loc.getZ(),
+                offsetX,
+                offsetY,
+                offsetZ,
+                speed,
+                count
+        );
+        for (Player p : loc.getWorld().getPlayers()) {
+            if (p.getLocation().distanceSquared(loc) < 256 * 256) {
+                ((CraftPlayer) p).getHandle().playerConnection.sendPacket(packet);
+            }
+        }
+    }
+
+    private void sendLightningPacket(Player target, Location loc) {
+        try {
+            net.minecraft.server.v1_8_R3.WorldServer nmsWorld =
+                    ((org.bukkit.craftbukkit.v1_8_R3.CraftWorld) loc.getWorld()).getHandle();
+            EntityLightning lightning = new EntityLightning(
+                    nmsWorld,
+                    loc.getX(),
+                    loc.getY(),
+                    loc.getZ(),
+                    true   // isEffect = true → purely visual, no fire / damage
+            );
+            PacketPlayOutSpawnEntityWeather packet = new PacketPlayOutSpawnEntityWeather(lightning);
+            ((CraftPlayer) target).getHandle().playerConnection.sendPacket(packet);
+        } catch (Exception e) {
+            // Fallback: world-wide effect if NMS fails
+            loc.getWorld().strikeLightningEffect(loc);
+        }
+    }
+
+    /**
+     * Sends a fake block change packet visible only to {@code target}.
+     * Uses the world-constructor to fill in the real position, then reflectively
+     * replaces the IBlockData field (avoids relying on obfuscated field names).
+     */
+    private void sendFakeBlockPacket(Player target, Location loc, int blockId, int data) {
+        if (!target.isOnline()) return;
+        try {
+            net.minecraft.server.v1_8_R3.WorldServer nmsWorld =
+                    ((CraftWorld) loc.getWorld()).getHandle();
+            BlockPosition pos = new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+
+            // Build the packet with the real position already filled in
+            PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange(nmsWorld, pos);
+
+            // Swap the IBlockData field with our fake block via reflection
+            net.minecraft.server.v1_8_R3.IBlockData fakeData =
+                    net.minecraft.server.v1_8_R3.Block.getById(blockId).fromLegacyData(data);
+            for (java.lang.reflect.Field f : PacketPlayOutBlockChange.class.getDeclaredFields()) {
+                if (f.getType() == net.minecraft.server.v1_8_R3.IBlockData.class) {
+                    f.setAccessible(true);
+                    f.set(packet, fakeData);
+                    break;
+                }
+            }
+            ((CraftPlayer) target).getHandle().playerConnection.sendPacket(packet);
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Restores a block to its real world state for {@code target} only
+     * by reading the actual chunk data and re-sending it.
+     */
+    private void restoreFakeBlock(Player target, Location loc) {
+        if (!target.isOnline()) return;
+        try {
+            net.minecraft.server.v1_8_R3.WorldServer nmsWorld =
+                    ((CraftWorld) loc.getWorld()).getHandle();
+            BlockPosition pos = new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+            PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange(nmsWorld, pos);
+            ((CraftPlayer) target).getHandle().playerConnection.sendPacket(packet);
+        } catch (Exception ignored) {}
     }
 
     private void spawnFirework(Location loc) {

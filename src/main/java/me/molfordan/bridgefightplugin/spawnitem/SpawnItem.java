@@ -290,7 +290,7 @@ public class SpawnItem implements Listener {
         } else if (item.getType() == Material.BOOK && name.startsWith("§eSelect Kit")) {
 
             event.setCancelled(true);
-            plugin.getBridgeFightGUI().open(player);
+            new me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceGUI(plugin).open(player);
         }
     }
 

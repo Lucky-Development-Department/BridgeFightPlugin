@@ -1,7 +1,6 @@
 package me.molfordan.bridgefightplugin.kits;
 
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
-import me.molfordan.bridgefightplugin.kits.bridgefightkit.BridgeFightKitManager;
 import me.molfordan.bridgefightplugin.kits.bridgefightkit.Kit2;
 import me.molfordan.bridgefightplugin.manager.HotbarDataManager;
 import me.molfordan.bridgefightplugin.object.PlayerStats;
@@ -43,18 +42,33 @@ public class KitManager {
 
     public void applyBridgeFightKit(Player player) {
         clearInventory(player);
-        BridgeFightKitManager manager = BridgeFightPlugin.getPlugin().getBridgeFightKitManager();
+        BridgeFightPlugin plugin = BridgeFightPlugin.getPlugin();
+        me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceManager swordManager = plugin.getSwordChoiceManager();
 
-        // Try to get last selected kit from database first, then fall back to memory map
-        String kitName = getLastSelectedBridgeKit(player.getUniqueId());
-        
-        // If no kit in database, try the memory map as fallback
-        if (kitName == null || kitName.equals("Default")) {
-            kitName = selectedBridgeFightKit.getOrDefault(player.getUniqueId(), "Default");
+        // 1. Apply Chosen Armor Kit
+        String armorKit = swordManager.getSelectedArmorKit(player.getUniqueId());
+        if (armorKit != null && !armorKit.equalsIgnoreCase("None")) {
+            Kit2 kit = plugin.getBridgeFightKitManager().get(armorKit);
+            if (kit != null) {
+                kit.apply(player);
+            }
         }
 
-        Kit2 kit = manager.get(kitName);
-        if (kit != null) kit.apply(player);
+        // 2. Give Selected Unbreakable Sword
+        org.bukkit.Material swordMat = swordManager.getSelectedSword(player.getUniqueId());
+        if (swordMat != null) {
+            ItemStack sword = new ItemStack(swordMat);
+            org.bukkit.inventory.meta.ItemMeta meta = sword.getItemMeta();
+            if (meta != null) {
+                meta.spigot().setUnbreakable(true);
+                if (swordManager.hasSharpness(player.getUniqueId())) {
+                    meta.addEnchant(org.bukkit.enchantments.Enchantment.DAMAGE_ALL, 1, true);
+                }
+                sword.setItemMeta(meta);
+            }
+            player.getInventory().setItem(0, sword);
+        }
+
         Bukkit.getScheduler().runTaskLater(BridgeFightPlugin.getPlugin(), () -> {
             fixArmor(player);       // ensures final armor is correct
             sendArmorUpdate(player); // sends FINAL armor

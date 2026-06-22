@@ -224,5 +224,7 @@ permissions:
     description: 'Reload cosmetics.yml'
   bridgefight.cosmetics.reset:
     description: 'Reset player cosmetics'
+  group.vip:
+    description: 'VIP rank - allows additional sword choices'
   bridgefight.balance.set:
     description: 'Set player coin balances'

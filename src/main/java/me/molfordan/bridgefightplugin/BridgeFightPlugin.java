@@ -129,6 +129,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
     private me.molfordan.bridgefightplugin.cosmetics.CosmeticsManager cosmeticsManager;
     private me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUI cosmeticsGUI;
     private me.molfordan.bridgefightplugin.cosmetics.listener.CosmeticsListener cosmeticsListener;
+    private me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceManager swordChoiceManager;
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
     private static final String BRIDGEFIGHT_PATH = "bridgefight";
@@ -170,6 +171,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.tntTracker = new TNTTracker(this);
         this.cosmeticsManager = new me.molfordan.bridgefightplugin.cosmetics.CosmeticsManager(this);
         this.cosmeticsGUI = new me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUI(this, cosmeticsManager);
+        this.swordChoiceManager = new me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceManager(this);
         this.deathMessageManager = new DeathMessageManager(this,combatManager, arenaManager, hotbarDataManager, statsManager, fireballTracker);
         this.deathMessageManager.setCosmeticsManager(cosmeticsManager);
         this.hotbarSorter = new HotbarSorter(hotbarDataManager);
@@ -364,6 +366,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.cosmeticsListener = new me.molfordan.bridgefightplugin.cosmetics.listener.CosmeticsListener(this, cosmeticsManager);
         getServer().getPluginManager().registerEvents(this.cosmeticsListener, this);
         getServer().getPluginManager().registerEvents(new me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUIListener(this, cosmeticsGUI, cosmeticsManager), this);
+        getServer().getPluginManager().registerEvents(new me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceListener(this), this);
         getServer().getPluginManager().registerEvents(new ArmorRemovalListener(this, arenaManager), this);
         getServer().getPluginManager().registerEvents(this.deathMessageManager, this);
         getServer().getPluginManager().registerEvents(new BalanceListener(this), this);
@@ -689,5 +692,13 @@ public final class BridgeFightPlugin extends JavaPlugin {
 
     public me.molfordan.bridgefightplugin.cosmetics.listener.CosmeticsListener getCosmeticsListener() {
         return cosmeticsListener;
+    }
+
+    public me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUI getCosmeticsGUI() {
+        return cosmeticsGUI;
+    }
+
+    public me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceManager getSwordChoiceManager() {
+        return swordChoiceManager;
     }
 }
