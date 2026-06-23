@@ -17,7 +17,6 @@ public class HotbarUtils {
 
             case IRON_SWORD:
             case DIAMOND_SWORD:
-            case STICK:
                 return "melee";
 
             case IRON_PICKAXE:

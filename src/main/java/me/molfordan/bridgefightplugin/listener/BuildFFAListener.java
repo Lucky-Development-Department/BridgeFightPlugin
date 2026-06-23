@@ -39,9 +39,32 @@ public class BuildFFAListener implements Listener {
         Player victim = (Player) event.getEntity();
         if (!isInBuildFFAWorld(victim)) return;
 
-        // Death detection: if health drops to 0.5 or below (exclude fall damage)
-        if (event.getCause() != org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL && 
+        // Death detection: if health drops to 0.1 or below (exclude fall damage)
+        if (event.getCause() != org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL &&
             victim.getHealth() - event.getFinalDamage() <= 0.1) {
+
+            // If this is a player-vs-player hit, tag the victim BEFORE cancelling so
+            // handleDeath can resolve the killer even on one-shot / instant-kill hits
+            // (e.g. Sharpness 100 sword) where no prior combat tag exists.
+            if (event instanceof org.bukkit.event.entity.EntityDamageByEntityEvent) {
+                org.bukkit.event.entity.EntityDamageByEntityEvent byEntity =
+                        (org.bukkit.event.entity.EntityDamageByEntityEvent) event;
+                Player damager = null;
+                if (byEntity.getDamager() instanceof Player) {
+                    damager = (Player) byEntity.getDamager();
+                } else if (byEntity.getDamager() instanceof org.bukkit.entity.Projectile) {
+                    org.bukkit.entity.Projectile proj = (org.bukkit.entity.Projectile) byEntity.getDamager();
+                    if (proj.getShooter() instanceof Player) {
+                        damager = (Player) proj.getShooter();
+                    }
+                }
+                if (damager != null) {
+                    me.molfordan.bridgefightplugin.object.Arena arena =
+                            BridgeFightPlugin.getPlugin().getArenaManager().getArenaByLocationIgnoreY(victim.getLocation());
+                    BridgeFightPlugin.getPlugin().getCombatManager().tag(victim, damager, arena);
+                }
+            }
+
             event.setCancelled(true);
             processBuildFFADeath(victim, false);
         }

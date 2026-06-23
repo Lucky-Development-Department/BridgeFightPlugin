@@ -208,6 +208,10 @@ commands:
     usage: '/statsmigrate <oldplayername> <newplayername>'
     description: 'Clone stats from one player to another and reset the old player stats'
     permission: arenamap.admin
+  setupcrate:
+    usage: '/setupcrate'
+    description: 'Give the sender a Cosmetics Crate Setup Block'
+    permission: bridgefight.setupcrate
 
 permissions:
   arenamap.admin:

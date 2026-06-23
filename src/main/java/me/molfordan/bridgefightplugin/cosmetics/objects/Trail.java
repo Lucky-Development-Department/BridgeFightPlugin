@@ -8,14 +8,16 @@ public class Trail {
     private final String particle;
     private final int requiredBalance;
     private final String permission;
+    private final CosmeticTier tier;
     private Effect effect;
 
-    public Trail(String id, String displayName, String particle, int requiredBalance, String permission) {
+    public Trail(String id, String displayName, String particle, int requiredBalance, String permission, CosmeticTier tier) {
         this.id = id;
         this.displayName = displayName;
         this.particle = particle;
         this.requiredBalance = requiredBalance;
         this.permission = permission;
+        this.tier = tier;
         try {
             this.effect = Effect.valueOf(particle);
         } catch (Exception e) {
@@ -29,4 +31,5 @@ public class Trail {
     public int getRequiredBalance() { return requiredBalance; }
     public String getPermission() { return permission; }
     public Effect getEffect() { return effect; }
+    public CosmeticTier getTier() { return tier; }
 }

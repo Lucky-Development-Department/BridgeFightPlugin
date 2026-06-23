@@ -8,6 +8,7 @@ public class KillEffect {
     private final String effectType;
     private final int requiredBalance;
     private final String permission;
+    private final CosmeticTier tier;
     private Effect bukkitEffect;
     private SpecialEffect specialEffect;
 
@@ -15,12 +16,13 @@ public class KillEffect {
         NONE, REDSTONE, LIGHTNING, FIREWORK, EXPLOSION, WITHER, ENDER, PORTAL, MAGIC, ANGRY, HAPPY, SNOW, FLAME, SQUID, HEART, MUSIC, SLIME, LAVA
     }
 
-    public KillEffect(String id, String displayName, String effectType, int requiredBalance, String permission) {
+    public KillEffect(String id, String displayName, String effectType, int requiredBalance, String permission, CosmeticTier tier) {
         this.id = id;
         this.displayName = displayName;
         this.effectType = effectType;
         this.requiredBalance = requiredBalance;
         this.permission = permission;
+        this.tier = tier;
         
         String upper = effectType.toUpperCase();
         switch (upper) {
@@ -103,4 +105,5 @@ public class KillEffect {
     public String getPermission() { return permission; }
     public Effect getBukkitEffect() { return bukkitEffect; }
     public SpecialEffect getSpecialEffect() { return specialEffect; }
+    public CosmeticTier getTier() { return tier; }
 }

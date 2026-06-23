@@ -22,6 +22,19 @@ public class BedFightManager {
     private final Map<UUID, BedFightSession> spectatorSessionMap = new ConcurrentHashMap<>();
     private final Map<Arena, BedFightSession> activeSessions = new ConcurrentHashMap<>();
     private final Map<UUID, Long> gameEndTimes = new ConcurrentHashMap<>();
+    private final Set<UUID> modifiedHotbarPlayers = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    public void markHotbarModified(UUID uuid) {
+        modifiedHotbarPlayers.add(uuid);
+    }
+
+    public boolean hasModifiedHotbar(UUID uuid) {
+        return modifiedHotbarPlayers.contains(uuid);
+    }
+
+    public void clearModifiedHotbar(UUID uuid) {
+        modifiedHotbarPlayers.remove(uuid);
+    }
 
     public BedFightManager(BridgeFightPlugin plugin) {
         this.plugin = plugin;
@@ -132,6 +145,20 @@ public class BedFightManager {
             session.setPlayerState(uuid, BedFightPlayerState.PLAYING);
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) {
+                if (hasModifiedHotbar(uuid)) {
+                    Map<Integer, String> newLayout = new HashMap<>();
+                    for (int slot = 0; slot <= 8; slot++) {
+                        ItemStack item = p.getInventory().getItem(slot);
+                        if (item != null) {
+                            String cat = me.molfordan.bridgefightplugin.hotbarmanager.HotbarManager.getCategoryFromItem(item);
+                            if (cat != null) {
+                                newLayout.put(slot, cat);
+                            }
+                        }
+                    }
+                    plugin.getBedFightHotbarDataManager().save(uuid, newLayout);
+                    clearModifiedHotbar(uuid);
+                }
                 p.setGameMode(GameMode.SURVIVAL);
                 plugin.getKitManager().applyBedFightKit(p, session.getTeam(uuid));
             }

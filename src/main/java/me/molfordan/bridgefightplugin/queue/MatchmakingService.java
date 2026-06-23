@@ -168,7 +168,7 @@ public class MatchmakingService {
     }
     
     public void giveLeaveItem(Player player) {
-        plugin.getLogger().info("DEBUG: Setting leave item for " + player.getName());
+        plugin.debug("DEBUG: Setting leave item for " + player.getName());
         ItemStack leaveItem = new ItemStack(Material.BED);
         ItemMeta meta = leaveItem.getItemMeta();
         if (meta != null) {
@@ -177,7 +177,7 @@ public class MatchmakingService {
         }
         player.getInventory().clear();
         player.getInventory().setItem(8, leaveItem);
-        plugin.getLogger().info("DEBUG: Leave item set in slot 8 for " + player.getName());
+        plugin.debug("DEBUG: Leave item set in slot 8 for " + player.getName());
 
         updateFlightState(player);
     }
@@ -198,7 +198,7 @@ public class MatchmakingService {
 
 
     public void removeFromQueue(Player player) {
-        plugin.getLogger().info("DEBUG: removeFromQueue called for " + player.getName());
+        plugin.debug("DEBUG: removeFromQueue called for " + player.getName());
         boolean removed = false;
         
         for (List<QueueEntry> list : queues.values()) {
@@ -206,7 +206,7 @@ public class MatchmakingService {
             while (it.hasNext()) {
                 QueueEntry entry = it.next();
                 if (entry.players.contains(player.getUniqueId())) {
-                    plugin.getLogger().info("DEBUG: Found player " + player.getName() + " in queue, removing entry.");
+                    plugin.debug("DEBUG: Found player " + player.getName() + " in queue, removing entry.");
                     entry.players.forEach(uuid -> {
                         Player p = Bukkit.getPlayer(uuid);
                         if (p != null) {
@@ -221,7 +221,7 @@ public class MatchmakingService {
         }
         
         if (!removed) {
-            plugin.getLogger().info("DEBUG: Player " + player.getName() + " was not found in any queue.");
+            plugin.debug("DEBUG: Player " + player.getName() + " was not found in any queue.");
         }
     }
 

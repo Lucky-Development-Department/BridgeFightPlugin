@@ -19,6 +19,8 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 
 import java.io.File;
@@ -51,7 +53,7 @@ public class BedFightListener implements Listener {
                     for (File file : files) {
                         if (file.isDirectory()) {
                             deleteDirectory(file);
-                            plugin.getLogger().info("Removed WorldGuard config directory: " + file.getName());
+                            plugin.debug("Removed WorldGuard config directory: " + file.getName());
                         }
                     }
                 }
@@ -254,7 +256,7 @@ public class BedFightListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void onInventoryClick(org.bukkit.event.inventory.InventoryClickEvent event) {
+    public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
         BedFightSession session = bedFightManager.getSession(player);
@@ -263,6 +265,22 @@ public class BedFightListener implements Listener {
         // Prevent armor removal
         if (event.getSlotType() == org.bukkit.event.inventory.InventoryType.SlotType.ARMOR) {
             event.setCancelled(true);
+        }
+
+        if (session.isParticipant(player.getUniqueId()) && (session.getSessionState() == BedFightSessionState.COUNTDOWN || session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.PREPARE)) {
+            bedFightManager.markHotbarModified(player.getUniqueId());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        Player player = (Player) event.getWhoClicked();
+        BedFightSession session = bedFightManager.getSession(player);
+        if (session == null) return;
+
+        if (session.isParticipant(player.getUniqueId()) && (session.getSessionState() == BedFightSessionState.COUNTDOWN || session.getPlayerState(player.getUniqueId()) == BedFightPlayerState.PREPARE)) {
+            bedFightManager.markHotbarModified(player.getUniqueId());
         }
     }
 
@@ -626,10 +644,10 @@ public class BedFightListener implements Listener {
 
     private void checkTeamElimination(BedFightSession session, String team) {
         boolean allEliminated = true;
-        plugin.getLogger().info("DEBUG: Checking elimination for team: " + team);
+        plugin.debug("DEBUG: Checking elimination for team: " + team);
         for (UUID memberId : new ArrayList<>(session.getPlayersByTeam(team))) {
             BedFightPlayerState state = session.getPlayerState(memberId);
-            plugin.getLogger().info("DEBUG: Player " + memberId + " state: " + state);
+            plugin.debug("DEBUG: Player " + memberId + " state: " + state);
             if (state != BedFightPlayerState.ENDED && state != BedFightPlayerState.SPECTATOR_DUEL) {
                 allEliminated = false;
                 break;
@@ -637,7 +655,7 @@ public class BedFightListener implements Listener {
         }
 
         if (allEliminated) {
-            plugin.getLogger().info("DEBUG: Team " + team + " eliminated!");
+            plugin.debug("DEBUG: Team " + team + " eliminated!");
             if (team.equals("RED")) session.setRedEliminated(true);
             else session.setBlueEliminated(true);
 
@@ -646,7 +664,7 @@ public class BedFightListener implements Listener {
             String winnerTeam = team.equals("RED") ? "BLUE" : "RED";
             bedFightManager.endMatch(session, winnerTeam, false);
         } else {
-            plugin.getLogger().info("DEBUG: Team " + team + " still has active players.");
+            plugin.debug("DEBUG: Team " + team + " still has active players.");
         }
     }
 
@@ -831,6 +849,15 @@ public class BedFightListener implements Listener {
             Player opponent = Bukkit.getPlayer(uuid);
             if (opponent != null) opponent.hidePlayer(player);
         }
+        // Hide the dead player from teammates (DUO/PARTY support)
+        for (UUID uuid : session.getPlayersByTeam(team)) {
+            if (uuid.equals(player.getUniqueId())) continue;
+            Player teammate = Bukkit.getPlayer(uuid);
+            if (teammate != null) {
+                teammate.hidePlayer(player);
+                player.hidePlayer(teammate);
+            }
+        }
 
         for (int i = 0; i < 3; i++) {
             final int secondsLeft = 3 - i;
@@ -863,6 +890,15 @@ public class BedFightListener implements Listener {
                 Player opponent = Bukkit.getPlayer(uuid);
                 if (opponent != null) opponent.showPlayer(player);
             }
+            // Restore visibility between the respawned player and their teammates
+            for (UUID uuid : session.getPlayersByTeam(team)) {
+                if (uuid.equals(player.getUniqueId())) continue;
+                Player teammate = Bukkit.getPlayer(uuid);
+                if (teammate != null) {
+                    teammate.showPlayer(player);
+                    player.showPlayer(teammate);
+                }
+            }
 
             session.setPlayerState(player.getUniqueId(), BedFightPlayerState.RESPAWNED);
             updateScoreboard(session);
@@ -888,7 +924,7 @@ public class BedFightListener implements Listener {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) p.sendMessage(message);
         }
-        plugin.getLogger().info("BedFight Msg: " + ChatColor.stripColor(message));
+        plugin.debug("BedFight Msg: " + ChatColor.stripColor(message));
     }
 
     private void sendTitle(Player player, String title, String subtitle) {
@@ -936,7 +972,7 @@ public class BedFightListener implements Listener {
             if (p != null) p.playSound(p.getLocation(), Sound.WITHER_DEATH, 1f, 1f);
         }
 
-        plugin.getLogger().info("Bed Destruction: " + color + " bed destroyed by " + breaker.getName());
+        plugin.debug("Bed Destruction: " + color + " bed destroyed by " + breaker.getName());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -967,7 +1003,7 @@ public class BedFightListener implements Listener {
             }
             
             // Also allow spectators to see it
-            plugin.getLogger().info("[BedFight-Spec] " + player.getName() + ": " + event.getMessage());
+            plugin.debug("[BedFight-Spec] " + player.getName() + ": " + event.getMessage());
         } else {
             String team = session.getTeam(player.getUniqueId());
             ChatColor color = "RED".equalsIgnoreCase(team) ? ChatColor.RED : ChatColor.BLUE;

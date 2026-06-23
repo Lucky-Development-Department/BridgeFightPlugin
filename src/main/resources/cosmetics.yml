@@ -4,78 +4,95 @@
 #   permission: "bridgefight.cosmetics.vip"
 #   permission: "group.vip"
 # Empty permission means no permission requirement.
+#
+# Tiers: COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, MYTHIC
+# Rank exclusive bypass:
+#   If permission is "group.lucky", anyone with LuckPerms group "lucky" (or equivalent "spark")
+#   gets the cosmetic instantly. Players without the group can buy it for the required_balance.
 
 kill_messages:
   default:
     display_name: "&7Default"
     required_balance: 0
     permission: ""
+    tier: "COMMON"
     message: "&e{victim} &7was killed by &e{killer}&7."
     void_message: "&e{victim} &7was sent into the void by &e{killer}&7."
   fire:
     display_name: "&cFire"
     required_balance: 100
     permission: "bridgefight.cosmetics.kill_messages.fire"
+    tier: "UNCOMMON"
     message: "&e{victim} &7was burnt to a crisp by &e{killer}&7."
     void_message: "&e{victim} &7was knocked into the fire pits by &e{killer}&7."
   abyss:
     display_name: "&bAbyss"
     required_balance: 250
     permission: "bridgefight.cosmetics.kill_messages.abyss"
+    tier: "RARE"
     message: "&e{victim} &7was sent to the abyss by &e{killer}&7."
     void_message: "&e{victim} &7was consumed by the void thanks to &e{killer}&7."
   combo:
     display_name: "&6Combo"
     required_balance: 500
     permission: "bridgefight.cosmetics.kill_messages.combo"
+    tier: "RARE"
     message: "&e{victim} &7got comboed by &e{killer}&7."
     void_message: "&e{victim} &7was combo launched into the void by &e{killer}&7."
   toxic:
     display_name: "&2Toxic"
     required_balance: 750
     permission: "bridgefight.cosmetics.kill_messages.toxic"
+    tier: "EPIC"
     message: "&e{victim} &7got absolutely destroyed by &e{killer}&7."
     void_message: "&e{victim} &7couldn't handle &e{killer}&7's pressure."
   thunder:
     display_name: "&eThunder"
     required_balance: 750
     permission: "bridgefight.cosmetics.kill_messages.thunder"
+    tier: "EPIC"
     message: "&e{victim} &7was struck down by &e{killer}&7."
     void_message: "&e{victim} &7was shocked into the void by &e{killer}&7."
   frozen:
     display_name: "&bFrozen"
     required_balance: 1000
     permission: "bridgefight.cosmetics.kill_messages.frozen"
+    tier: "EPIC"
     message: "&e{victim} &7was frozen solid by &e{killer}&7."
     void_message: "&e{victim} &7slipped into the void thanks to &e{killer}&7."
   ghost:
     display_name: "&7Ghost"
     required_balance: 1000
     permission: "bridgefight.cosmetics.kill_messages.ghost"
+    tier: "EPIC"
     message: "&e{victim} &7was haunted by &e{killer}&7."
     void_message: "&e{victim} &7vanished into the void thanks to &e{killer}&7."
   reaper:
     display_name: "&8Reaper"
     required_balance: 1500
     permission: "bridgefight.cosmetics.kill_messages.reaper"
+    tier: "LEGENDARY"
     message: "&e{killer} &7harvested the soul of &e{victim}&7."
     void_message: "&e{victim} &7was claimed by the void reaper &e{killer}&7."
   hacker:
     display_name: "&aHacker"
     required_balance: 2000
     permission: "bridgefight.cosmetics.kill_messages.hacker"
+    tier: "LEGENDARY"
     message: "&e{victim} &77 blocked too slowly against &e{killer}&7."
     void_message: "&e{victim} &7got anticheat checked into the void by &e{killer}&7."
   ninja:
     display_name: "&8Ninja"
     required_balance: 2000
     permission: "bridgefight.cosmetics.kill_messages.ninja"
+    tier: "LEGENDARY"
     message: "&e{victim} &7never saw &e{killer} &7coming."
     void_message: "&e{victim} &7was silently pushed into the void by &e{killer}&7."
   voidwalker:
     display_name: "&5Voidwalker"
     required_balance: 3000
     permission: "bridgefight.cosmetics.kill_messages.voidwalker"
+    tier: "MYTHIC"
     message: "&e{killer} &7dragged &e{victim} &7into darkness."
     void_message: "&e{victim} &7was claimed by the void thanks to &e{killer}&7."
   # Rank Exclusive
@@ -83,6 +100,7 @@ kill_messages:
     display_name: "&b&lL&7'ed"
     required_balance: 0
     permission: "group.mvp+"
+    tier: "EPIC"
     message: "&e{victim} &7got absolutely L'ed on by &b&l{killer}&7."
     void_message: "&e{victim} &7tried to fly but &b&l{killer} &7reminded them of gravity."
 
@@ -91,90 +109,108 @@ kill_effects:
     display_name: "&7None"
     required_balance: 0
     permission: ""
+    tier: "COMMON"
   blood:
     display_name: "&cBlood"
-    required_balance: 100
-    permission: "bridgefight.cosmetics.kill_effects.blood"
+    required_balance: 5000
+    permission: "group.lucky"
+    tier: "LEGENDARY"
     effect_type: "REDSTONE"
   lightning:
     display_name: "&eLightning"
-    required_balance: 250
-    permission: "bridgefight.cosmetics.kill_effects.lightning"
+    required_balance: 10000
+    permission: "group.supreme"
+    tier: "MYTHIC"
     effect_type: "LIGHTNING"
   firework:
     display_name: "&fFirework"
     required_balance: 500
     permission: "bridgefight.cosmetics.kill_effects.firework"
+    tier: "RARE"
     effect_type: "FIREWORK"
   flame:
     display_name: "&6Flames"
     required_balance: 750
     permission: "bridgefight.cosmetics.kill_effects.flame"
+    tier: "EPIC"
     effect_type: "FLAME"
   magic:
     display_name: "&5Magic"
     required_balance: 1000
     permission: "bridgefight.cosmetics.kill_effects.magic"
+    tier: "EPIC"
     effect_type: "SPELL_WITCH"
   portal:
     display_name: "&5Portal"
     required_balance: 1000
     permission: "bridgefight.cosmetics.kill_effects.portal"
+    tier: "EPIC"
     effect_type: "PORTAL"
   angry:
     display_name: "&cAngry"
     required_balance: 1250
     permission: "bridgefight.cosmetics.kill_effects.angry"
+    tier: "EPIC"
     effect_type: "VILLAGER_ANGRY"
   happy:
     display_name: "&aHappy"
     required_balance: 1250
     permission: "bridgefight.cosmetics.kill_effects.happy"
+    tier: "EPIC"
     effect_type: "VILLAGER_HAPPY"
   snow:
     display_name: "&bSnow"
-    required_balance: 1500
-    permission: "bridgefight.cosmetics.kill_effects.snow"
+    required_balance: 5000
+    permission: "group.lucky"
+    tier: "LEGENDARY"
     effect_type: "SNOWBALL"
   lava:
     display_name: "&6Lava Burst"
     required_balance: 2000
     permission: "bridgefight.cosmetics.kill_effects.lava"
+    tier: "LEGENDARY"
     effect_type: "LAVA"
   heart:
     display_name: "&dLove"
     required_balance: 1500
     permission: "bridgefight.cosmetics.kill_effects.heart"
+    tier: "LEGENDARY"
     effect_type: "HEART"
   squid:
     display_name: "&bSquid Splash"
     required_balance: 1750
     permission: "bridgefight.cosmetics.kill_effects.squid"
+    tier: "LEGENDARY"
     effect_type: "WATER_DROP"
   music:
     display_name: "&dMusical Note"
     required_balance: 1750
     permission: "bridgefight.cosmetics.kill_effects.music"
+    tier: "LEGENDARY"
     effect_type: "NOTE"
   slime:
     display_name: "&aSlime Burst"
     required_balance: 1750
     permission: "bridgefight.cosmetics.kill_effects.slime"
+    tier: "LEGENDARY"
     effect_type: "SLIME"
   explosion:
     display_name: "&cExplosion"
     required_balance: 2000
     permission: "bridgefight.cosmetics.kill_effects.explosion"
+    tier: "LEGENDARY"
     effect_type: "EXPLOSION"
   wither:
     display_name: "&8Wither Soul"
     required_balance: 2500
     permission: "bridgefight.cosmetics.kill_effects.wither"
+    tier: "MYTHIC"
     effect_type: "WITHER"
   ender:
     display_name: "&5Ender Warp"
     required_balance: 3000
     permission: "bridgefight.cosmetics.kill_effects.ender"
+    tier: "MYTHIC"
     effect_type: "ENDER"
 
 trails:
@@ -182,99 +218,119 @@ trails:
     display_name: "&7None"
     required_balance: 0
     permission: ""
+    tier: "COMMON"
   heart:
     display_name: "&cHeart"
     required_balance: 100
     permission: "bridgefight.cosmetics.trails.heart"
+    tier: "UNCOMMON"
     particle: "HEART"
   flame:
     display_name: "&eFlame"
     required_balance: 250
     permission: "bridgefight.cosmetics.trails.flame"
+    tier: "RARE"
     particle: "FLAME"
   smoke:
     display_name: "&8Smoke"
     required_balance: 250
     permission: "bridgefight.cosmetics.trails.smoke"
+    tier: "RARE"
     particle: "SMOKE_NORMAL"
   note:
     display_name: "&bNote"
     required_balance: 500
     permission: "bridgefight.cosmetics.trails.note"
+    tier: "RARE"
     particle: "NOTE"
   crit:
     display_name: "&eCritical"
     required_balance: 750
     permission: "bridgefight.cosmetics.trails.crit"
+    tier: "EPIC"
     particle: "CRIT"
   magic:
     display_name: "&5Magic"
     required_balance: 750
     permission: "bridgefight.cosmetics.trails.magic"
+    tier: "EPIC"
     particle: "SPELL_WITCH"
   portal:
     display_name: "&5Portal"
     required_balance: 1000
     permission: "bridgefight.cosmetics.trails.portal"
+    tier: "EPIC"
     particle: "PORTAL"
   cloud:
     display_name: "&fCloud"
     required_balance: 1000
     permission: "bridgefight.cosmetics.trails.cloud"
+    tier: "EPIC"
     particle: "CLOUD"
   enchant:
     display_name: "&dEnchant"
     required_balance: 1250
     permission: "bridgefight.cosmetics.trails.enchant"
+    tier: "EPIC"
     particle: "ENCHANTMENT_TABLE"
   slime:
     display_name: "&aSlime"
     required_balance: 1500
     permission: "bridgefight.cosmetics.trails.slime"
+    tier: "LEGENDARY"
     particle: "SLIME"
   spark:
     display_name: "&fSpark"
     required_balance: 1500
     permission: "bridgefight.cosmetics.trails.spark"
+    tier: "LEGENDARY"
     particle: "FIREWORKS_SPARK"
   redstone:
     display_name: "&cRedstone"
     required_balance: 1750
     permission: "bridgefight.cosmetics.trails.redstone"
+    tier: "LEGENDARY"
     particle: "REDSTONE"
   lava:
     display_name: "&6Lava"
     required_balance: 2000
     permission: "bridgefight.cosmetics.trails.lava"
+    tier: "LEGENDARY"
     particle: "LAVA"
   snow:
     display_name: "&bSnow"
-    required_balance: 2000
-    permission: "bridgefight.cosmetics.trails.snow"
+    required_balance: 5000
+    permission: "group.lucky"
+    tier: "LEGENDARY"
     particle: "SNOWBALL"
   drip_lava:
     display_name: "&6Drip Lava"
     required_balance: 2250
     permission: "bridgefight.cosmetics.trails.drip_lava"
+    tier: "LEGENDARY"
     particle: "DRIP_LAVA"
   drip_water:
     display_name: "&bDrip Water"
     required_balance: 2250
     permission: "bridgefight.cosmetics.trails.drip_water"
+    tier: "LEGENDARY"
     particle: "DRIP_WATER"
   angry:
     display_name: "&cAngry"
     required_balance: 2500
     permission: "bridgefight.cosmetics.trails.angry"
+    tier: "LEGENDARY"
     particle: "VILLAGER_ANGRY"
   happy:
     display_name: "&aHappy"
     required_balance: 2500
     permission: "bridgefight.cosmetics.trails.happy"
+    tier: "LEGENDARY"
     particle: "VILLAGER_HAPPY"
   # Rank Exclusive
   emerald:
     display_name: "&a&lMVP &eGreen Star"
     required_balance: 0
     permission: "group.mvp"
+    tier: "LEGENDARY"
     particle: "VILLAGER_HAPPY"

@@ -59,21 +59,24 @@ public class CosmeticsGUIListener implements Listener {
                 return;
             }
             
-            List<KillMessage> killMessages = new ArrayList<>(cosmeticsManager.getKillMessages().values());
+            List<KillMessage> killMessages = cosmeticsGUI.getSortedKillMessages(player);
             if (event.getSlot() < 0 || event.getSlot() >= killMessages.size()) return;
 
             KillMessage km = killMessages.get(event.getSlot());
             if (km != null) {
-                if (!hasRequiredPermission(player, km.getPermission())) {
-                    sendMissingPermission(player, km.getPermission());
-                    return;
-                }
-
                 PlayerStats stats = plugin.getStatsManager().getStats(player.getUniqueId());
-                if (!stats.hasPurchasedKillMessage(km.getId())) {
-                    if (!purchaseCosmetic(player, km.getRequiredBalance())) return;
-                    stats.addPurchasedKillMessage(km.getId());
-                    player.sendMessage(ChatColor.GREEN + "Purchased kill message: " + ChatColor.translateAlternateColorCodes('&', km.getDisplayName()));
+                boolean isOwned = cosmeticsGUI.isKillMessageOwned(player, stats, km);
+
+                if (!isOwned) {
+                    if (km.getRequiredBalance() > 0) {
+                        if (!purchaseCosmetic(player, km.getRequiredBalance())) return;
+                        stats.addPurchasedKillMessage(km.getId());
+                        plugin.getStatsManager().savePlayer(stats);
+                        player.sendMessage(ChatColor.GREEN + "Purchased kill message: " + ChatColor.translateAlternateColorCodes('&', km.getDisplayName()));
+                    } else {
+                        cosmeticsGUI.sendMissingPermission(player, km.getPermission());
+                        return;
+                    }
                 }
 
                 stats.setSelectedKillMessage(km.getId());
@@ -88,21 +91,24 @@ public class CosmeticsGUIListener implements Listener {
                 return;
             }
 
-            List<KillEffect> killEffects = new ArrayList<>(cosmeticsManager.getKillEffects().values());
+            List<KillEffect> killEffects = cosmeticsGUI.getSortedKillEffects(player);
             if (event.getSlot() < 0 || event.getSlot() >= killEffects.size()) return;
 
             KillEffect ke = killEffects.get(event.getSlot());
             if (ke != null) {
-                if (!hasRequiredPermission(player, ke.getPermission())) {
-                    sendMissingPermission(player, ke.getPermission());
-                    return;
-                }
-
                 PlayerStats stats = plugin.getStatsManager().getStats(player.getUniqueId());
-                if (!stats.hasPurchasedKillEffect(ke.getId())) {
-                    if (!purchaseCosmetic(player, ke.getRequiredBalance())) return;
-                    stats.addPurchasedKillEffect(ke.getId());
-                    player.sendMessage(ChatColor.GREEN + "Purchased kill effect: " + ChatColor.translateAlternateColorCodes('&', ke.getDisplayName()));
+                boolean isOwned = cosmeticsGUI.isKillEffectOwned(player, stats, ke);
+
+                if (!isOwned) {
+                    if (ke.getRequiredBalance() > 0) {
+                        if (!purchaseCosmetic(player, ke.getRequiredBalance())) return;
+                        stats.addPurchasedKillEffect(ke.getId());
+                        plugin.getStatsManager().savePlayer(stats);
+                        player.sendMessage(ChatColor.GREEN + "Purchased kill effect: " + ChatColor.translateAlternateColorCodes('&', ke.getDisplayName()));
+                    } else {
+                        cosmeticsGUI.sendMissingPermission(player, ke.getPermission());
+                        return;
+                    }
                 }
 
                 stats.setSelectedKillEffect(ke.getId());
@@ -123,21 +129,24 @@ public class CosmeticsGUIListener implements Listener {
                 return;
             }
 
-            List<Trail> trails = new ArrayList<>(cosmeticsManager.getTrails().values());
+            List<Trail> trails = cosmeticsGUI.getSortedTrails(player);
             if (event.getSlot() < 0 || event.getSlot() >= trails.size()) return;
 
             Trail trail = trails.get(event.getSlot());
             if (trail != null) {
-                if (!hasRequiredPermission(player, trail.getPermission())) {
-                    sendMissingPermission(player, trail.getPermission());
-                    return;
-                }
-
                 PlayerStats stats = plugin.getStatsManager().getStats(player.getUniqueId());
-                if (!stats.hasPurchasedTrail(trail.getId())) {
-                    if (!purchaseCosmetic(player, trail.getRequiredBalance())) return;
-                    stats.addPurchasedTrail(trail.getId());
-                    player.sendMessage(ChatColor.GREEN + "Purchased trail: " + ChatColor.translateAlternateColorCodes('&', trail.getDisplayName()));
+                boolean isOwned = cosmeticsGUI.isTrailOwned(player, stats, trail);
+
+                if (!isOwned) {
+                    if (trail.getRequiredBalance() > 0) {
+                        if (!purchaseCosmetic(player, trail.getRequiredBalance())) return;
+                        stats.addPurchasedTrail(trail.getId());
+                        plugin.getStatsManager().savePlayer(stats);
+                        player.sendMessage(ChatColor.GREEN + "Purchased trail: " + ChatColor.translateAlternateColorCodes('&', trail.getDisplayName()));
+                    } else {
+                        cosmeticsGUI.sendMissingPermission(player, trail.getPermission());
+                        return;
+                    }
                 }
 
                 stats.setSelectedTrail(trail.getId());
@@ -165,42 +174,5 @@ public class CosmeticsGUIListener implements Listener {
         player.sendMessage(ChatColor.RED + "You need " + price + " coins to buy this cosmetic. "
                 + ChatColor.GRAY + "Your balance: " + currentBalance + " coins.");
         return false;
-    }
-
-    private boolean hasRequiredPermission(Player player, String permission) {
-        return permission == null || permission.trim().isEmpty() || player.hasPermission(permission);
-    }
-
-    private void sendMissingPermission(Player player, String permission) {
-        player.sendMessage(ChatColor.RED + "You do not have permission to select this cosmetic. "
-                + ChatColor.GRAY + "Required: " + getPermissionDisplay(permission));
-    }
-
-    private String getPermissionDisplay(String permission) {
-        if (permission == null || permission.trim().isEmpty()) return "Special Access";
-
-        String trimmed = permission.trim();
-        if (!trimmed.toLowerCase().startsWith("group.")) {
-            return "Special Access";
-        }
-
-        String groupName = trimmed.substring("group.".length());
-        String prefix = getLuckPermsGroupPrefix(groupName);
-        if (prefix != null && !prefix.trim().isEmpty()) {
-            return ChatColor.translateAlternateColorCodes('&', prefix);
-        }
-
-        return "[" + groupName.toUpperCase() + "]";
-    }
-
-    private String getLuckPermsGroupPrefix(String groupName) {
-        org.bukkit.plugin.RegisteredServiceProvider<LuckPerms> provider =
-                Bukkit.getServicesManager().getRegistration(LuckPerms.class);
-        if (provider == null) return null;
-
-        Group group = provider.getProvider().getGroupManager().getGroup(groupName);
-        if (group == null) return null;
-
-        return group.getCachedData().getMetaData().getPrefix();
     }
 }

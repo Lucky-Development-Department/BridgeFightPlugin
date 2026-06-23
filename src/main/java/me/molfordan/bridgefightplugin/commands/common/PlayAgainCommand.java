@@ -46,7 +46,7 @@ public class PlayAgainCommand implements CommandExecutor {
         try {
             QueueType type = QueueType.valueOf(meta.asString());
             
-            plugin.getLogger().info("DEBUG: PlayAgain for " + player.getName() + " with type: " + type.name());
+            plugin.debug("DEBUG: PlayAgain for " + player.getName() + " with type: " + type.name());
             
             // Clean up from current session but stay in world
             plugin.getBedFightManager().removePlayerFromSession(player);
@@ -58,7 +58,7 @@ public class PlayAgainCommand implements CommandExecutor {
             
             plugin.getMatchmakingService().addToQueue(player, type);
             player.removeMetadata("lastQueueType", plugin);
-            plugin.getLogger().info("DEBUG: PlayAgain successfully added " + player.getName() + " to queue.");
+            plugin.debug("DEBUG: PlayAgain successfully added " + player.getName() + " to queue.");
         } catch (IllegalArgumentException e) {
             player.sendMessage(ChatColor.RED + "Could not determine last queue type.");
         }

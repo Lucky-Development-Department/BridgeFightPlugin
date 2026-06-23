@@ -43,7 +43,7 @@ public class AutoRestartManager {
         // Check every minute
         restartScheduler.runTaskTimer(plugin, 0L, 20L * 60L);
         
-        plugin.getLogger().info("Auto-restart system started");
+        plugin.debug("Auto-restart system started");
     }
     
     public void stop() {
@@ -58,7 +58,7 @@ public class AutoRestartManager {
         }
         
         restartInProgress.set(false);
-        plugin.getLogger().info("Auto-restart system stopped");
+        plugin.debug("Auto-restart system stopped");
     }
     
     private void checkAndScheduleRestart() {
@@ -127,7 +127,7 @@ public class AutoRestartManager {
             
             countdownTask.runTaskTimer(plugin, 0L, 20L);
             
-            plugin.getLogger().info("Server restart scheduled in " + secondsUntilRestart + " seconds");
+            plugin.debug("Server restart scheduled in " + secondsUntilRestart + " seconds");
         }
     }
     
@@ -152,7 +152,7 @@ public class AutoRestartManager {
     }
     
     private void performRestart() {
-        plugin.getLogger().info("Starting automatic server restart sequence...");
+        plugin.debug("Starting automatic server restart sequence...");
 
         // 1. Kick all players first to flush final stats to DB
         Bukkit.getOnlinePlayers().forEach(player -> {
@@ -160,7 +160,7 @@ public class AutoRestartManager {
         });
         
         // 2. Save all world and player data
-        plugin.getLogger().info("Saving all server data...");
+        plugin.debug("Saving all server data...");
         Bukkit.savePlayers();
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "save-all");
 
@@ -169,17 +169,17 @@ public class AutoRestartManager {
             @Override
             public void run() {
                 if (plugin.getBackupManager() != null) {
-                    plugin.getLogger().info("Running pre-restart database backups...");
+                    plugin.debug("Running pre-restart database backups...");
                     plugin.getBackupManager().backupMySQL();
                     plugin.getBackupManager().syncToRemoteDatabase();
-                    plugin.getLogger().info("Database backups completed.");
+                    plugin.debug("Database backups completed.");
                 }
 
                 // 4. Return to main thread for final cleanup and exit
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        plugin.getLogger().info("Performing final cleanup and shutdown.");
+                        plugin.debug("Performing final cleanup and shutdown.");
                         cleanupBlocksAndRestore();
                         
                         // Small delay to allow cleanup to finish logging
@@ -196,7 +196,7 @@ public class AutoRestartManager {
     }
 
     private void cleanupBlocksAndRestore() {
-        plugin.getLogger().info("Cleaning up player blocks and restoring maps...");
+        plugin.debug("Cleaning up player blocks and restoring maps...");
 
         // 1. Remove blocks with player_blocks and egg_bridge_block metadata in all worlds
         for (World world : Bukkit.getWorlds()) {
@@ -225,7 +225,7 @@ public class AutoRestartManager {
         // 2. Execute arenamap restore command if configured
         String mapToRestore = configManager.getAutoRestoreMap();
         if (mapToRestore != null && !mapToRestore.equalsIgnoreCase("none")) {
-            plugin.getLogger().info("Restoring map: " + mapToRestore);
+            plugin.debug("Restoring map: " + mapToRestore);
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "arenamap " + mapToRestore + " restore");
         }
     }

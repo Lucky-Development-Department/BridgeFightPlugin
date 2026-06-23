@@ -19,6 +19,7 @@ import me.molfordan.bridgefightplugin.commands.world.LobbyCommand;
 import me.molfordan.bridgefightplugin.commands.world.PrivateWorldCommand;
 import me.molfordan.bridgefightplugin.config.BridgeFightConfig;
 import me.molfordan.bridgefightplugin.config.RegionsConfig;
+import me.molfordan.bridgefightplugin.cosmetics.CosmeticsManager;
 import me.molfordan.bridgefightplugin.database.DatabaseManager;
 import me.molfordan.bridgefightplugin.gui.GUILeaderboardBridgeFight;
 import me.molfordan.bridgefightplugin.gui.GUILeaderboardBuildFFA;
@@ -71,6 +72,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
     private ArenaManager arenaManager;
     private ConfigManager configManager;
     private HotbarSorter hotbarSorter;
+
     private BridgeFightBanManager bridgeFightBanManager;
     private BridgeFightKitGUI bridgeFightKitGUI;
     private TeleportPendingManager teleportPendingManager;
@@ -129,6 +131,8 @@ public final class BridgeFightPlugin extends JavaPlugin {
     private me.molfordan.bridgefightplugin.cosmetics.CosmeticsManager cosmeticsManager;
     private me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUI cosmeticsGUI;
     private me.molfordan.bridgefightplugin.cosmetics.listener.CosmeticsListener cosmeticsListener;
+
+    private me.molfordan.bridgefightplugin.cosmetics.crate.CrateManager crateManager;
     private me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceManager swordChoiceManager;
     private static final String LOBBY_PATH = "lobby";
     private static final String BUILDFFA_PATH = "buildffa";
@@ -171,6 +175,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.tntTracker = new TNTTracker(this);
         this.cosmeticsManager = new me.molfordan.bridgefightplugin.cosmetics.CosmeticsManager(this);
         this.cosmeticsGUI = new me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUI(this, cosmeticsManager);
+        this.crateManager = new me.molfordan.bridgefightplugin.cosmetics.crate.CrateManager(this);
         this.swordChoiceManager = new me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceManager(this);
         this.deathMessageManager = new DeathMessageManager(this,combatManager, arenaManager, hotbarDataManager, statsManager, fireballTracker);
         this.deathMessageManager.setCosmeticsManager(cosmeticsManager);
@@ -218,7 +223,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         platformManager.loadFromConfig(bridgeFightConfig.getConfig());
         regionManager.loadAllFromConfig();
         arenaManager.loadArenas();
-        Bukkit.getLogger().info("[ArenaManager] Arenas loaded successfully.");
+        debug("[ArenaManager] Arenas loaded successfully.");
         this.dailyArenaRestorer = new DailyArenaRestorer(this, arenaManager);
         this.backupManager = new BackupManager(this);
         this.autoRestartManager = new AutoRestartManager(this, configManager);
@@ -233,6 +238,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         me.molfordan.bridgefightplugin.cosmetics.CosmeticsCommand cosmeticsCmd = new me.molfordan.bridgefightplugin.cosmetics.CosmeticsCommand(cosmeticsGUI, cosmeticsManager);
         getCommand("cosmetics").setExecutor(cosmeticsCmd);
         getCommand("cosmetics").setTabCompleter(cosmeticsCmd);
+        getCommand("setupcrate").setExecutor(new me.molfordan.bridgefightplugin.cosmetics.crate.SetupCrateCommand());
         getCommand("balance").setExecutor(new BalanceCommand(this));
         getCommand("setbalance").setExecutor(new SetBalanceCommand(this));
         getCommand("setlobby").setExecutor(new SetLobbyCommand(configManager));
@@ -366,6 +372,7 @@ public final class BridgeFightPlugin extends JavaPlugin {
         this.cosmeticsListener = new me.molfordan.bridgefightplugin.cosmetics.listener.CosmeticsListener(this, cosmeticsManager);
         getServer().getPluginManager().registerEvents(this.cosmeticsListener, this);
         getServer().getPluginManager().registerEvents(new me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUIListener(this, cosmeticsGUI, cosmeticsManager), this);
+        getServer().getPluginManager().registerEvents(new me.molfordan.bridgefightplugin.cosmetics.crate.CrateListener(crateManager), this);
         getServer().getPluginManager().registerEvents(new me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceListener(this), this);
         getServer().getPluginManager().registerEvents(new ArmorRemovalListener(this, arenaManager), this);
         getServer().getPluginManager().registerEvents(this.deathMessageManager, this);
@@ -461,6 +468,10 @@ public final class BridgeFightPlugin extends JavaPlugin {
             tntTracker.cleanup();
         }
 
+        if (crateManager != null) {
+            crateManager.shutdown();
+        }
+
         if (databaseManager != null) {
             databaseManager.shutdown();
         }
@@ -507,6 +518,9 @@ public final class BridgeFightPlugin extends JavaPlugin {
 
     public CombatManager getCombatManager() {
         return combatManager;
+    }
+    public CosmeticsManager getCosmeticsManager() {
+        return cosmeticsManager;
     }
 
     public PersistentRestoreManager getPersistentRestoreManager() {
@@ -696,6 +710,10 @@ public final class BridgeFightPlugin extends JavaPlugin {
 
     public me.molfordan.bridgefightplugin.cosmetics.gui.CosmeticsGUI getCosmeticsGUI() {
         return cosmeticsGUI;
+    }
+
+    public me.molfordan.bridgefightplugin.cosmetics.crate.CrateManager getCrateManager() {
+        return crateManager;
     }
 
     public me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceManager getSwordChoiceManager() {

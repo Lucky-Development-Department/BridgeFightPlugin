@@ -72,7 +72,7 @@ public class BedFightArenaManager {
             try {
                 SlimeWorld template = slimeAdapter.loadTemplate(name);
                 slimeTemplates.put(name.toLowerCase(), template);
-                plugin.getLogger().info("Loaded BedFight arena & Slime template: " + name);
+                plugin.debug("Loaded BedFight arena & Slime template: " + name);
             } catch (Exception e) {
                 plugin.getLogger().warning("Could not load Slime template for " + name + " (Make sure the .slime file exists in SWM imports/folder): " + e.getMessage());
             }

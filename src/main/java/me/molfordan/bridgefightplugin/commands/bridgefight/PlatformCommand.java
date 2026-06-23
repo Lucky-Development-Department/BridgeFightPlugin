@@ -96,8 +96,8 @@ public class PlatformCommand extends BukkitCommand {
             }
 
             PlayerStats playerStats = plugin.getStatsManager().getStats(p.getUniqueId());
-            if (playerStats.getBuildKills() < 350) {
-                p.sendMessage(ChatColor.translateAlternateColorCodes('&',"&cYou need atleast 350 BuildFFA kills or higher to join the bridge fight!" ));
+            if (playerStats.getBuildKills() < 350 && !p.hasPermission("group.vip") && !p.isOp()) {
+                p.sendMessage(ChatColor.translateAlternateColorCodes('&',"&cYou need at least VIP rank or 350 BuildFFA kills or higher to join the bridge fight!" ));
                 return true;
             }
 

@@ -840,7 +840,7 @@ public class StatsManager {
     public void resetAllDailyStreaks() {
         DatabaseConnector connector = db.getConnector();
         
-        plugin.getLogger().info("[Stats] Resetting all daily streaks...");
+        plugin.debug("[Stats] Resetting all daily streaks...");
         
         if (connector instanceof SQLDatabaseConnector) {
             resetAllDailyStreaksSQL();
@@ -853,7 +853,7 @@ public class StatsManager {
         // Clear cache to force reload with reset values
         clearCache();
         
-        plugin.getLogger().info("[Stats] All daily streaks have been reset.");
+        plugin.debug("[Stats] All daily streaks have been reset.");
     }
     
     private void resetAllDailyStreaksSQL() {
@@ -865,7 +865,7 @@ public class StatsManager {
              )) {
             
             int rowsUpdated = ps.executeUpdate();
-            plugin.getLogger().info("[Stats] Reset daily streaks for " + rowsUpdated + " players in SQL database.");
+            plugin.debug("[Stats] Reset daily streaks for " + rowsUpdated + " players in SQL database.");
             
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to reset daily streaks in SQL database", e);
@@ -882,7 +882,7 @@ public class StatsManager {
                 .append("build_streak", 0));
         
         com.mongodb.client.result.UpdateResult result = collection.updateMany(new org.bson.Document(), update);
-        plugin.getLogger().info("[Stats] Reset daily streaks for " + result.getModifiedCount() + " players in MongoDB.");
+        plugin.debug("[Stats] Reset daily streaks for " + result.getModifiedCount() + " players in MongoDB.");
     }
     
     private void resetAllDailyStreaksYAML() {
@@ -904,6 +904,6 @@ public class StatsManager {
             }
         }
         
-        plugin.getLogger().info("[Stats] Reset daily streaks for " + resetCount + " players in YAML files.");
+        plugin.debug("[Stats] Reset daily streaks for " + resetCount + " players in YAML files.");
     }
 }

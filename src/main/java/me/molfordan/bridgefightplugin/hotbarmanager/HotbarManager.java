@@ -143,9 +143,11 @@ public class HotbarManager {
 
             case SHEARS:
                 return "shears";
-
+            /*
             case STICK:
                 return "knockbackstick";
+
+             */
 
             case ENDER_PEARL:
                 return "ender_pearl";

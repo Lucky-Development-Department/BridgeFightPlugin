@@ -27,7 +27,6 @@ public class BuildFFAKit {
     private ItemStack pickaxe;
     private ItemStack axe;
     private ItemStack shears;
-    private ItemStack kbStick;
     private ItemStack pearl;
     private ItemStack woolStack;
     private ItemStack ladder;
@@ -52,7 +51,6 @@ public class BuildFFAKit {
         pickaxe = createItem(Material.GOLD_PICKAXE, Enchantment.DIG_SPEED, 3);
         axe = createItem(Material.STONE_AXE, Enchantment.DIG_SPEED, 2);
         shears = createItem(Material.SHEARS);
-        kbStick = createItem(Material.STICK, Enchantment.KNOCKBACK, 1);
         pearl = new ItemStack(Material.ENDER_PEARL, 1);
 
         // Armor
@@ -69,7 +67,6 @@ public class BuildFFAKit {
         kitItems.put("pickaxe", pickaxe);
         kitItems.put("axe", axe);
         kitItems.put("shears", shears);
-        kitItems.put("knockbackstick", kbStick);
         kitItems.put("blocks", woolStack);
         kitItems.put("ladder", ladder);
         kitItems.put("pearl", pearl);
@@ -85,7 +82,6 @@ public class BuildFFAKit {
         if (!containsValue(hotbarLayout, "pickaxe")) player.getInventory().addItem(pickaxe);
         if (!containsValue(hotbarLayout, "axe")) player.getInventory().addItem(axe);
         if (!containsValue(hotbarLayout, "shears")) player.getInventory().addItem(shears);
-        if (!containsValue(hotbarLayout, "knockbackstick")) player.getInventory().addItem(kbStick);
         if (!containsValue(hotbarLayout, "ladder")) player.getInventory().addItem(ladder);
 
         // ======================================================
@@ -135,7 +131,6 @@ public class BuildFFAKit {
         map.put("pickaxe", pickaxe.clone());
         map.put("axe", axe.clone());
         map.put("shears", shears.clone());
-        map.put("knockbackstick", kbStick.clone());
         map.put("blocks", woolStack.clone());
         map.put("ladder", ladder.clone());
         map.put("pearl", pearl.clone());

@@ -1122,16 +1122,45 @@ public class DeathMessageManager implements Listener {
     }
 
     private void spawnFirework(Location loc) {
-        org.bukkit.entity.Firework fw = loc.getWorld().spawn(loc, org.bukkit.entity.Firework.class);
+        org.bukkit.entity.Firework fw = loc.getWorld().spawn(loc.clone().add(0, 0.5, 0), org.bukkit.entity.Firework.class);
         org.bukkit.inventory.meta.FireworkMeta fwm = fw.getFireworkMeta();
-        fwm.addEffect(FireworkEffect.builder()
-                .withColor(Color.RED)
-                .withColor(Color.ORANGE)
-                .with(FireworkEffect.Type.BALL)
-                .build());
-        fwm.setPower(0);
+        
+        java.util.Random random = new java.util.Random();
+        
+        // Random Type
+        FireworkEffect.Type[] types = FireworkEffect.Type.values();
+        FireworkEffect.Type type = types[random.nextInt(types.length)];
+        
+        // Random Colors
+        Color[] availableColors = new Color[]{
+            Color.AQUA, Color.BLACK, Color.BLUE, Color.FUCHSIA, Color.GRAY, Color.GREEN, 
+            Color.LIME, Color.MAROON, Color.NAVY, Color.OLIVE, Color.ORANGE, Color.PURPLE, 
+            Color.RED, Color.SILVER, Color.TEAL, Color.WHITE, Color.YELLOW
+        };
+        
+        FireworkEffect.Builder builder = FireworkEffect.builder()
+                .with(type)
+                .flicker(random.nextBoolean())
+                .trail(random.nextBoolean());
+        
+        // Add 1 to 3 random colors
+        int colorCount = random.nextInt(3) + 1;
+        for (int i = 0; i < colorCount; i++) {
+            builder.withColor(availableColors[random.nextInt(availableColors.length)]);
+        }
+        
+        // Add 0 to 2 fade colors
+        int fadeCount = random.nextInt(3);
+        for (int i = 0; i < fadeCount; i++) {
+            builder.withFade(availableColors[random.nextInt(availableColors.length)]);
+        }
+        
+        fwm.addEffect(builder.build());
+        fwm.setPower(1);
         fw.setFireworkMeta(fwm);
-        Bukkit.getScheduler().runTaskLater(plugin, fw::detonate, 1L);
+        
+        // Detonate mid-air after a short flight delay (8-13 ticks)
+        Bukkit.getScheduler().runTaskLater(plugin, fw::detonate, 8L + random.nextInt(6));
     }
 
     public void sendCombatLogDeathMessage(Player victim, Player attacker, Arena arena, int newStreak) {

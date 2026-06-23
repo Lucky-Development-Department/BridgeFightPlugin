@@ -24,18 +24,18 @@ public class LeaveCommand implements CommandExecutor {
 
         // 1. Check if in queue
         boolean inQueue = plugin.getMatchmakingService().isInWaitingQueue(uuid);
-        plugin.getLogger().info("DEBUG: LeaveCommand check inQueue=" + inQueue + " for " + player.getName());
+        plugin.debug("DEBUG: LeaveCommand check inQueue=" + inQueue + " for " + player.getName());
         
         if (inQueue) {
-            plugin.getLogger().info("DEBUG: LeaveCommand calling removeFromQueue for " + player.getName());
+            plugin.debug("DEBUG: LeaveCommand calling removeFromQueue for " + player.getName());
             plugin.getMatchmakingService().removeFromQueue(player);
-            plugin.getLogger().info("DEBUG: LeaveCommand removeFromQueue called for " + player.getName());
+            plugin.debug("DEBUG: LeaveCommand removeFromQueue called for " + player.getName());
             return true;
         }
 
         // 2. Check if in a session (participant or spectator)
         BedFightSession session = plugin.getBedFightManager().getSession(player);
-        plugin.getLogger().info("DEBUG: LeaveCommand session=" + (session != null) + " for " + player.getName());
+        plugin.debug("DEBUG: LeaveCommand session=" + (session != null) + " for " + player.getName());
         if (session != null) {
             BedFightPlayerState state = session.getPlayerState(uuid);
             

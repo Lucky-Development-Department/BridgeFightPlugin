@@ -71,7 +71,7 @@ public class BackupManager {
         String pUrl = "jdbc:mysql://" + pHost + ":" + pPort + "/" + pDatabase + "?useSSL=false&allowPublicKeyRetrieval=true";
         String rUrl = "jdbc:mysql://" + rHost + ":" + rPort + "/" + rDatabase + "?useSSL=false&allowPublicKeyRetrieval=true";
 
-        plugin.getLogger().info("Syncing primary database to remote mirror: " + rHost);
+        plugin.debug("Syncing primary database to remote mirror: " + rHost);
 
         try (Connection pConn = DriverManager.getConnection(pUrl, pUser, pPass);
              Connection rConn = DriverManager.getConnection(rUrl, rUser, rPass)) {
@@ -108,7 +108,7 @@ public class BackupManager {
                 rStmt.execute("SET FOREIGN_KEY_CHECKS=1;");
             }
 
-            plugin.getLogger().info("Database mirror sync completed successfully!");
+            plugin.debug("Database mirror sync completed successfully!");
             return true;
             
         } catch (Exception e) {
@@ -195,7 +195,7 @@ public class BackupManager {
             }
 
             writer.println("SET FOREIGN_KEY_CHECKS=1;");
-            plugin.getLogger().info("Database SQL backup (Java) created: " + fileName);
+            plugin.debug("Database SQL backup (Java) created: " + fileName);
             return true;
             
         } catch (Exception e) {
@@ -264,7 +264,7 @@ public class BackupManager {
             Map<UUID, PlayerStats> allStats = getAllPlayersFromDatabase();
             
             if (allStats.isEmpty()) {
-                plugin.getLogger().info("No data to backup");
+                plugin.debug("No data to backup");
                 return null;
             }
             
@@ -298,7 +298,7 @@ public class BackupManager {
             
             backupConfig.save(backupFile);
             
-            plugin.getLogger().info("Created backup: " + backupName + " (" + allStats.size() + " players)");
+            plugin.debug("Created backup: " + backupName + " (" + allStats.size() + " players)");
             
             // Clean up old backups
             cleanupOldBackups();
@@ -421,7 +421,7 @@ public class BackupManager {
                 }
             }
             
-            plugin.getLogger().info("Restored " + restoredCount + " players from backup: " + backupName);
+            plugin.debug("Restored " + restoredCount + " players from backup: " + backupName);
             return true;
             
         } catch (Exception e) {
@@ -482,7 +482,7 @@ public class BackupManager {
     public boolean deleteBackup(String backupName) {
         File backupFile = new File(backupFolder, backupName);
         if (backupFile.exists() && backupFile.delete()) {
-            plugin.getLogger().info("Deleted backup: " + backupName);
+            plugin.debug("Deleted backup: " + backupName);
             return true;
         }
         return false;
@@ -520,7 +520,7 @@ public class BackupManager {
             // Delete the uncompressed backup
             backupFile.delete();
             
-            plugin.getLogger().info("Created compressed backup: " + zipName);
+            plugin.debug("Created compressed backup: " + zipName);
             return zipName;
             
         } catch (IOException e) {

@@ -556,7 +556,7 @@ public class BlockEventListener implements Listener {
 
     private void removeItemsAt(Location loc) {
         if (loc.getWorld().getName().startsWith("bf_")) {
-            plugin.getLogger().info("Debug ItemRemoval: Skipping removal in " + loc.getWorld().getName());
+            plugin.debug("Debug ItemRemoval: Skipping removal in " + loc.getWorld().getName());
             return;
         }
         for (Item item : loc.getWorld().getEntitiesByClass(Item.class)) {
@@ -564,7 +564,7 @@ public class BlockEventListener implements Listener {
             if (itemLoc.getBlockX() == loc.getBlockX()
                     && itemLoc.getBlockY() == loc.getBlockY()
                     && itemLoc.getBlockZ() == loc.getBlockZ()) {
-                plugin.getLogger().info("Debug ItemRemoval: Removing item " + item.getItemStack().getType() + " at " + itemLoc);
+                plugin.debug("Debug ItemRemoval: Removing item " + item.getItemStack().getType() + " at " + itemLoc);
                 item.remove();
             }
         }

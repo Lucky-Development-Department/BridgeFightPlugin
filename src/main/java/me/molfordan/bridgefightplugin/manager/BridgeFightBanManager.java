@@ -1,6 +1,6 @@
 package me.molfordan.bridgefightplugin.manager;
 
-import org.bukkit.Bukkit;
+import me.molfordan.bridgefightplugin.BridgeFightPlugin;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -23,7 +23,7 @@ public class BridgeFightBanManager {
         if (!file.exists()) {
             try {
                 file.createNewFile();
-                Bukkit.getLogger().info("[BridgeFight] Created BridgeFightBan.yml");
+                BridgeFightPlugin.getPlugin().debug("[BridgeFight] Created BridgeFightBan.yml");
             } catch (IOException e) {
                 e.printStackTrace();
             }

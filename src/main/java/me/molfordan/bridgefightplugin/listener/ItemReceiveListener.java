@@ -25,7 +25,7 @@ public class ItemReceiveListener implements Listener {
     public void onPickup(PlayerPickupItemEvent e) {
         // If it's a BedFight world, allow normal pickup behavior
         if (e.getPlayer().getWorld().getName().startsWith("bf_")) {
-            Bukkit.getLogger().info("Debug Pickup: ItemReceiveListener ignored for BedFight world.");
+            BridgeFightPlugin.getPlugin().debug("Debug Pickup: ItemReceiveListener ignored for BedFight world.");
             return;
         }
 

@@ -77,8 +77,6 @@ public class HotbarSession {
         //putCategory(slot++, "ladder");
         putCategory(slot++, "golden_apple");
         putCategory(slot++, "fireball");
-        putCategory(slot++, "knockbackstick");
-        //putCategory(slot++, "respawn_item");
         putCategory(slot++, "ender_pearl");
         putCategory(slot++, "egg");
         //putCategory(slot++, "water_bucket");
@@ -291,10 +289,10 @@ public class HotbarSession {
         hotbarLayout.put(1, "pickaxe");
         hotbarLayout.put(2, "axe");
         hotbarLayout.put(3, "shears");
-        hotbarLayout.put(4, "knockbackstick");
-        hotbarLayout.put(5, "ender_pearl");
+        hotbarLayout.put(4, "ender_pearl");
+        hotbarLayout.put(5, "blocks");
         hotbarLayout.put(6, "blocks");
-        hotbarLayout.put(7, "blocks");
+        hotbarLayout.put(7, "ladder");
         hotbarLayout.put(8, "snowball");
     }
 
@@ -413,6 +411,7 @@ public class HotbarSession {
             case "respawn_item": return buildItem(Material.TRIPWIRE_HOOK, ChatColor.WHITE + "Respawn Item");
             case "ender_pearl": return buildItem(Material.ENDER_PEARL, ChatColor.WHITE + "Ender Pearl");
             case "water_bucket": return buildItem(Material.WATER_BUCKET, ChatColor.WHITE + "Water Bucket");
+            /*
             case "knockbackstick": {
                 ItemStack stick = buildItem(Material.STICK, ChatColor.WHITE + "KB Stick");
                 ItemMeta sm = stick.getItemMeta();
@@ -422,6 +421,8 @@ public class HotbarSession {
                 }
                 return stick;
             }
+
+             */
             case "compass": return buildItem(Material.COMPASS, ChatColor.WHITE + "Compass");
             case "snowball": return buildItem(Material.SNOW_BALL, ChatColor.WHITE + "Snowballs");
             case "egg": return buildItem(Material.EGG, ChatColor.WHITE + "Egg");
@@ -450,7 +451,7 @@ public class HotbarSession {
         String normalized = identifier.toLowerCase().trim();
         // direct list
         List<String> direct = Arrays.asList("blocks","melee","armor","tools","ranged","potions","speed","invisibility","jump",
-                "tnt","fireball","golden_apple","knockbackstick","respawn_item","ender_pearl","water_bucket","compass",
+                "tnt","fireball","golden_apple","respawn_item","ender_pearl","water_bucket","compass",
                 "pickaxe","axe","shears","ladder","snowball");
         if (direct.contains(normalized)) return normalized;
         // heuristics

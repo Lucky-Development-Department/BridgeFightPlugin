@@ -64,7 +64,7 @@ public class FrozenManager implements Listener {
         staff.sendMessage(ChatColor.GREEN + "Successfully unfroze " + ChatColor.YELLOW + player.getName() + ChatColor.GREEN + ".");
         player.sendMessage(ChatColor.GREEN + "You have been unfrozen. Thank you for your cooperation.");
 
-        plugin.getLogger().info(staff.getName() + " unfroze " + player.getName() + ".");
+        plugin.debug(staff.getName() + " unfroze " + player.getName() + ".");
     }
 
     @EventHandler

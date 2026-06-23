@@ -36,17 +36,64 @@ public class SpawnItem implements Listener {
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
 
-        player.getInventory().setItem(0, getCompass());
+        player.getInventory().setItem(1, getCompass());
+        player.getInventory().setItem(2, getCosmeticsItem());
         player.getInventory().setItem(4, getStatsHead(player));
         player.getInventory().setItem(8, getKitEditorBook());
-        player.getInventory().setItem(1, getKitEditorPaper());
-        player.getInventory().setItem(2, getQueueSword());
+        player.getInventory().setItem(6, getPartyitem());
+        player.getInventory().setItem(7, getKitEditorPaper());
+        player.getInventory().setItem(0, getQueueSword());
+    }
+
+    @EventHandler
+    public void onInventoryClickProtect(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+
+        Player player = (Player) event.getWhoClicked();
+        ItemStack item = event.getCurrentItem();
+
+        LockedItemType type = getLockedItemType(item, player);
+        if (type == null) return;
+
+        event.setCancelled(true);
+
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            switch (type) {
+                case MODE_SELECTOR: player.getInventory().setItem(1, getCompass()); break;
+                case PLATFORM_SELECTOR: player.getInventory().setItem(0, getPlatformSelectorCompass()); break;
+                case STATS_HEAD: player.getInventory().setItem(4, getStatsHead(player)); break;
+                case HOTBAR_MANAGER: player.getInventory().setItem(8, getKitEditorBook()); break;
+                case KIT_EDITOR: player.getInventory().setItem(7, getKitEditorPaper()); break;
+                case QUEUE_ITEM: player.getInventory().setItem(0, getQueueSword()); break;
+                case BACK_TO_SPAWN: player.getInventory().setItem(8, getSpawnRedstone()); break;
+                case SELECT_KIT: player.getInventory().setItem(4, getBook()); break;
+                case COSMETICS: player.getInventory().setItem(2, getCosmeticsItem()); break;
+                case PARTY: player.getInventory().setItem(6, getPartyitem()); break;
+            }
+            player.updateInventory();
+        });
     }
 
     public void giveSword(Player player) {
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
         player.getInventory().setItem(0, getSword());
+    }
+
+    private ItemStack getCosmeticsItem(){
+        ItemStack item = new ItemStack(Material.BLAZE_POWDER);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§eCosmetics §7(Right Click)");
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack getPartyitem(){
+        ItemStack item = new ItemStack(Material.WORKBENCH);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§eParty Create §7(Right Click)");
+        item.setItemMeta(meta);
+        return item;
     }
 
     private ItemStack getCompass() {
@@ -291,6 +338,12 @@ public class SpawnItem implements Listener {
 
             event.setCancelled(true);
             new me.molfordan.bridgefightplugin.kits.bridgefightkit.SwordChoiceGUI(plugin).open(player);
+        } else if (item.getType() == Material.BLAZE_POWDER && name.startsWith("§eCosmetics")) {
+            event.setCancelled(true);
+            player.performCommand("cosmetics");
+        } else if (item.getType() == Material.WORKBENCH && name.startsWith("§eParty")) {
+            event.setCancelled(true);
+            player.performCommand("bfparty create");
         }
     }
 
@@ -369,33 +422,6 @@ public class SpawnItem implements Listener {
         }
     }
 
-    @EventHandler
-    public void onInventoryClickProtect(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player)) return;
-
-        Player player = (Player) event.getWhoClicked();
-        ItemStack item = event.getCurrentItem();
-
-        LockedItemType type = getLockedItemType(item, player);
-        if (type == null) return;
-
-        event.setCancelled(true);
-
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            switch (type) {
-                case MODE_SELECTOR: player.getInventory().setItem(0, getCompass()); break;
-                case PLATFORM_SELECTOR: player.getInventory().setItem(0, getPlatformSelectorCompass()); break;
-                case STATS_HEAD: player.getInventory().setItem(4, getStatsHead(player)); break;
-                case HOTBAR_MANAGER: player.getInventory().setItem(8, getKitEditorBook()); break;
-                case KIT_EDITOR: player.getInventory().setItem(1, getKitEditorPaper()); break;
-                case QUEUE_ITEM: player.getInventory().setItem(2, getQueueSword()); break;
-                case BACK_TO_SPAWN: player.getInventory().setItem(8, getSpawnRedstone()); break;
-                case SELECT_KIT: player.getInventory().setItem(4, getBook()); break;
-            }
-            player.updateInventory();
-        });
-    }
-
     private LockedItemType getLockedItemType(ItemStack item, Player player) {
         if (item == null || !item.hasItemMeta()) return null;
         String name = item.getItemMeta().getDisplayName();
@@ -408,6 +434,8 @@ public class SpawnItem implements Listener {
         if (item.getType() == Material.IRON_SWORD && name.startsWith("§aQueue §7(Right Click)")) return LockedItemType.QUEUE_ITEM;
         if (item.getType() == Material.REDSTONE && name.startsWith("§cBack to Spawn")) return LockedItemType.BACK_TO_SPAWN;
         if (item.getType() == Material.BOOK && name.startsWith("§eSelect Kit")) return LockedItemType.SELECT_KIT;
+        if (item.getType() == Material.BLAZE_POWDER && name.startsWith("§eCosmetics")) return LockedItemType.COSMETICS;
+        if (item.getType() == Material.WORKBENCH && name.startsWith("§eParty Create")) return LockedItemType.PARTY;
 
         return null;
     }
@@ -420,6 +448,8 @@ public class SpawnItem implements Listener {
         KIT_EDITOR,
         QUEUE_ITEM,
         BACK_TO_SPAWN,
-        SELECT_KIT
+        SELECT_KIT,
+        COSMETICS,
+        PARTY
     }
 }

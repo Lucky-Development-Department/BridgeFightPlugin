@@ -305,12 +305,12 @@ public class ArenaManager {
 
          */
 
-        plugin.getLogger().info("All arenas unloaded from memory.");
+        plugin.debug("All arenas unloaded from memory.");
     }
 
     public void reloadArenas() {
         unloadArenas();
         loadArenas();
-        plugin.getLogger().info("Arenas reloaded.");
+        plugin.debug("Arenas reloaded.");
     }
 }

@@ -60,8 +60,8 @@ public class BridgeFightCommand implements CommandExecutor {
         }
 
         PlayerStats playerStats = plugin.getStatsManager().getStats(player.getUniqueId());
-        if (playerStats.getBuildKills() < 350) {
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',"&cYou need atleast 350 BuildFFA kills or higher to join the bridge fight!" ));
+        if (playerStats.getBuildKills() < 350 && !player.hasPermission("group.vip") && !player.isOp()) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',"&cYou need at least VIP rank or 350 BuildFFA kills or higher to join the bridge fight!" ));
             return true;
         }
 

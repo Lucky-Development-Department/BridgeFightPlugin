@@ -1,6 +1,7 @@
 package me.molfordan.bridgefightplugin.cosmetics;
 
 import me.molfordan.bridgefightplugin.BridgeFightPlugin;
+import me.molfordan.bridgefightplugin.cosmetics.objects.CosmeticTier;
 import me.molfordan.bridgefightplugin.cosmetics.objects.KillEffect;
 import me.molfordan.bridgefightplugin.cosmetics.objects.KillMessage;
 import me.molfordan.bridgefightplugin.cosmetics.objects.Trail;
@@ -57,7 +58,9 @@ public class CosmeticsManager {
             String voidMessage = section.getString(key + ".void_message", message);
             int requiredBalance = section.getInt(key + ".required_balance", 0);
             String permission = section.getString(key + ".permission", "");
-            killMessages.put(key, new KillMessage(key, displayName, message, voidMessage, requiredBalance, permission));
+            String tierStr = section.getString(key + ".tier", "COMMON");
+            CosmeticTier tier = CosmeticTier.fromString(tierStr);
+            killMessages.put(key, new KillMessage(key, displayName, message, voidMessage, requiredBalance, permission, tier));
         }
     }
 
@@ -70,7 +73,9 @@ public class CosmeticsManager {
             String effectType = section.getString(key + ".effect_type", "NONE");
             int requiredBalance = section.getInt(key + ".required_balance", 0);
             String permission = section.getString(key + ".permission", "");
-            killEffects.put(key, new KillEffect(key, displayName, effectType, requiredBalance, permission));
+            String tierStr = section.getString(key + ".tier", "COMMON");
+            CosmeticTier tier = CosmeticTier.fromString(tierStr);
+            killEffects.put(key, new KillEffect(key, displayName, effectType, requiredBalance, permission, tier));
         }
     }
 
@@ -83,7 +88,9 @@ public class CosmeticsManager {
             String particle = section.getString(key + ".particle", "NONE");
             int requiredBalance = section.getInt(key + ".required_balance", 0);
             String permission = section.getString(key + ".permission", "");
-            trails.put(key, new Trail(key, displayName, particle, requiredBalance, permission));
+            String tierStr = section.getString(key + ".tier", "COMMON");
+            CosmeticTier tier = CosmeticTier.fromString(tierStr);
+            trails.put(key, new Trail(key, displayName, particle, requiredBalance, permission, tier));
         }
     }
 
